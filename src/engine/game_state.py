@@ -10,13 +10,14 @@ from src.progression.save_manager import SaveManager
 from src.progression.rewards import Rewards
 
 class GameState:
-    def __init__(self, save_manager, num_ais=1, ai_difficulty=1):
+    def __init__(self, save_manager, num_ais=1, ai_difficulty=1, map_type=1):
         self.save_manager = save_manager
         self.num_ais = num_ais
         try:
             self.ai_difficulty = int(ai_difficulty)
         except (ValueError, TypeError):
             self.ai_difficulty = 1
+        self.map_type = map_type  # 1: Standard, 2: Désavantageuse, 3: Très Désavantageuse
 
         self.state = "MENU"  # "MENU", "SKILL_TREE", "PLAYING", "VICTORY", "DEFEAT"
 
@@ -32,6 +33,29 @@ class GameState:
         self.selection_box = None  # Tuple (start_x, start_y, current_x, current_y)
         self.game_time = 0.0
         self.player_age = 1
+
+    def is_fog_of_war_enabled(self):
+        return self.ai_difficulty > 4
+
+    def is_point_visible(self, x, y, owner_id=0):
+        if not self.is_fog_of_war_enabled():
+            return True
+
+        # Player units vision
+        for u in self.units:
+            if u.alive and u.owner_id == owner_id:
+                dist = math.hypot(u.x - x, u.y - y)
+                if dist <= getattr(u, 'vision_radius', 220):
+                    return True
+
+        # Player buildings vision
+        for b in self.buildings:
+            if b.alive and b.owner_id == owner_id:
+                dist = math.hypot(b.x - x, b.y - y)
+                if dist <= getattr(b, 'vision_radius', 250):
+                    return True
+
+        return False
 
     def age_up(self, owner_id=0):
         if owner_id == 0:
@@ -87,9 +111,9 @@ class GameState:
                 "biomass": 300
             }
 
-        # Génération de la carte
+        # Génération de la carte selon map_type
         map_gen = MapGenerator(config.MAP_WIDTH, config.MAP_HEIGHT)
-        map_data = map_gen.generate_map(num_players=self.num_ais + 1)
+        map_data = map_gen.generate_map(num_players=self.num_ais + 1, map_type=self.map_type)
 
         # Création des ressources sur la carte
         for res_data in map_data["resources"]:

@@ -25,6 +25,7 @@ class Unit(BaseEntity):
         self.attack_power = data["attack"] + attack_bonus
         self.attack_range = data["range"]
         self.is_worker = data.get("is_worker", False)
+        self.vision_radius = data.get("vision", 220)
 
         # États : "idle", "move", "harvest", "return_resource", "attack"
         self.state = "idle"
