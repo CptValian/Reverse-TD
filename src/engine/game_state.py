@@ -43,9 +43,20 @@ class GameState:
         armor_bonus_bld = upgrades.get("building_armor_lvl", 0) * 1.0
 
         # Initialisation des ressources des joueurs
-        self.resources_player[0] = {"gold": 300 + extra_res, "biomass": 0}
+        extra_res_bonus = 100 if upgrades.get("starting_res_1") else 0
+        self.resources_player[0] = {
+            "gold": 200 + extra_res_bonus,
+            "wood": 200 + extra_res_bonus,
+            "food": 150 + extra_res_bonus,
+            "biomass": 0
+        }
         for ai_id in range(1, self.num_ais + 1):
-            self.resources_player[ai_id] = {"gold": 0, "biomass": 300}
+            self.resources_player[ai_id] = {
+                "gold": 0,
+                "wood": 0,
+                "food": 0,
+                "biomass": 300
+            }
 
         # Génération de la carte
         map_gen = MapGenerator(config.MAP_WIDTH, config.MAP_HEIGHT)
@@ -90,13 +101,25 @@ class GameState:
 
     def add_resources(self, owner_id, res_type, amount):
         if owner_id in self.resources_player:
+            if res_type not in self.resources_player[owner_id]:
+                self.resources_player[owner_id][res_type] = 0
             self.resources_player[owner_id][res_type] += amount
 
-    def deduct_resources(self, owner_id, res_type, amount):
-        if owner_id in self.resources_player and self.resources_player[owner_id].get(res_type, 0) >= amount:
-            self.resources_player[owner_id][res_type] -= amount
+    def deduct_resources(self, owner_id, res_type, amount=None):
+        if owner_id not in self.resources_player:
+            return False
+        if isinstance(res_type, dict):
+            for r_name, r_cost in res_type.items():
+                if self.resources_player[owner_id].get(r_name, 0) < r_cost:
+                    return False
+            for r_name, r_cost in res_type.items():
+                self.resources_player[owner_id][r_name] -= r_cost
             return True
-        return False
+        else:
+            if self.resources_player[owner_id].get(res_type, 0) >= amount:
+                self.resources_player[owner_id][res_type] -= amount
+                return True
+            return False
 
     def get_unit_count(self, owner_id):
         return len([u for u in self.units if u.alive and u.owner_id == owner_id])
@@ -212,17 +235,17 @@ class GameState:
         if not player_buildings and not player_units:
             self.state = "DEFEAT"
             rewards = Rewards.calculate_rewards(False, self.num_ais, self.ai_difficulty)
-            self.save_manager.add_points(**{
-                "command": rewards[config.POINT_TYPE_COMMAND],
-                "forge": rewards[config.POINT_TYPE_FORGE],
-                "architecture": rewards[config.POINT_TYPE_ARCHITECTURE]
-            })
+            self.save_manager.add_points(
+                landshard=rewards[config.POINT_TYPE_COMMAND],
+                swarmerblood=rewards[config.POINT_TYPE_FORGE],
+                pykrite=rewards[config.POINT_TYPE_ARCHITECTURE]
+            )
 
         elif not ai_buildings and not ai_units:
             self.state = "VICTORY"
             rewards = Rewards.calculate_rewards(True, self.num_ais, self.ai_difficulty)
-            self.save_manager.add_points(**{
-                "command": rewards[config.POINT_TYPE_COMMAND],
-                "forge": rewards[config.POINT_TYPE_FORGE],
-                "architecture": rewards[config.POINT_TYPE_ARCHITECTURE]
-            })
+            self.save_manager.add_points(
+                landshard=rewards[config.POINT_TYPE_COMMAND],
+                swarmerblood=rewards[config.POINT_TYPE_FORGE],
+                pykrite=rewards[config.POINT_TYPE_ARCHITECTURE]
+            )

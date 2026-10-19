@@ -4,14 +4,14 @@ import config
 
 UNIT_TYPES = {
     # Médiéval
-    "Worker": {"cost": 50, "res_type": "gold", "hp": 60, "speed": 120, "attack": 5, "range": 25, "is_worker": True, "radius": 12, "train_time": 4},
-    "Infantry": {"cost": 100, "res_type": "gold", "hp": 150, "speed": 100, "attack": 18, "range": 30, "is_worker": False, "radius": 15, "train_time": 6},
-    "Archer": {"cost": 120, "res_type": "gold", "hp": 90, "speed": 110, "attack": 14, "range": 180, "is_worker": False, "radius": 13, "train_time": 7},
+    "Worker": {"cost": {"food": 50}, "hp": 60, "speed": 120, "attack": 5, "range": 25, "is_worker": True, "radius": 12, "train_time": 4},
+    "Infantry": {"cost": {"food": 60, "gold": 40}, "hp": 150, "speed": 100, "attack": 18, "range": 30, "is_worker": False, "radius": 15, "train_time": 6},
+    "Archer": {"cost": {"food": 50, "wood": 50}, "hp": 90, "speed": 110, "attack": 14, "range": 180, "is_worker": False, "radius": 13, "train_time": 7},
 
     # Alien
-    "Drone": {"cost": 50, "res_type": "biomass", "hp": 55, "speed": 130, "attack": 6, "range": 25, "is_worker": True, "radius": 12, "train_time": 3},
-    "Swarmer": {"cost": 60, "res_type": "biomass", "hp": 100, "speed": 150, "attack": 15, "range": 25, "is_worker": False, "radius": 12, "train_time": 3},
-    "Spitter": {"cost": 130, "res_type": "biomass", "hp": 80, "speed": 105, "attack": 16, "range": 170, "is_worker": False, "radius": 14, "train_time": 7}
+    "Drone": {"cost": {"biomass": 50}, "hp": 55, "speed": 130, "attack": 6, "range": 25, "is_worker": True, "radius": 12, "train_time": 3},
+    "Swarmer": {"cost": {"biomass": 60}, "hp": 100, "speed": 150, "attack": 15, "range": 25, "is_worker": False, "radius": 12, "train_time": 3},
+    "Spitter": {"cost": {"biomass": 130}, "hp": 80, "speed": 105, "attack": 16, "range": 170, "is_worker": False, "radius": 14, "train_time": 7}
 }
 
 class Unit(BaseEntity):
@@ -158,7 +158,7 @@ class Unit(BaseEntity):
                 self.is_attacking_anim = 0.3  # Animation flash/projectile pendant 0.3s
 
     def _process_harvest(self, dt, game_state):
-        if not self.target_entity or not self.target_entity.alive:
+        if not self.target_entity or not getattr(self.target_entity, 'alive', True):
             self.target_entity = None
             self.state = "idle"
             return
@@ -177,24 +177,28 @@ class Unit(BaseEntity):
             self.y += dir_y * self.speed * dt
         else:
             # Récolter
-            harvested = self.target_entity.harvest(config.DEFAULT_HARVEST_RATE * dt)
-            self.carried_resource += harvested
-            self.resource_type = self.target_entity.resource_type
+            if hasattr(self.target_entity, 'harvest'):
+                harvested = self.target_entity.harvest(config.DEFAULT_HARVEST_RATE * dt)
+                self.carried_resource += harvested
+                self.resource_type = self.target_entity.resource_type
+            elif getattr(self.target_entity, 'building_type', None) == "Farm":
+                harvested = config.DEFAULT_HARVEST_RATE * dt
+                self.carried_resource += harvested
+                self.resource_type = "food"
             self.is_harvesting_anim = 0.2
-            if self.carried_resource >= config.DEFAULT_HARVEST_CAPACITY or not self.target_entity.alive:
+            if self.carried_resource >= config.DEFAULT_HARVEST_CAPACITY or not getattr(self.target_entity, 'alive', True):
                 self.state = "return_resource"
 
     def _process_return_resource(self, dt, game_state):
-        # Trouver le centre-ville/ruche le plus proche
-        base = self._find_nearest_base(game_state)
-        if not base:
+        deposit = self._find_nearest_deposit(game_state)
+        if not deposit:
             self.state = "idle"
             return
 
-        dist = self.distance_to(base)
-        if dist > self.radius + base.radius + 10:
-            dir_x = (base.x - self.x) / dist
-            dir_y = (base.y - self.y) / dist
+        dist = self.distance_to(deposit)
+        if dist > self.radius + deposit.radius + 10:
+            dir_x = (deposit.x - self.x) / dist
+            dir_y = (deposit.y - self.y) / dist
             self.x += dir_x * self.speed * dt
             self.y += dir_y * self.speed * dt
         else:
@@ -202,19 +206,31 @@ class Unit(BaseEntity):
             game_state.add_resources(self.owner_id, self.resource_type, self.carried_resource)
             self.carried_resource = 0
             # Repartir récolter
-            if self.target_entity and self.target_entity.alive:
+            if self.target_entity and getattr(self.target_entity, 'alive', True):
                 self.state = "harvest"
             else:
                 self.state = "idle"
 
-    def _find_nearest_base(self, game_state):
+    def _find_nearest_deposit(self, game_state):
         nearest = None
         min_dist = float('inf')
-        base_types = ["TownHall", "Hive"]
         for b in game_state.buildings:
-            if b.alive and b.owner_id == self.owner_id and b.building_type in base_types:
-                dist = self.distance_to(b)
-                if dist < min_dist:
-                    min_dist = dist
-                    nearest = b
+            if b.alive and b.owner_id == self.owner_id and getattr(b, 'is_constructed', True):
+                accepts = False
+                b_type = getattr(b, 'building_type', '')
+                if b_type in ["TownHall", "Hive"]:
+                    accepts = True
+                elif b_type == "WoodStockpile" and self.resource_type == "wood":
+                    accepts = True
+                elif b_type == "GoldStockpile" and self.resource_type == "gold":
+                    accepts = True
+
+                if accepts:
+                    dist = self.distance_to(b)
+                    if dist < min_dist:
+                        min_dist = dist
+                        nearest = b
         return nearest
+
+    def _find_nearest_base(self, game_state):
+        return self._find_nearest_deposit(game_state)

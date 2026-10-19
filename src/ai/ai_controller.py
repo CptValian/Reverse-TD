@@ -37,36 +37,39 @@ class AIController:
         bases = [b for b in ai_buildings if b.building_type in ["Hive", "TownHall"] and b.is_constructed]
         if len(ai_workers) < 8 and bases:
             for base in bases:
-                if len(base.production_queue) < 2 and res[res_type] >= 50:
-                    unit_to_train = "Drone" if self.faction == config.FACTION_ALIEN else "Worker"
-                    if game_state.deduct_resources(self.owner_id, res_type, 50):
+                unit_to_train = "Drone" if self.faction == config.FACTION_ALIEN else "Worker"
+                from src.entities.unit import UNIT_TYPES
+                cost_dict = UNIT_TYPES.get(unit_to_train, {}).get("cost", {res_type: 50})
+                if len(base.production_queue) < 2:
+                    if game_state.deduct_resources(self.owner_id, cost_dict):
                         base.queue_unit(unit_to_train)
 
-        # Construction de SpawningPools (Même plusieurs pour un style Zerg macro-hatch/pools)
+        # Construction de SpawningPools
         spawning_pools = [b for b in ai_buildings if b.building_type in ["SpawningPool", "Barracks"]]
         target_pools = 2 if self.faction == config.FACTION_ALIEN else 1
 
-        if len(spawning_pools) < target_pools and res[res_type] >= 150 and ai_workers:
+        if len(spawning_pools) < target_pools and ai_workers:
             worker = ai_workers[0]
             b_type = "SpawningPool" if self.faction == config.FACTION_ALIEN else "Barracks"
+            from src.entities.building import BUILDING_TYPES
+            cost_dict = BUILDING_TYPES.get(b_type, {}).get("cost", {res_type: 150})
 
-            # Trouver un endroit valide sans collision
             bx = worker.x + 60 * len(spawning_pools) + 40
             by = worker.y + 40
             if game_state.can_place_building(b_type, bx, by):
-                if game_state.deduct_resources(self.owner_id, res_type, 150):
+                if game_state.deduct_resources(self.owner_id, cost_dict):
                     new_b = Building(self.owner_id, self.faction, b_type, bx, by, is_constructed=False)
                     game_state.buildings.append(new_b)
 
-        # Entraînement en essaim (Swarmers en masse)
+        # Entraînement en essaim
         army_units = [u for u in ai_units if not u.is_worker]
         for sp in spawning_pools:
             if sp.is_constructed and len(sp.production_queue) < 3:
                 u_type = "Swarmer" if self.faction == config.FACTION_ALIEN else "Infantry"
-                cost = config.UNIT_TYPES.get(u_type, {}).get("cost", 60)
-                if res[res_type] >= cost:
-                    if game_state.deduct_resources(self.owner_id, res_type, cost):
-                        sp.queue_unit(u_type)
+                from src.entities.unit import UNIT_TYPES
+                cost_dict = UNIT_TYPES.get(u_type, {}).get("cost", {res_type: 60})
+                if game_state.deduct_resources(self.owner_id, cost_dict):
+                    sp.queue_unit(u_type)
 
         # 3. Lancement d'une Vague d'Attaque massive en Essaim Zerg
         # L'IA Zerg attend d'avoir au moins un essaim minimal (ex: 6-8 Swarmers) pour tout déferler d'un coup

@@ -18,13 +18,21 @@ class TestProgression(unittest.TestCase):
     def test_add_and_buy_upgrade(self):
         self.sm.add_points(command=50, forge=50, architecture=50)
         points = self.sm.get_points()
-        self.assertEqual(points["Forge"], 50)
+        self.assertEqual(points["SwarmerBlood"], 50)
+        self.assertEqual(points["LandShard"], 50)
+        self.assertEqual(points["Pykrite"], 50)
 
-        # Acheter une amélioration
-        success = self.sm.buy_upgrade("unit_hp_lvl", "Forge", cost_base=10)
+        # Acheter une amélioration de troupe (SwarmerBlood)
+        success = self.sm.buy_upgrade("infantry_hp_lvl", "SwarmerBlood", cost_base=10)
         self.assertTrue(success)
-        self.assertEqual(self.sm.get_points()["Forge"], 40)
-        self.assertEqual(self.sm.data["upgrades"]["unit_hp_lvl"], 1)
+        self.assertEqual(self.sm.get_points()["SwarmerBlood"], 40)
+        self.assertEqual(self.sm.data["upgrades"]["infantry_hp_lvl"], 1)
+
+        # Débloquer un élément dans l'arbre de compétences (LandShard)
+        success_tree = self.sm.buy_upgrade("archer_unlocked", "LandShard", cost=30, is_tree_unlock=True)
+        self.assertTrue(success_tree)
+        self.assertEqual(self.sm.get_points()["LandShard"], 20)
+        self.assertEqual(self.sm.data["upgrades"]["archer_unlocked"], 1)
 
     def test_rewards_calculation(self):
         rewards_victory = Rewards.calculate_rewards(victory=True, num_ais=1, difficulty="Très Facile")
