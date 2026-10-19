@@ -27,6 +27,7 @@ class GameState:
 
         # Statistiques des joueurs (owner_id 0 = Humain, owner_id 1..N = IA)
         self.resources_player = {}
+        self.resources_gathered_player = {}
 
         self.selection_box = None  # Tuple (start_x, start_y, current_x, current_y)
         self.game_time = 0.0
@@ -66,8 +67,20 @@ class GameState:
             "food": 150 + extra_res_bonus,
             "biomass": 0
         }
+        self.resources_gathered_player[0] = {
+            "gold": 200 + extra_res_bonus,
+            "wood": 200 + extra_res_bonus,
+            "food": 150 + extra_res_bonus,
+            "biomass": 0
+        }
         for ai_id in range(1, self.num_ais + 1):
             self.resources_player[ai_id] = {
+                "gold": 0,
+                "wood": 0,
+                "food": 0,
+                "biomass": 300
+            }
+            self.resources_gathered_player[ai_id] = {
                 "gold": 0,
                 "wood": 0,
                 "food": 0,
@@ -129,6 +142,12 @@ class GameState:
             if res_type not in self.resources_player[owner_id]:
                 self.resources_player[owner_id][res_type] = 0
             self.resources_player[owner_id][res_type] += amount
+
+            if owner_id not in self.resources_gathered_player:
+                self.resources_gathered_player[owner_id] = {}
+            if res_type not in self.resources_gathered_player[owner_id]:
+                self.resources_gathered_player[owner_id][res_type] = 0
+            self.resources_gathered_player[owner_id][res_type] += amount
 
     def deduct_resources(self, owner_id, res_type, amount=None):
         if owner_id not in self.resources_player:
