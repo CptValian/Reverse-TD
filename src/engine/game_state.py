@@ -10,10 +10,13 @@ from src.progression.save_manager import SaveManager
 from src.progression.rewards import Rewards
 
 class GameState:
-    def __init__(self, save_manager, num_ais=1, ai_difficulty="Very Easy"):
+    def __init__(self, save_manager, num_ais=1, ai_difficulty=1):
         self.save_manager = save_manager
         self.num_ais = num_ais
-        self.ai_difficulty = ai_difficulty
+        try:
+            self.ai_difficulty = int(ai_difficulty)
+        except (ValueError, TypeError):
+            self.ai_difficulty = 1
 
         self.state = "MENU"  # "MENU", "SKILL_TREE", "PLAYING", "VICTORY", "DEFEAT"
 
@@ -26,8 +29,21 @@ class GameState:
         self.resources_player = {}
 
         self.selection_box = None  # Tuple (start_x, start_y, current_x, current_y)
+        self.game_time = 0.0
+        self.player_age = 1
+
+    def age_up(self, owner_id=0):
+        if owner_id == 0:
+            self.player_age += 1
+            # Strengthen all buildings HP by * 1.2
+            for b in self.buildings:
+                if b.alive and b.owner_id == owner_id:
+                    hp_ratio = b.hp / max(1.0, b.max_hp)
+                    b.max_hp = int(b.max_hp * 1.2)
+                    b.hp = int(b.max_hp * hp_ratio)
 
     def start_new_game(self):
+        self.game_time = 0.0
         self.units.clear()
         self.buildings.clear()
         self.resources.clear()
@@ -124,6 +140,19 @@ class GameState:
     def get_unit_count(self, owner_id):
         return len([u for u in self.units if u.alive and u.owner_id == owner_id])
 
+    def get_pop_max(self, owner_id):
+        base_pop = 10
+        bonus_pop = sum(b.pop_bonus for b in self.buildings if b.alive and b.owner_id == owner_id and getattr(b, 'is_constructed', True))
+        return base_pop + bonus_pop
+
+    def get_queued_and_current_pop(self, owner_id):
+        curr_pop = self.get_unit_count(owner_id)
+        queued_pop = 0
+        for b in self.buildings:
+            if b.alive and b.owner_id == owner_id:
+                queued_pop += len(b.production_queue)
+        return curr_pop + queued_pop
+
     def can_place_building(self, building_type, x, y, owner_id=None):
         from src.entities.building import BUILDING_TYPES
         radius = BUILDING_TYPES.get(building_type, {}).get("radius", 35)
@@ -197,6 +226,8 @@ class GameState:
         if self.state != "PLAYING":
             return
 
+        self.game_time += dt
+
         # Résolution des collisions d'unités (Empêcher l'overlap)
         self.resolve_unit_collisions()
 
@@ -234,7 +265,7 @@ class GameState:
 
         if not player_buildings and not player_units:
             self.state = "DEFEAT"
-            rewards = Rewards.calculate_rewards(False, self.num_ais, self.ai_difficulty)
+            rewards = Rewards.calculate_rewards(False, self.num_ais, self.ai_difficulty, survival_time=self.game_time)
             self.save_manager.add_points(
                 landshard=rewards[config.POINT_TYPE_COMMAND],
                 swarmerblood=rewards[config.POINT_TYPE_FORGE],
@@ -243,7 +274,7 @@ class GameState:
 
         elif not ai_buildings and not ai_units:
             self.state = "VICTORY"
-            rewards = Rewards.calculate_rewards(True, self.num_ais, self.ai_difficulty)
+            rewards = Rewards.calculate_rewards(True, self.num_ais, self.ai_difficulty, survival_time=self.game_time)
             self.save_manager.add_points(
                 landshard=rewards[config.POINT_TYPE_COMMAND],
                 swarmerblood=rewards[config.POINT_TYPE_FORGE],

@@ -15,7 +15,9 @@ class HUD:
         pygame.draw.rect(surface, config.COLOR_UI_BG, top_bar)
         pygame.draw.line(surface, config.COLOR_UI_ACCENT, (0, 40), (self.screen_width, 40), 2)
 
-        res_text = f"Gold: {int(player_res.get('gold', 0))} | Wood: {int(player_res.get('wood', 0))} | Food: {int(player_res.get('food', 0))} | Biomass: {int(player_res.get('biomass', 0))} | Units: {game_state.get_unit_count(0)}"
+        pop_curr = game_state.get_unit_count(0)
+        pop_max = game_state.get_pop_max(0)
+        res_text = f"Age: {game_state.player_age} | Gold: {int(player_res.get('gold', 0))} | Wood: {int(player_res.get('wood', 0))} | Food: {int(player_res.get('food', 0))} | Biomass: {int(player_res.get('biomass', 0))} | Pop: {pop_curr}/{pop_max}"
         img_res = self.title_font.render(res_text, True, config.COLOR_UI_TEXT)
         surface.blit(img_res, (20, 8))
 
@@ -78,6 +80,34 @@ class HUD:
             if hasattr(first, 'building_type'):
                 btn_x = panel_rect.x + 20
                 btn_y = panel_rect.y + 35
+
+                if first.building_type == "TownHall":
+                    # Age Up Button in TownHall interface
+                    next_age = game_state.player_age + 1
+                    cost_wood = 200 * next_age
+                    cost_gold = 200 * next_age
+                    age_unlocked_in_tree = upgrades.get(f"ageing_up_{next_age}")
+
+                    if age_unlocked_in_tree:
+                        age_btn = pygame.Rect(panel_rect.x + 550, panel_rect.y + 8, 220, 32)
+                        pygame.draw.rect(surface, (40, 90, 60), age_btn, border_radius=4)
+                        pygame.draw.rect(surface, config.COLOR_UI_ACCENT, age_btn, 1, border_radius=4)
+                        t_age = self.font.render(f"Advance to Age {next_age} ({cost_wood}W/{cost_gold}G)", True, config.COLOR_UI_TEXT)
+                        surface.blit(t_age, (age_btn.x + 8, age_btn.y + 5))
+
+                    if upgrades.get("garrison_unlocked"):
+                        num_g = len(getattr(first, 'garrisoned_units', []))
+                        garr_info = f"Garrisoned Peasants: {num_g}/{first.max_garrison} (+{num_g} Arrows)"
+                        img_garr = self.font.render(garr_info, True, (255, 215, 0))
+                        surface.blit(img_garr, (panel_rect.x + 250, panel_rect.y + 10))
+
+                        # Ungarrison button if garrisoned units present
+                        if num_g > 0:
+                            ungarr_btn = pygame.Rect(panel_rect.x + 460, panel_rect.y + 8, 80, 26)
+                            pygame.draw.rect(surface, (120, 50, 50), ungarr_btn, border_radius=4)
+                            pygame.draw.rect(surface, config.COLOR_UI_ACCENT, ungarr_btn, 1, border_radius=4)
+                            t_ungarr = self.font.render("Eject All", True, config.COLOR_UI_TEXT)
+                            surface.blit(t_ungarr, (ungarr_btn.x + 10, ungarr_btn.y + 3))
 
                 # Boutons de recrutement
                 if first.trainable_units and first.is_constructed:
@@ -144,9 +174,11 @@ class HUD:
                         buildings_to_build.append("WoodStockpile")
                     if upgrades.get("gold_stockpile_unlocked"):
                         buildings_to_build.append("GoldStockpile")
+                    if upgrades.get("house_unlocked"):
+                        buildings_to_build.append("House")
                     if upgrades.get("farm_unlocked"):
                         buildings_to_build.append("Farm")
-                    if upgrades.get("townhall_unlocked"):
+                    if upgrades.get("townhall_unlocked") and getattr(game_state, 'player_age', 1) >= 2:
                         buildings_to_build.append("TownHall")
                 else:
                     buildings_to_build = ["SpawningPool", "SpineCrawler"]

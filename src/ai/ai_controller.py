@@ -4,11 +4,14 @@ from src.entities.building import Building
 import config
 
 class AIController:
-    def __init__(self, owner_id, faction=config.FACTION_ALIEN, difficulty="Very Easy"):
+    def __init__(self, owner_id, faction=config.FACTION_ALIEN, difficulty=1):
         self.owner_id = owner_id
         self.faction = faction
-        self.difficulty = difficulty
-        self.config = AI_DIFFICULTY_LEVELS.get(difficulty, AI_DIFFICULTY_LEVELS["Very Easy"])
+        try:
+            self.difficulty = int(difficulty)
+        except (ValueError, TypeError):
+            self.difficulty = 1
+        self.config = AI_DIFFICULTY_LEVELS.get(self.difficulty, AI_DIFFICULTY_LEVELS[1])
         self.timer_wave = 0.0
 
     def update(self, dt, game_state):
@@ -49,7 +52,7 @@ class AIController:
 
         # Spawning Pool / Barracks Production
         spawning_pools = [b for b in ai_buildings if b.building_type in ["SpawningPool", "Barracks"]]
-        target_pools = 2 if self.difficulty in ["Hard", "Extreme"] else 1
+        target_pools = 2 if self.difficulty >= 5 else 1
 
         if len(spawning_pools) < target_pools and ai_workers:
             worker = ai_workers[0]
@@ -98,7 +101,7 @@ class AIController:
                     sp.queue_unit(u_type)
 
         # 3. Attack Waves
-        min_swarm_size = 3 if self.difficulty == "Very Easy" else (5 if self.difficulty == "Easy" else 8)
+        min_swarm_size = 2 if self.difficulty == 1 else (3 if self.difficulty == 2 else 5)
         if self.timer_wave >= self.config["attack_wave_interval"] or len(army_units) >= self.config["max_army_size"]:
             if len(army_units) >= min_swarm_size:
                 self.timer_wave = 0.0

@@ -13,7 +13,7 @@ class Menu:
         self.small_font = pygame.font.SysFont("Segoe UI", 16)
         self.anim_time = 0.0
 
-    def draw_main_menu(self, surface, selected_ai_count=1, selected_difficulty="Very Easy"):
+    def draw_main_menu(self, surface, selected_ai_count=1, selected_difficulty=1):
         self.anim_time += 0.016
 
         # Atmospheric Background Gradient & Art Elements
@@ -101,7 +101,7 @@ class Menu:
         surface.blit(diff_label, (setup_rect.x + 40, 660))
 
         diff_btn = pygame.Rect(setup_rect.x + 280, 652, 280, 40)
-        draw_button(diff_btn, selected_difficulty)
+        draw_button(diff_btn, f"Level {selected_difficulty}")
 
         # Footer info
         footer = self.small_font.render("Resolution: 1920x1080 | Alt+Tab Friendly Borderless Fullscreen Mode", True, (120, 140, 160))

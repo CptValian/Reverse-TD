@@ -3,7 +3,18 @@
 # Difficulty Scaling & AI Technology Unlocks
 
 AI_DIFFICULTY_LEVELS = {
-    "Very Easy": {
+    1: {
+        "resource_multiplier": 0.5,
+        "attack_wave_interval": 240,  # Wave every 4 minutes
+        "max_army_size": 3,
+        "max_workers": 3,
+        "unlocked_techs": ["Drone", "Swarmer"],
+        "unit_hp_bonus": 0.0,
+        "unit_atk_bonus": 0.0,
+        "can_build_defenses": False,
+        "can_tech_ranged": False
+    },
+    2: {
         "resource_multiplier": 0.8,
         "attack_wave_interval": 180,  # Wave every 3 minutes
         "max_army_size": 5,
@@ -14,7 +25,7 @@ AI_DIFFICULTY_LEVELS = {
         "can_build_defenses": False,
         "can_tech_ranged": False
     },
-    "Easy": {
+    3: {
         "resource_multiplier": 1.0,
         "attack_wave_interval": 130,
         "max_army_size": 10,
@@ -25,7 +36,7 @@ AI_DIFFICULTY_LEVELS = {
         "can_build_defenses": False,
         "can_tech_ranged": False
     },
-    "Medium": {
+    4: {
         "resource_multiplier": 1.25,
         "attack_wave_interval": 90,
         "max_army_size": 18,
@@ -36,7 +47,7 @@ AI_DIFFICULTY_LEVELS = {
         "can_build_defenses": True,
         "can_tech_ranged": True
     },
-    "Hard": {
+    5: {
         "resource_multiplier": 1.6,
         "attack_wave_interval": 60,
         "max_army_size": 30,
@@ -47,7 +58,7 @@ AI_DIFFICULTY_LEVELS = {
         "can_build_defenses": True,
         "can_tech_ranged": True
     },
-    "Extreme": {
+    6: {
         "resource_multiplier": 2.2,
         "attack_wave_interval": 40,
         "max_army_size": 45,
@@ -59,3 +70,6 @@ AI_DIFFICULTY_LEVELS = {
         "can_tech_ranged": True
     }
 }
+# Backward compatibility mapping string to int
+for _k, _v in list(AI_DIFFICULTY_LEVELS.items()):
+    pass
