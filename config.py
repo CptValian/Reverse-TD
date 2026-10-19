@@ -38,6 +38,7 @@ DEFAULT_UNIT_SPEED = 120
 DEFAULT_HARVEST_RATE = 5
 DEFAULT_HARVEST_CAPACITY = 20
 
+
 # Meta-Progression (Points)
 POINT_TYPE_COMMAND = "Commandement"     # Arbre de compétences / Pouvoirs
 POINT_TYPE_FORGE = "Forge"             # Statstiques des unités

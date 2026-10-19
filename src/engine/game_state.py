@@ -1,3 +1,4 @@
+import math
 import config
 from src.engine.camera import Camera
 from src.engine.map_generator import MapGenerator
@@ -100,9 +101,81 @@ class GameState:
     def get_unit_count(self, owner_id):
         return len([u for u in self.units if u.alive and u.owner_id == owner_id])
 
+    def can_place_building(self, building_type, x, y, owner_id=None):
+        from src.entities.building import BUILDING_TYPES
+        radius = BUILDING_TYPES.get(building_type, {}).get("radius", 35)
+
+        # Vérifier hors limites carte
+        if x - radius < 0 or x + radius > config.MAP_WIDTH or y - radius < 0 or y + radius > config.MAP_HEIGHT:
+            return False
+
+        # Collision avec d'autres bâtiments
+        for b in self.buildings:
+            if b.alive:
+                dist = math.hypot(b.x - x, b.y - y)
+                if dist < b.radius + radius + 10:
+                    return False
+
+        # Collision avec ressources
+        for r in self.resources:
+            if r.alive:
+                dist = math.hypot(r.x - x, r.y - y)
+                if dist < r.radius + radius + 10:
+                    return False
+
+        return True
+
+    def resolve_unit_collisions(self):
+        units_list = [u for u in self.units if u.alive]
+        num_units = len(units_list)
+        for i in range(num_units):
+            u1 = units_list[i]
+            for j in range(i + 1, num_units):
+                u2 = units_list[j]
+                dx = u2.x - u1.x
+                dy = u2.y - u1.y
+                dist = math.hypot(dx, dy)
+                min_dist = u1.radius + u2.radius
+
+                if dist < min_dist:
+                    overlap = min_dist - dist
+                    if dist == 0:
+                        dx, dy, dist = 1.0, 0.0, 1.0
+                    nx = dx / dist
+                    ny = dy / dist
+
+                    # Repousser les deux unités à parts égales
+                    push_x = nx * (overlap / 2.0)
+                    push_y = ny * (overlap / 2.0)
+
+                    u1.x -= push_x
+                    u1.y -= push_y
+                    u2.x += push_x
+                    u2.y += push_y
+
+        # Résoudre également la collision unités / bâtiments
+        for u in units_list:
+            for b in self.buildings:
+                if b.alive:
+                    dx = u.x - b.x
+                    dy = u.y - b.y
+                    dist = math.hypot(dx, dy)
+                    min_dist = u.radius + b.radius
+                    if dist < min_dist:
+                        overlap = min_dist - dist
+                        if dist == 0:
+                            dx, dy, dist = 1.0, 0.0, 1.0
+                        nx = dx / dist
+                        ny = dy / dist
+                        u.x += nx * overlap
+                        u.y += ny * overlap
+
     def update(self, dt):
         if self.state != "PLAYING":
             return
+
+        # Résolution des collisions d'unités (Empêcher l'overlap)
+        self.resolve_unit_collisions()
 
         # Mise à jour des unités
         for unit in list(self.units):
