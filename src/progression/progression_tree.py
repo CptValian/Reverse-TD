@@ -84,7 +84,7 @@ class ProgressionUI:
                 "desc": "+100 Starting Resources",
                 "cost": 20,
                 "parents": [],
-                "pos": (450, 240)
+                "pos": (320, 210)
             },
             {
                 "key": "wood_stockpile_unlocked",
@@ -92,7 +92,7 @@ class ProgressionUI:
                 "desc": "Drop-off for Wood Workers",
                 "cost": 20,
                 "parents": [],
-                "pos": (960, 240)
+                "pos": (720, 210)
             },
             {
                 "key": "gold_stockpile_unlocked",
@@ -100,7 +100,15 @@ class ProgressionUI:
                 "desc": "Drop-off for Gold Workers",
                 "cost": 20,
                 "parents": [],
-                "pos": (1470, 240)
+                "pos": (1120, 210)
+            },
+            {
+                "key": "house_unlocked",
+                "name": "Peasant Houses",
+                "desc": "Build Houses for +5 Pop Max",
+                "cost": 20,
+                "parents": [],
+                "pos": (1520, 210)
             },
             {
                 "key": "archer_unlocked",
@@ -108,7 +116,7 @@ class ProgressionUI:
                 "desc": "Train Archers in Barracks",
                 "cost": 30,
                 "parents": ["starting_res_1"],
-                "pos": (450, 440)
+                "pos": (320, 370)
             },
             {
                 "key": "wall_unlocked",
@@ -116,7 +124,7 @@ class ProgressionUI:
                 "desc": "Build Defensive Wooden Walls",
                 "cost": 25,
                 "parents": ["wood_stockpile_unlocked"],
-                "pos": (780, 440)
+                "pos": (620, 370)
             },
             {
                 "key": "farm_unlocked",
@@ -124,23 +132,39 @@ class ProgressionUI:
                 "desc": "Harvest Food for Troops",
                 "cost": 25,
                 "parents": ["wood_stockpile_unlocked"],
-                "pos": (1140, 440)
+                "pos": (920, 370)
+            },
+            {
+                "key": "garrison_unlocked",
+                "name": "Forum Garrison",
+                "desc": "Garrison Peasants into Town Hall",
+                "cost": 30,
+                "parents": ["house_unlocked"],
+                "pos": (1370, 370)
+            },
+            {
+                "key": "ageing_up_2",
+                "name": "Ageing Up II (Feudal)",
+                "desc": "Advance Age (Boost Bld HP & unlocks)",
+                "cost": 50,
+                "parents": ["archer_unlocked", "wall_unlocked", "farm_unlocked"],
+                "pos": (620, 530)
             },
             {
                 "key": "tower_unlocked",
                 "name": "Watchtower",
                 "desc": "Build Defending Watchtowers",
                 "cost": 35,
-                "parents": ["archer_unlocked", "wall_unlocked"],
-                "pos": (615, 640)
+                "parents": ["ageing_up_2"],
+                "pos": (620, 690)
             },
             {
                 "key": "townhall_unlocked",
                 "name": "Secondary Keep",
                 "desc": "Build Additional Town Halls",
                 "cost": 40,
-                "parents": ["farm_unlocked", "gold_stockpile_unlocked"],
-                "pos": (1305, 640)
+                "parents": ["ageing_up_2"],
+                "pos": (1120, 690)
             }
         ]
 

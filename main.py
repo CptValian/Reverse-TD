@@ -12,16 +12,21 @@ from src.entities.building import Building
 
 def main():
     pygame.init()
+    info = pygame.display.Info()
+    if info.current_w > 0 and info.current_h > 0:
+        config.SCREEN_WIDTH = info.current_w
+        config.SCREEN_HEIGHT = info.current_h
+
     screen = pygame.display.set_mode((config.SCREEN_WIDTH, config.SCREEN_HEIGHT), pygame.FULLSCREEN | pygame.DOUBLEBUF)
     pygame.display.set_caption("RTS: Médiéval vs Alien Insecte")
     clock = pygame.time.Clock()
 
     save_manager = SaveManager()
     game_state = GameState(save_manager)
-    camera = Camera()
-    hud = HUD()
-    menu = Menu()
-    progression_ui = ProgressionUI(save_manager)
+    camera = Camera(screen_width=config.SCREEN_WIDTH, screen_height=config.SCREEN_HEIGHT)
+    hud = HUD(screen_width=config.SCREEN_WIDTH, screen_height=config.SCREEN_HEIGHT)
+    menu = Menu(screen_width=config.SCREEN_WIDTH, screen_height=config.SCREEN_HEIGHT)
+    progression_ui = ProgressionUI(save_manager, screen_width=config.SCREEN_WIDTH, screen_height=config.SCREEN_HEIGHT)
 
     is_selecting_box = False
     box_start_pos = (0, 0)
@@ -61,7 +66,7 @@ def main():
                         game_state.num_ais = min(4, game_state.num_ais + 1)
 
                     elif buttons.get("difficulty") and buttons["difficulty"].collidepoint(event.pos):
-                        diffs = ["Very Easy", "Easy", "Medium", "Hard", "Extreme"]
+                        diffs = [1, 2, 3, 4, 5, 6]
                         curr_idx = diffs.index(game_state.ai_difficulty) if game_state.ai_difficulty in diffs else 0
                         game_state.ai_difficulty = diffs[(curr_idx + 1) % len(diffs)]
 
@@ -124,11 +129,32 @@ def main():
 
                         # Vérifier clic sur l'UI (Zone HUD)
                         elif mouse_pos[1] > config.SCREEN_HEIGHT - 150:
-                            # Clic dans le panneau HUD pour lancer un entraînement/construction
+                            # Clic dans le panneau HUD pour lancer un entraînement/construction/age up
                             selected_entities = [e for e in game_state.units + game_state.buildings if e.selected and e.owner_id == 0]
                             if selected_entities:
                                 first = selected_entities[0]
                                 upgrades = game_state.save_manager.data.get("upgrades", {})
+
+                                if getattr(first, 'building_type', None) == "TownHall":
+                                    minimap_size = 150
+                                    panel_x = minimap_size + 30
+                                    panel_y = config.SCREEN_HEIGHT - 150
+
+                                    if upgrades.get("garrison_unlocked"):
+                                        ungarr_btn = pygame.Rect(panel_x + 460, panel_y + 8, 80, 26)
+                                        if ungarr_btn.collidepoint(event.pos):
+                                            first.ungarrison_all(game_state)
+
+                                    next_age = game_state.player_age + 1
+                                    if upgrades.get(f"ageing_up_{next_age}"):
+                                        age_btn = pygame.Rect(panel_x + 550, panel_y + 8, 220, 32)
+                                        if age_btn.collidepoint(event.pos):
+                                            cost_wood = 200 * next_age
+                                            cost_gold = 200 * next_age
+                                            req = {"wood": cost_wood, "gold": cost_gold}
+                                            if game_state.deduct_resources(0, req):
+                                                game_state.age_up(0)
+
                                 if hasattr(first, 'building_type') and first.trainable_units:
                                     trainable = []
                                     for u in first.trainable_units:
@@ -142,10 +168,12 @@ def main():
                                     for u_type in trainable:
                                         btn_rect = pygame.Rect(btn_x, config.SCREEN_HEIGHT - 100, 160, 42)
                                         if btn_rect.collidepoint(event.pos):
-                                            u_data = UNIT_TYPES.get(u_type, {})
-                                            cost = u_data.get("cost", {"gold": 50})
-                                            if game_state.deduct_resources(0, cost):
-                                                first.queue_unit(u_type, train_time=u_data.get("train_time", 5))
+                                            # Check pop limit
+                                            if game_state.get_queued_and_current_pop(0) < game_state.get_pop_max(0):
+                                                u_data = UNIT_TYPES.get(u_type, {})
+                                                cost = u_data.get("cost", {"gold": 50})
+                                                if game_state.deduct_resources(0, cost):
+                                                    first.queue_unit(u_type, train_time=u_data.get("train_time", 5))
                                         btn_x += 170
 
                                 elif getattr(first, 'is_worker', False):
@@ -161,9 +189,11 @@ def main():
                                             buildings_to_build.append("WoodStockpile")
                                         if upgrades.get("gold_stockpile_unlocked"):
                                             buildings_to_build.append("GoldStockpile")
+                                        if upgrades.get("house_unlocked"):
+                                            buildings_to_build.append("House")
                                         if upgrades.get("farm_unlocked"):
                                             buildings_to_build.append("Farm")
-                                        if upgrades.get("townhall_unlocked"):
+                                        if upgrades.get("townhall_unlocked") and getattr(game_state, 'player_age', 1) >= 2:
                                             buildings_to_build.append("TownHall")
                                     else:
                                         buildings_to_build = ["SpawningPool", "SpineCrawler"]
@@ -201,11 +231,13 @@ def main():
                         selected_units = [u for u in game_state.units if u.selected and u.owner_id == 0]
 
                         if selected_units:
-                            # Chercher si la cible est un ennemi ou un gisement de ressources
+                            # Chercher si la cible est un ennemi, un gisement de ressources ou le TownHall (pour garnir)
                             target_enemy = next((e for e in game_state.units + game_state.buildings if e.alive and e.owner_id != 0 and e.is_point_inside(world_click[0], world_click[1])), None)
                             target_res = next((r for r in game_state.resources if r.alive and r.is_point_inside(world_click[0], world_click[1])), None)
                             target_farm = next((b for b in game_state.buildings if b.alive and getattr(b, 'building_type', None) == "Farm" and b.is_point_inside(world_click[0], world_click[1])), None)
+                            target_th = next((b for b in game_state.buildings if b.alive and getattr(b, 'building_type', None) == "TownHall" and b.owner_id == 0 and b.is_point_inside(world_click[0], world_click[1])), None)
 
+                            upgrades = game_state.save_manager.data.get("upgrades", {})
                             for unit in selected_units:
                                 if target_enemy:
                                     unit.attack_target(target_enemy)
@@ -213,6 +245,9 @@ def main():
                                     unit.harvest_node(target_res)
                                 elif target_farm and unit.is_worker:
                                     unit.harvest_node(target_farm)
+                                elif target_th and unit.is_worker and upgrades.get("garrison_unlocked"):
+                                    if target_th.garrison_unit(unit):
+                                        pass
                                 else:
                                     unit.move_to(world_click[0], world_click[1])
 
