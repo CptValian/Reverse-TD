@@ -53,31 +53,81 @@ class HUD:
         selected_entities = [e for e in game_state.units + game_state.buildings if e.selected and e.owner_id == 0]
         if selected_entities:
             first = selected_entities[0]
-            info_text = f"Sélection: {getattr(first, 'unit_type', getattr(first, 'building_type', 'Entité'))} (PV: {int(first.hp)}/{first.max_hp})"
-            img_info = self.font.render(info_text, True, config.COLOR_UI_TEXT)
-            surface.blit(img_info, (panel_rect.x + 20, panel_rect.y + 15))
+            name = getattr(first, 'unit_type', getattr(first, 'building_type', 'Entité'))
+            status_extra = ""
+            if hasattr(first, 'is_constructed') and not first.is_constructed:
+                pct = int((1.0 - first.build_timer / max(0.001, first.total_build_time)) * 100)
+                status_extra = f" [En construction: {pct}%]"
 
-            # Si c'est un bâtiment de production
-            if hasattr(first, 'building_type') and first.trainable_units:
+            info_text = f"Sélection: {name} (PV: {int(first.hp)}/{first.max_hp}){status_extra}"
+            img_info = self.font.render(info_text, True, config.COLOR_UI_TEXT)
+            surface.blit(img_info, (panel_rect.x + 20, panel_rect.y + 10))
+
+            # Si c'est un bâtiment
+            if hasattr(first, 'building_type'):
                 btn_x = panel_rect.x + 20
-                btn_y = panel_rect.y + 50
-                for u_type in first.trainable_units:
-                    btn_rect = pygame.Rect(btn_x, btn_y, 140, 40)
-                    pygame.draw.rect(surface, (60, 64, 72), btn_rect, border_radius=4)
-                    pygame.draw.rect(surface, config.COLOR_UI_ACCENT, btn_rect, 1, border_radius=4)
-                    t_surf = self.font.render(f"Recruter {u_type}", True, config.COLOR_UI_TEXT)
-                    surface.blit(t_surf, (btn_x + 10, btn_y + 10))
-                    btn_x += 150
+                btn_y = panel_rect.y + 35
+
+                # Boutons de recrutement
+                if first.trainable_units and first.is_constructed:
+                    for u_type in first.trainable_units:
+                        u_data = config.UNIT_TYPES.get(u_type, {})
+                        cost = u_data.get("cost", 50)
+                        res_name = "Or" if u_data.get("res_type", "gold") == "gold" else "Bio"
+
+                        btn_rect = pygame.Rect(btn_x, btn_y, 150, 40)
+                        pygame.draw.rect(surface, (60, 64, 72), btn_rect, border_radius=4)
+                        pygame.draw.rect(surface, config.COLOR_UI_ACCENT, btn_rect, 1, border_radius=4)
+
+                        t_name = self.font.render(f"+ {u_type}", True, config.COLOR_UI_TEXT)
+                        t_cost = self.font.render(f"{cost} {res_name}", True, config.COLOR_UI_ACCENT)
+                        surface.blit(t_name, (btn_x + 8, btn_y + 4))
+                        surface.blit(t_cost, (btn_x + 8, btn_y + 20))
+                        btn_x += 160
+
+                # Affichage de la file d'attente de production
+                queue_x = panel_rect.x + 20
+                queue_y = panel_rect.y + 85
+                if first.production_queue:
+                    q_title = self.font.render("File d'attente:", True, config.COLOR_UI_TEXT)
+                    surface.blit(q_title, (queue_x, queue_y))
+                    qx = queue_x + 100
+                    for idx, item in enumerate(first.production_queue[:5]):
+                        u_name = item["unit_type"]
+                        rem = max(0.0, item["time_remaining"])
+                        tot = max(0.1, item["total_time"])
+                        ratio = 1.0 - (rem / tot)
+
+                        q_box = pygame.Rect(qx, queue_y - 2, 90, 26)
+                        pygame.draw.rect(surface, (30, 34, 42), q_box, border_radius=3)
+                        pygame.draw.rect(surface, (100, 100, 100), q_box, 1, border_radius=3)
+
+                        if idx == 0:
+                            # Barre de progression pour le premier élément
+                            progress_rect = pygame.Rect(qx + 1, queue_y - 1, int(88 * ratio), 24)
+                            pygame.draw.rect(surface, (46, 125, 50), progress_rect, border_radius=2)
+
+                        item_text = f"{u_name} ({int(rem)}s)" if idx == 0 else u_name
+                        t_q = self.font.render(item_text, True, config.COLOR_UI_TEXT)
+                        surface.blit(t_q, (qx + 5, queue_y + 3))
+                        qx += 98
 
             # Si un ouvrier est sélectionné (boutons de construction)
             elif getattr(first, 'is_worker', False):
                 btn_x = panel_rect.x + 20
-                btn_y = panel_rect.y + 50
+                btn_y = panel_rect.y + 40
                 buildings_to_build = ["Barracks", "Tower"] if first.faction == config.FACTION_HUMAN else ["SpawningPool", "SpineCrawler"]
                 for b_type in buildings_to_build:
-                    btn_rect = pygame.Rect(btn_x, btn_y, 160, 40)
+                    b_data = config.BUILDING_TYPES.get(b_type, {})
+                    cost = b_data.get("cost", 100)
+                    res_name = "Or" if b_data.get("res_type", "gold") == "gold" else "Bio"
+
+                    btn_rect = pygame.Rect(btn_x, btn_y, 170, 45)
                     pygame.draw.rect(surface, (60, 64, 72), btn_rect, border_radius=4)
                     pygame.draw.rect(surface, config.COLOR_UI_ACCENT, btn_rect, 1, border_radius=4)
-                    t_surf = self.font.render(f"Construire {b_type}", True, config.COLOR_UI_TEXT)
-                    surface.blit(t_surf, (btn_x + 10, btn_y + 10))
-                    btn_x += 170
+
+                    t_name = self.font.render(f"Bâtir {b_type}", True, config.COLOR_UI_TEXT)
+                    t_cost = self.font.render(f"{cost} {res_name} ({b_data.get('build_time', 10)}s)", True, config.COLOR_UI_ACCENT)
+                    surface.blit(t_name, (btn_x + 8, btn_y + 4))
+                    surface.blit(t_cost, (btn_x + 8, btn_y + 24))
+                    btn_x += 180

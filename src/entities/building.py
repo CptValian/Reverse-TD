@@ -3,39 +3,63 @@ import config
 
 BUILDING_TYPES = {
     # Médiéval
-    "TownHall": {"cost": 400, "hp": 1000, "radius": 45, "build_time": 0, "trainable": ["Worker"]},
-    "Barracks": {"cost": 150, "hp": 500, "radius": 35, "build_time": 10, "trainable": ["Infantry", "Archer"]},
-    "Tower": {"cost": 100, "hp": 400, "radius": 25, "build_time": 8, "attack_power": 15, "range": 200, "trainable": []},
+    "TownHall": {"cost": 400, "res_type": "gold", "hp": 1000, "radius": 45, "build_time": 15, "trainable": ["Worker"]},
+    "Barracks": {"cost": 150, "res_type": "gold", "hp": 500, "radius": 35, "build_time": 10, "trainable": ["Infantry", "Archer"]},
+    "Tower": {"cost": 100, "res_type": "gold", "hp": 400, "radius": 25, "build_time": 8, "attack_power": 15, "range": 200, "trainable": []},
 
     # Alien
-    "Hive": {"cost": 400, "hp": 1000, "radius": 45, "build_time": 0, "trainable": ["Drone"]},
-    "SpawningPool": {"cost": 150, "hp": 500, "radius": 35, "build_time": 10, "trainable": ["Swarmer", "Spitter"]},
-    "SpineCrawler": {"cost": 100, "hp": 400, "radius": 25, "build_time": 8, "attack_power": 18, "range": 180, "trainable": []}
+    "Hive": {"cost": 400, "res_type": "biomass", "hp": 1000, "radius": 45, "build_time": 15, "trainable": ["Drone"]},
+    "SpawningPool": {"cost": 150, "res_type": "biomass", "hp": 500, "radius": 35, "build_time": 10, "trainable": ["Swarmer", "Spitter"]},
+    "SpineCrawler": {"cost": 100, "res_type": "biomass", "hp": 400, "radius": 25, "build_time": 8, "attack_power": 18, "range": 180, "trainable": []}
 }
 
 class Building(BaseEntity):
-    def __init__(self, owner_id, faction, building_type, x, y, hp_bonus=0, armor_bonus=0):
-        data = BUILDING_TYPES.get(building_type, {"hp": 500, "radius": 35, "trainable": []})
+    def __init__(self, owner_id, faction, building_type, x, y, hp_bonus=0, armor_bonus=0, is_constructed=True):
+        data = BUILDING_TYPES.get(building_type, {"cost": 100, "res_type": "gold", "hp": 500, "radius": 35, "build_time": 10, "trainable": []})
         max_hp = data["hp"] + hp_bonus
         super().__init__(owner_id, faction, x, y, max_hp, radius=data["radius"])
         self.building_type = building_type
+        self.cost = data.get("cost", 100)
+        self.res_type = data.get("res_type", "gold" if faction == config.FACTION_HUMAN else "biomass")
         self.trainable_units = data.get("trainable", [])
         self.attack_power = data.get("attack_power", 0)
         self.attack_range = data.get("range", 0)
         self.attack_cooldown = 0
         self.armor = armor_bonus
 
+        # Construction
+        self.is_constructed = is_constructed
+        self.total_build_time = data.get("build_time", 10)
+        self.build_timer = 0.0 if is_constructed else self.total_build_time
+
         # File de production
-        self.production_queue = []  # liste de tuples (unit_type, time_remaining, total_time)
+        self.production_queue = []  # liste de dicts {"unit_type": str, "time_remaining": float, "total_time": float}
 
     def take_damage(self, amount):
         effective_damage = max(1, amount - self.armor)
         super().take_damage(effective_damage)
 
-    def queue_unit(self, unit_type, train_time=5):
-        self.production_queue.append({"unit_type": unit_type, "time_remaining": train_time, "total_time": train_time})
+    def queue_unit(self, unit_type, train_time=None):
+        if not self.is_constructed:
+            return False
+        if train_time is None:
+            from src.entities.unit import UNIT_TYPES
+            train_time = UNIT_TYPES.get(unit_type, {}).get("train_time", 5)
+        self.production_queue.append({"unit_type": unit_type, "time_remaining": float(train_time), "total_time": float(train_time)})
+        return True
 
     def update(self, dt, game_state=None):
+        if not self.alive:
+            return None
+
+        # Gestion de la construction du bâtiment
+        if not self.is_constructed:
+            self.build_timer -= dt
+            if self.build_timer <= 0:
+                self.is_constructed = True
+                self.build_timer = 0.0
+            return None
+
         # Mettre à jour la file de production
         produced_unit = None
         if self.production_queue:

@@ -44,5 +44,14 @@ class TestEntities(unittest.TestCase):
         unit.update(dt=0.5, game_state=gs)
         self.assertGreater(unit.x, 0)
 
+    def test_unit_collision_and_attack_move(self):
+        u1 = Unit(0, "Medieval", "Infantry", 100, 100)
+        u2 = Unit(0, "Medieval", "Infantry", 102, 100)
+        self.assertLess(u1.distance_to(u2), u1.radius + u2.radius)
+
+        u1.attack_move_to(200, 200)
+        self.assertTrue(u1.attack_move_mode)
+        self.assertEqual(u1.state, "move")
+
 if __name__ == '__main__':
     unittest.main()

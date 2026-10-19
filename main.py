@@ -12,7 +12,7 @@ from src.entities.building import Building
 
 def main():
     pygame.init()
-    screen = pygame.display.set_mode((config.SCREEN_WIDTH, config.SCREEN_HEIGHT))
+    screen = pygame.display.set_mode((config.SCREEN_WIDTH, config.SCREEN_HEIGHT), pygame.FULLSCREEN | pygame.DOUBLEBUF)
     pygame.display.set_caption("RTS: Médiéval vs Alien Insecte")
     clock = pygame.time.Clock()
 
@@ -25,6 +25,7 @@ def main():
 
     is_selecting_box = False
     box_start_pos = (0, 0)
+    is_attack_move_pending = False
 
     running = True
     while running:
@@ -71,16 +72,35 @@ def main():
                     game_state.state = "MENU"
 
             elif game_state.state == "PLAYING":
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_a:
+                        # Activer le mode attente "A + Click"
+                        is_attack_move_pending = True
+
                 # Zoom molette
-                if event.type == pygame.MOUSEBUTTONDOWN:
+                elif event.type == pygame.MOUSEBUTTONDOWN:
                     if event.button == 4:  # Molette haut
                         camera.handle_zoom(True, mouse_pos)
                     elif event.button == 5:  # Molette bas
                         camera.handle_zoom(False, mouse_pos)
 
                     elif event.button == 1:  # Clic gauche (Sélection / Interaction UI)
+                        minimap_size = 150
+                        minimap_rect = pygame.Rect(10, config.SCREEN_HEIGHT - minimap_size - 10, minimap_size, minimap_size)
+
+                        if minimap_rect.collidepoint(mouse_pos):
+                            # Clic sur la mini-carte : Déplacer la vision de la caméra
+                            rel_x = (mouse_pos[0] - minimap_rect.x) / minimap_size
+                            rel_y = (mouse_pos[1] - minimap_rect.y) / minimap_size
+                            world_x = rel_x * config.MAP_WIDTH
+                            world_y = rel_y * config.MAP_HEIGHT
+
+                            camera.x = world_x - (config.SCREEN_WIDTH / (2 * camera.zoom))
+                            camera.y = world_y - (config.SCREEN_HEIGHT / (2 * camera.zoom))
+                            camera.clamp()
+
                         # Vérifier clic sur l'UI (Zone HUD)
-                        if mouse_pos[1] > config.SCREEN_HEIGHT - 150:
+                        elif mouse_pos[1] > config.SCREEN_HEIGHT - 150:
                             # Clic dans le panneau HUD pour lancer un entraînement/construction
                             selected_entities = [e for e in game_state.units + game_state.buildings if e.selected and e.owner_id == 0]
                             if selected_entities:
@@ -101,20 +121,34 @@ def main():
                                     # Bouton de construction de bâtiment pour l'ouvrier
                                     panel_x = 180
                                     btn_x = panel_x + 20
-                                    buildings_to_build = ["Barracks", "Tower"]
+                                    buildings_to_build = ["Barracks", "Tower"] if first.faction == config.FACTION_HUMAN else ["SpawningPool", "SpineCrawler"]
                                     for b_type in buildings_to_build:
-                                        btn_rect = pygame.Rect(btn_x, config.SCREEN_HEIGHT - 100, 160, 40)
+                                        btn_rect = pygame.Rect(btn_x, config.SCREEN_HEIGHT - 110, 170, 45)
                                         if btn_rect.collidepoint(event.pos):
-                                            cost = 150 if b_type == "Barracks" else 100
-                                            if game_state.deduct_resources(0, "gold", cost):
-                                                nb = Building(0, config.FACTION_HUMAN, b_type, first.x + 40, first.y + 40)
-                                                game_state.buildings.append(nb)
-                                        btn_x += 170
+                                            b_data = config.BUILDING_TYPES.get(b_type, {})
+                                            cost = b_data.get("cost", 100)
+                                            res_t = b_data.get("res_type", "gold" if first.faction == config.FACTION_HUMAN else "biomass")
+
+                                            # Emplacement de construction près de l'ouvrier
+                                            target_x = first.x + 50
+                                            target_y = first.y + 50
+                                            if game_state.can_place_building(b_type, target_x, target_y):
+                                                if game_state.deduct_resources(0, res_t, cost):
+                                                    nb = Building(0, first.faction, b_type, target_x, target_y, is_constructed=False)
+                                                    game_state.buildings.append(nb)
+                                        btn_x += 180
 
                         else:
                             # Clic dans la zone de jeu
-                            is_selecting_box = True
-                            box_start_pos = mouse_pos
+                            if is_attack_move_pending:
+                                is_attack_move_pending = False
+                                world_click = camera.screen_to_world(mouse_pos)
+                                selected_units = [u for u in game_state.units if u.selected and u.owner_id == 0]
+                                for unit in selected_units:
+                                    unit.attack_move_to(world_click[0], world_click[1])
+                            else:
+                                is_selecting_box = True
+                                box_start_pos = mouse_pos
 
                     elif event.button == 3:  # Clic droit (Ordre de déplacement / Attaque / Récolte)
                         world_click = camera.screen_to_world(mouse_pos)

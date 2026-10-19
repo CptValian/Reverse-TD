@@ -21,6 +21,9 @@ class MockGameState:
             return True
         return False
 
+    def can_place_building(self, building_type, x, y, owner_id=None):
+        return True
+
 class TestAI(unittest.TestCase):
     def test_ai_controller_behavior(self):
         gs = MockGameState()
