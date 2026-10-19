@@ -32,6 +32,7 @@ class GameState:
         self.selection_box = None  # Tuple (start_x, start_y, current_x, current_y)
         self.game_time = 0.0
         self.player_age = 1
+        self.map_type = 1  # 1: Standard, 2: Désavantageuse, 3: Très Désavantageuse
 
     def age_up(self, owner_id=0):
         if owner_id == 0:
@@ -89,7 +90,7 @@ class GameState:
 
         # Génération de la carte
         map_gen = MapGenerator(config.MAP_WIDTH, config.MAP_HEIGHT)
-        map_data = map_gen.generate_map(num_players=self.num_ais + 1)
+        map_data = map_gen.generate_map(num_players=self.num_ais + 1, map_type=self.map_type)
 
         # Création des ressources sur la carte
         for res_data in map_data["resources"]:

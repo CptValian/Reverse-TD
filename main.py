@@ -1,4 +1,5 @@
 import sys
+import math
 import pygame
 import config
 from src.engine.camera import Camera
@@ -50,7 +51,7 @@ def main():
 
             elif game_state.state == "MENU":
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    buttons = menu.draw_main_menu(screen, game_state.num_ais, game_state.ai_difficulty)
+                    buttons = menu.draw_main_menu(screen, game_state.num_ais, game_state.ai_difficulty, game_state.map_type)
                     if buttons["start"].collidepoint(event.pos):
                         game_state.start_new_game()
                         # Positionner la caméra sur le spawn du joueur humanoïde
@@ -76,6 +77,9 @@ def main():
                         diffs = [1, 2, 3, 4, 5, 6]
                         curr_idx = diffs.index(game_state.ai_difficulty) if game_state.ai_difficulty in diffs else 0
                         game_state.ai_difficulty = diffs[(curr_idx + 1) % len(diffs)]
+
+                    elif buttons.get("map_type") and buttons["map_type"].collidepoint(event.pos):
+                        game_state.map_type = (game_state.map_type % 3) + 1
 
                     elif buttons["quit"].collidepoint(event.pos):
                         running = False
@@ -389,7 +393,7 @@ def main():
         # 2. MISE À JOUR ET RENDU DU JEU
         # -------------------------------------------------------------
         if game_state.state == "MENU":
-            menu.draw_main_menu(screen, game_state.num_ais, game_state.ai_difficulty)
+            menu.draw_main_menu(screen, game_state.num_ais, game_state.ai_difficulty, game_state.map_type)
 
         elif game_state.state == "AI_INFO":
             menu.draw_ai_info_screen(screen)
@@ -421,13 +425,41 @@ def main():
                     sp = camera.world_to_screen((gx, gy))
                     pygame.draw.rect(screen, (40, 48, 58), (sp[0], sp[1], grid_size * camera.zoom, grid_size * camera.zoom), 1)
 
+            # Fog of War vision calculation (AI Difficulty > 4)
+            vision_sources = None
+            if game_state.ai_difficulty > 4:
+                vision_sources = []
+                for e in game_state.units + game_state.buildings:
+                    if getattr(e, 'alive', True) and getattr(e, 'owner_id', -1) == 0:
+                        v_rad = 300
+                        if getattr(e, 'building_type', None) == "Tower":
+                            v_rad = 550
+                        elif getattr(e, 'unit_type', None) == "Worker":
+                            v_rad = 220
+                        elif getattr(e, 'unit_type', None) in ["Infantry", "Archer"]:
+                            v_rad = 280
+                        vision_sources.append((e.x, e.y, v_rad))
+
             # Dessiner les ressources, bâtiments et unités
             for res in game_state.resources:
-                RenderUtils.draw_entity(screen, camera, res)
+                RenderUtils.draw_entity(screen, camera, res, vision_sources)
             for building in game_state.buildings:
-                RenderUtils.draw_entity(screen, camera, building)
+                RenderUtils.draw_entity(screen, camera, building, vision_sources)
             for unit in game_state.units:
-                RenderUtils.draw_entity(screen, camera, unit)
+                RenderUtils.draw_entity(screen, camera, unit, vision_sources)
+
+            # Render Fog of War Overlay when enabled
+            if vision_sources is not None:
+                fog_surface = pygame.Surface((config.SCREEN_WIDTH, config.SCREEN_HEIGHT), pygame.SRCALPHA)
+                fog_surface.fill((10, 12, 18, 170))  # Semi-transparent dark fog
+
+                # Carve out clear vision circles around player units & watch towers
+                for vx, vy, vrad in vision_sources:
+                    vsp = camera.world_to_screen((vx, vy))
+                    scaled_vrad = int(vrad * camera.zoom)
+                    pygame.draw.circle(fog_surface, (0, 0, 0, 0), (int(vsp[0]), int(vsp[1])), scaled_vrad)
+
+                screen.blit(fog_surface, (0, 0))
 
             # Preview placement ghost cursor
             if placement_building_type:

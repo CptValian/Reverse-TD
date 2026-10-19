@@ -3,7 +3,18 @@ import config
 
 class RenderUtils:
     @staticmethod
-    def draw_entity(surface, camera, entity):
+    def draw_entity(surface, camera, entity, vision_sources=None):
+        import math
+        # Fog of War check: If FoW is active and entity is not player owned, check if in player vision
+        if vision_sources is not None and getattr(entity, 'owner_id', 0) != 0:
+            in_vision = False
+            for vx, vy, vrad in vision_sources:
+                if math.hypot(entity.x - vx, entity.y - vy) <= vrad + getattr(entity, 'radius', 10):
+                    in_vision = True
+                    break
+            if not in_vision:
+                return
+
         screen_pos = camera.world_to_screen((entity.x, entity.y))
         sx, sy = int(screen_pos[0]), int(screen_pos[1])
         scaled_radius = max(3, int(entity.radius * camera.zoom))
