@@ -32,6 +32,10 @@ def main():
     box_start_pos = (0, 0)
     is_attack_move_pending = False
 
+    # Placement de bâtiment & Murs
+    placement_building_type = None
+    wall_start_node = None  # (wx, wy) world coords if wall placement started
+
     running = True
     while running:
         dt = clock.tick(config.FPS) / 1000.0  # Temps en secondes
@@ -145,6 +149,10 @@ def main():
                     if event.key == pygame.K_a:
                         # Activer le mode attente "A + Click"
                         is_attack_move_pending = True
+                    elif event.key == pygame.K_ESCAPE:
+                        placement_building_type = None
+                        wall_start_node = None
+                        is_attack_move_pending = False
 
                 # Zoom molette
                 elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -153,11 +161,100 @@ def main():
                     elif event.button == 5:  # Molette bas
                         camera.handle_zoom(False, mouse_pos)
 
+                    elif event.button == 3:  # Clic droit : Annuler mode placement ou donner ordres
+                        if placement_building_type:
+                            placement_building_type = None
+                            wall_start_node = None
+                        else:
+                            world_click = camera.screen_to_world(mouse_pos)
+                            selected_units = [u for u in game_state.units if u.selected and u.owner_id == 0]
+                            selected_buildings = [b for b in game_state.buildings if b.selected and b.owner_id == 0 and b.trainable_units]
+
+                            target_enemy = next((e for e in game_state.units + game_state.buildings if e.alive and e.owner_id != 0 and e.is_point_inside(world_click[0], world_click[1])), None)
+                            target_res = next((r for r in game_state.resources if r.alive and r.is_point_inside(world_click[0], world_click[1])), None)
+                            target_farm = next((b for b in game_state.buildings if b.alive and getattr(b, 'building_type', None) == "Farm" and b.is_point_inside(world_click[0], world_click[1])), None)
+                            target_th = next((b for b in game_state.buildings if b.alive and getattr(b, 'building_type', None) == "TownHall" and b.owner_id == 0 and b.is_point_inside(world_click[0], world_click[1])), None)
+
+                            if selected_units:
+                                upgrades = game_state.save_manager.data.get("upgrades", {})
+                                for unit in selected_units:
+                                    if target_enemy:
+                                        unit.attack_target(target_enemy)
+                                    elif target_res and unit.is_worker:
+                                        unit.harvest_node(target_res)
+                                    elif target_farm and unit.is_worker:
+                                        unit.harvest_node(target_farm)
+                                    elif target_th and unit.is_worker and upgrades.get("garrison_unlocked"):
+                                        if target_th.garrison_unit(unit):
+                                            pass
+                                    else:
+                                        unit.move_to(world_click[0], world_click[1])
+
+                            elif selected_buildings:
+                                # Définir le point de ralliement (Rally Point) pour les bâtiments de production
+                                target_obj = target_res or target_farm or target_enemy
+                                for bld in selected_buildings:
+                                    bld.rally_point = (world_click[0], world_click[1])
+                                    bld.rally_target = target_obj
+
                     elif event.button == 1:  # Clic gauche (Sélection / Interaction UI)
                         minimap_size = 150
                         minimap_rect = pygame.Rect(10, config.SCREEN_HEIGHT - minimap_size - 10, minimap_size, minimap_size)
 
-                        if minimap_rect.collidepoint(mouse_pos):
+                        if placement_building_type:
+                            world_click = camera.screen_to_world(mouse_pos)
+                            from src.entities.building import BUILDING_TYPES
+                            b_data = BUILDING_TYPES.get(placement_building_type, {})
+                            cost = b_data.get("cost", {})
+                            upgrades = game_state.save_manager.data.get("upgrades", {})
+
+                            if placement_building_type == "Wall":
+                                # Snap check to existing wall building
+                                snap_node = None
+                                for b in game_state.buildings:
+                                    if b.alive and b.building_type == "Wall":
+                                        if math.hypot(b.x - world_click[0], b.y - world_click[1]) < 35:
+                                            snap_node = (b.x, b.y)
+                                            break
+
+                                if wall_start_node is None:
+                                    wall_start_node = snap_node if snap_node else world_click
+                                else:
+                                    # P2 point selected
+                                    p1 = wall_start_node
+                                    p2 = snap_node if snap_node else world_click
+                                    dx = p2[0] - p1[0]
+                                    dy = p2[1] - p1[1]
+                                    length = math.hypot(dx, dy)
+
+                                    if length >= 15:
+                                        seg_spacing = 30.0
+                                        num_segs = max(1, int(round(length / seg_spacing)))
+                                        unit_cost_wood = cost.get("wood", 30)
+                                        total_wall_cost = {"wood": unit_cost_wood * num_segs}
+
+                                        if game_state.deduct_resources(0, total_wall_cost):
+                                            for step in range(num_segs + 1):
+                                                ratio = step / max(1, num_segs)
+                                                wx = p1[0] + dx * ratio
+                                                wy = p1[1] + dy * ratio
+                                                if game_state.can_place_building("Wall", wx, wy):
+                                                    nb = Building(0, config.FACTION_HUMAN, "Wall", wx, wy, is_constructed=False)
+                                                    game_state.buildings.append(nb)
+
+                                    placement_building_type = None
+                                    wall_start_node = None
+
+                            else:
+                                # Regular building placement
+                                if game_state.can_place_building(placement_building_type, world_click[0], world_click[1]):
+                                    if game_state.deduct_resources(0, cost):
+                                        range_bonus = 20 if (placement_building_type == "Tower" and upgrades.get("tower_range_unlocked")) else 0
+                                        nb = Building(0, config.FACTION_HUMAN, placement_building_type, world_click[0], world_click[1], is_constructed=False, range_bonus=range_bonus)
+                                        game_state.buildings.append(nb)
+                                        placement_building_type = None
+
+                        elif minimap_rect.collidepoint(mouse_pos):
                             # Clic sur la mini-carte : Déplacer la vision de la caméra
                             rel_x = (mouse_pos[0] - minimap_rect.x) / minimap_size
                             rel_y = (mouse_pos[1] - minimap_rect.y) / minimap_size
@@ -239,66 +336,26 @@ def main():
                                     else:
                                         buildings_to_build = ["SpawningPool", "SpineCrawler"]
 
-                                    from src.entities.building import BUILDING_TYPES
                                     for b_type in buildings_to_build:
                                         btn_width = 125
                                         btn_rect = pygame.Rect(btn_x, config.SCREEN_HEIGHT - 110, btn_width, 45)
                                         if btn_rect.collidepoint(event.pos):
-                                            b_data = BUILDING_TYPES.get(b_type, {})
-                                            cost = b_data.get("cost", {})
-
-                                            target_x = first.x + 50
-                                            target_y = first.y + 50
-                                            if game_state.can_place_building(b_type, target_x, target_y):
-                                                if game_state.deduct_resources(0, cost):
-                                                    range_bonus = 20 if (b_type == "Tower" and upgrades.get("tower_range_unlocked")) else 0
-                                                    nb = Building(0, first.faction, b_type, target_x, target_y, is_constructed=False, range_bonus=range_bonus)
-                                                    game_state.buildings.append(nb)
+                                            placement_building_type = b_type
+                                            wall_start_node = None
                                         btn_x += btn_width + 8
 
                         else:
                             # Clic dans la zone de jeu
+                            world_click = camera.screen_to_world(mouse_pos)
+
                             if is_attack_move_pending:
                                 is_attack_move_pending = False
-                                world_click = camera.screen_to_world(mouse_pos)
                                 selected_units = [u for u in game_state.units if u.selected and u.owner_id == 0]
                                 for unit in selected_units:
                                     unit.attack_move_to(world_click[0], world_click[1])
                             else:
                                 is_selecting_box = True
                                 box_start_pos = mouse_pos
-
-                    elif event.button == 3:  # Clic droit (Ordre de déplacement / Attaque / Récolte / Rally Point)
-                        world_click = camera.screen_to_world(mouse_pos)
-                        selected_units = [u for u in game_state.units if u.selected and u.owner_id == 0]
-                        selected_buildings = [b for b in game_state.buildings if b.selected and b.owner_id == 0 and b.trainable_units]
-
-                        target_enemy = next((e for e in game_state.units + game_state.buildings if e.alive and e.owner_id != 0 and e.is_point_inside(world_click[0], world_click[1])), None)
-                        target_res = next((r for r in game_state.resources if r.alive and r.is_point_inside(world_click[0], world_click[1])), None)
-                        target_farm = next((b for b in game_state.buildings if b.alive and getattr(b, 'building_type', None) == "Farm" and b.is_point_inside(world_click[0], world_click[1])), None)
-                        target_th = next((b for b in game_state.buildings if b.alive and getattr(b, 'building_type', None) == "TownHall" and b.owner_id == 0 and b.is_point_inside(world_click[0], world_click[1])), None)
-
-                        if selected_units:
-                            upgrades = game_state.save_manager.data.get("upgrades", {})
-                            for unit in selected_units:
-                                if target_enemy:
-                                    unit.attack_target(target_enemy)
-                                elif target_res and unit.is_worker:
-                                    unit.harvest_node(target_res)
-                                elif target_farm and unit.is_worker:
-                                    unit.harvest_node(target_farm)
-                                elif target_th and unit.is_worker and upgrades.get("garrison_unlocked"):
-                                    if target_th.garrison_unit(unit):
-                                        pass
-                                else:
-                                    unit.move_to(world_click[0], world_click[1])
-
-                        elif selected_buildings:
-                            # Définir le point de ralliement (Rally Point) pour les bâtiments de production
-                            target_obj = target_res or target_farm or target_enemy
-                            for bld in selected_buildings:
-                                bld.rally_point = (world_click[0], world_click[1])
-                                bld.rally_target = target_obj
 
                 elif event.type == pygame.MOUSEBUTTONUP and event.button == 1 and is_selecting_box:
                     is_selecting_box = False
@@ -372,6 +429,36 @@ def main():
             for unit in game_state.units:
                 RenderUtils.draw_entity(screen, camera, unit)
 
+            # Preview placement ghost cursor
+            if placement_building_type:
+                world_cur = camera.screen_to_world(mouse_pos)
+                if placement_building_type == "Wall":
+                    if wall_start_node is not None:
+                        sp1 = camera.world_to_screen(wall_start_node)
+                        sp2 = mouse_pos
+                        pygame.draw.line(screen, (255, 215, 0), sp1, sp2, 4)
+                        pygame.draw.circle(screen, (0, 255, 255), sp1, 8, 2)
+                        pygame.draw.circle(screen, (0, 255, 255), sp2, 8, 2)
+                    else:
+                        # Draw snap node highlight if hovering near existing wall
+                        snap_node = None
+                        for b in game_state.buildings:
+                            if b.alive and b.building_type == "Wall":
+                                if math.hypot(b.x - world_cur[0], b.y - world_cur[1]) < 35:
+                                    snap_node = (b.x, b.y)
+                                    break
+                        if snap_node:
+                            snp_sp = camera.world_to_screen(snap_node)
+                            pygame.draw.circle(screen, (0, 255, 0), snp_sp, 12, 3)
+                        else:
+                            pygame.draw.circle(screen, (255, 255, 255), mouse_pos, 8, 2)
+                else:
+                    can_place = game_state.can_place_building(placement_building_type, world_cur[0], world_cur[1])
+                    color = (0, 255, 0) if can_place else (255, 0, 0)
+                    from src.entities.building import BUILDING_TYPES
+                    bradius = int(BUILDING_TYPES.get(placement_building_type, {}).get("radius", 30) * camera.zoom)
+                    pygame.draw.circle(screen, color, mouse_pos, bradius, 2)
+
             # Dessiner le cadre de sélection en cours
             if is_selecting_box:
                 x1, y1 = box_start_pos
@@ -384,14 +471,26 @@ def main():
         elif game_state.state == "VICTORY":
             screen.fill((20, 60, 20))
             txt = menu.title_font.render("GLORIOUS VICTORY!", True, (100, 255, 100))
-            screen.blit(txt, (config.SCREEN_WIDTH // 2 - txt.get_width() // 2, 400))
+            screen.blit(txt, (config.SCREEN_WIDTH // 2 - txt.get_width() // 2, 300))
+
+            p_res = game_state.resources_gathered_player.get(0, {})
+            res_str = f"Ressources obtenues - Or: {int(p_res.get('gold', 0))} | Bois: {int(p_res.get('wood', 0))} | Nourriture: {int(p_res.get('food', 0))} | Biomasse: {int(p_res.get('biomass', 0))}"
+            res_txt = menu.font.render(res_str, True, (255, 215, 0))
+            screen.blit(res_txt, (config.SCREEN_WIDTH // 2 - res_txt.get_width() // 2, 400))
+
             sub = menu.font.render("Progression reward points earned. Click to return to Menu.", True, (255, 255, 255))
             screen.blit(sub, (config.SCREEN_WIDTH // 2 - sub.get_width() // 2, 480))
 
         elif game_state.state == "DEFEAT":
             screen.fill((60, 20, 20))
             txt = menu.title_font.render("DEFEAT...", True, (255, 100, 100))
-            screen.blit(txt, (config.SCREEN_WIDTH // 2 - txt.get_width() // 2, 400))
+            screen.blit(txt, (config.SCREEN_WIDTH // 2 - txt.get_width() // 2, 300))
+
+            p_res = game_state.resources_gathered_player.get(0, {})
+            res_str = f"Ressources obtenues - Or: {int(p_res.get('gold', 0))} | Bois: {int(p_res.get('wood', 0))} | Nourriture: {int(p_res.get('food', 0))} | Biomasse: {int(p_res.get('biomass', 0))}"
+            res_txt = menu.font.render(res_str, True, (255, 215, 0))
+            screen.blit(res_txt, (config.SCREEN_WIDTH // 2 - res_txt.get_width() // 2, 400))
+
             sub = menu.font.render("Your defenses have fallen. Click to return to Menu.", True, (255, 255, 255))
             screen.blit(sub, (config.SCREEN_WIDTH // 2 - sub.get_width() // 2, 480))
 

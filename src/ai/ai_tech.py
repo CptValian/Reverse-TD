@@ -4,68 +4,68 @@
 
 AI_DIFFICULTY_LEVELS = {
     1: {
-        "resource_multiplier": 0.5,
-        "attack_wave_interval": 240,  # Wave every 4 minutes
-        "max_army_size": 3,
-        "max_workers": 3,
+        "resource_multiplier": 1.0,
+        "attack_wave_interval": 120,
+        "max_army_size": 8,
+        "max_workers": 5,
         "unlocked_techs": ["Drone", "Swarmer"],
         "unit_hp_bonus": 0.0,
         "unit_atk_bonus": 0.0,
-        "can_build_defenses": False,
+        "can_build_defenses": True,
         "can_tech_ranged": False
     },
     2: {
-        "resource_multiplier": 0.8,
-        "attack_wave_interval": 180,  # Wave every 3 minutes
-        "max_army_size": 5,
-        "max_workers": 4,
-        "unlocked_techs": ["Drone", "Swarmer"],
-        "unit_hp_bonus": 0.0,
-        "unit_atk_bonus": 0.0,
-        "can_build_defenses": False,
-        "can_tech_ranged": False
+        "resource_multiplier": 1.2,
+        "attack_wave_interval": 90,
+        "max_army_size": 12,
+        "max_workers": 7,
+        "unlocked_techs": ["Drone", "Swarmer", "Spitter"],
+        "unit_hp_bonus": 0.05,
+        "unit_atk_bonus": 0.05,
+        "can_build_defenses": True,
+        "can_tech_ranged": True
     },
     3: {
-        "resource_multiplier": 1.0,
-        "attack_wave_interval": 130,
-        "max_army_size": 10,
-        "max_workers": 6,
-        "unlocked_techs": ["Drone", "Swarmer"],
-        "unit_hp_bonus": 0.0,
-        "unit_atk_bonus": 0.0,
-        "can_build_defenses": False,
-        "can_tech_ranged": False
-    },
-    4: {
-        "resource_multiplier": 1.25,
-        "attack_wave_interval": 90,
+        "resource_multiplier": 1.5,
+        "attack_wave_interval": 70,
         "max_army_size": 18,
-        "max_workers": 8,
+        "max_workers": 10,
         "unlocked_techs": ["Drone", "Swarmer", "Spitter"],
         "unit_hp_bonus": 0.1,
         "unit_atk_bonus": 0.1,
         "can_build_defenses": True,
         "can_tech_ranged": True
     },
-    5: {
-        "resource_multiplier": 1.6,
-        "attack_wave_interval": 60,
-        "max_army_size": 30,
+    4: {
+        "resource_multiplier": 1.8,
+        "attack_wave_interval": 50,
+        "max_army_size": 25,
         "max_workers": 12,
         "unlocked_techs": ["Drone", "Swarmer", "Spitter", "SpineCrawler"],
-        "unit_hp_bonus": 0.25,
-        "unit_atk_bonus": 0.2,
+        "unit_hp_bonus": 0.2,
+        "unit_atk_bonus": 0.15,
+        "can_build_defenses": True,
+        "can_tech_ranged": True
+    },
+    5: {
+        "resource_multiplier": 2.2,
+        "attack_wave_interval": 35,
+        "max_army_size": 35,
+        "max_workers": 15,
+        "unlocked_techs": ["Drone", "Swarmer", "Spitter", "SpineCrawler"],
+        "unit_hp_bonus": 0.35,
+        "unit_atk_bonus": 0.25,
         "can_build_defenses": True,
         "can_tech_ranged": True
     },
     6: {
-        "resource_multiplier": 2.2,
-        "attack_wave_interval": 40,
-        "max_army_size": 45,
-        "max_workers": 16,
+        "resource_multiplier": 2.8,
+        "attack_wave_interval": 25,
+        "max_army_size": 50,
+        "max_workers": 20,
         "unlocked_techs": ["Drone", "Swarmer", "Spitter", "SpineCrawler"],
-        "unit_hp_bonus": 0.45,
-        "unit_atk_bonus": 0.35,
+        "unit_hp_bonus": 0.5,
+        "unit_atk_bonus": 0.4,
         "can_build_defenses": True,
         "can_tech_ranged": True
     }

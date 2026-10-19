@@ -179,6 +179,20 @@ class RenderUtils:
                 pygame.draw.circle(surface, (255, 223, 0), (sx + 4, sy - 2), 6)
                 pygame.draw.circle(surface, (255, 250, 205), (sx, sy - 6), 4)
 
+            elif b_type == "House":
+                # Medieval Cottage / House (Timber wall, Thatched Roof, Window & Door)
+                pygame.draw.rect(surface, (140, 100, 60), rect, border_radius=4)
+                pygame.draw.rect(surface, (200, 150, 90), rect, width=2, border_radius=4)
+                # Thatched Triangular Roof
+                roof_pts = [(sx - radius - 4, sy - radius // 4), (sx, sy - radius - 8), (sx + radius + 4, sy - radius // 4)]
+                pygame.draw.polygon(surface, (180, 140, 60), roof_pts)
+                pygame.draw.polygon(surface, (220, 180, 80), roof_pts, width=2)
+                # Wooden Door
+                door_w, door_h = max(4, radius // 2), max(6, radius * 2 // 3)
+                pygame.draw.rect(surface, (80, 50, 20), (sx - door_w//2, sy + radius - door_h, door_w, door_h))
+                # Glowing Window
+                pygame.draw.rect(surface, (255, 215, 0), (sx - radius//2, sy - radius//4, max(4, radius//3), max(4, radius//3)))
+
             elif b_type == "Farm":
                 # Medieval Farmhouse & Grain Field
                 pygame.draw.rect(surface, (130, 90, 45), rect, border_radius=4)
@@ -239,8 +253,16 @@ class RenderUtils:
                 # Glowing Eye/Core
                 pygame.draw.circle(surface, (255, 235, 59), (sx, sy - 2), max(3, radius // 4))
 
-        # Construction Progress Bar
+        # Visual overlay for building under construction
         if not building.is_constructed:
+            # Semi-transparent scaffolding grid / outline
+            scaff_surface = pygame.Surface((radius * 2 + 8, radius * 2 + 8), pygame.SRCALPHA)
+            pygame.draw.rect(scaff_surface, (255, 200, 50, 120), (4, 4, radius * 2, radius * 2), width=3)
+            # Scaffolding cross-beams
+            pygame.draw.line(scaff_surface, (180, 120, 40, 150), (4, 4), (radius * 2 + 4, radius * 2 + 4), 2)
+            pygame.draw.line(scaff_surface, (180, 120, 40, 150), (radius * 2 + 4, 4), (4, radius * 2 + 4), 2)
+            surface.blit(scaff_surface, (sx - radius - 4, sy - radius - 4))
+
             ratio = 1.0 - (building.build_timer / max(0.001, building.total_build_time))
             bw = radius * 2
             bh = 6
