@@ -74,7 +74,7 @@ def main():
                         game_state.num_ais = min(4, game_state.num_ais + 1)
 
                     elif buttons.get("difficulty") and buttons["difficulty"].collidepoint(event.pos):
-                        diffs = [1, 2, 3, 4, 5, 6]
+                        diffs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
                         curr_idx = diffs.index(game_state.ai_difficulty) if game_state.ai_difficulty in diffs else 0
                         game_state.ai_difficulty = diffs[(curr_idx + 1) % len(diffs)]
 
@@ -87,10 +87,15 @@ def main():
                         running = False
 
             elif game_state.state == "AI_INFO":
-                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    buttons = menu.draw_ai_info_screen(screen)
-                    if buttons.get("back") and buttons["back"].collidepoint(event.pos):
-                        game_state.state = "MENU"
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1:
+                        buttons = menu.draw_ai_info_screen(screen)
+                        if buttons.get("back") and buttons["back"].collidepoint(event.pos):
+                            game_state.state = "MENU"
+                    elif event.button == 4:  # Scroll UP
+                        menu.ai_info_scroll_y = min(0, menu.ai_info_scroll_y + 40)
+                    elif event.button == 5:  # Scroll DOWN
+                        menu.ai_info_scroll_y = max(-950, menu.ai_info_scroll_y - 40)
 
             elif game_state.state == "SKILL_TREE":
                 if event.type == pygame.MOUSEBUTTONDOWN:
@@ -233,10 +238,11 @@ def main():
                                     dy = p2[1] - p1[1]
                                     length = math.hypot(dx, dy)
 
-                                    if length >= 15:
-                                        seg_spacing = 30.0
+                                    if length >= 10:
+                                        # Dense segment spacing (14px) with overlapping collision radii so no gap exists between segments
+                                        seg_spacing = 14.0
                                         num_segs = max(1, int(round(length / seg_spacing)))
-                                        unit_cost_wood = cost.get("wood", 30)
+                                        unit_cost_wood = max(5, cost.get("wood", 30) // 2)
                                         total_wall_cost = {"wood": unit_cost_wood * num_segs}
 
                                         if game_state.deduct_resources(0, total_wall_cost):
@@ -244,9 +250,9 @@ def main():
                                                 ratio = step / max(1, num_segs)
                                                 wx = p1[0] + dx * ratio
                                                 wy = p1[1] + dy * ratio
-                                                if game_state.can_place_building("Wall", wx, wy):
-                                                    nb = Building(0, config.FACTION_HUMAN, "Wall", wx, wy, is_constructed=False)
-                                                    game_state.buildings.append(nb)
+                                                # Allow overlap with existing Wall segments
+                                                nb = Building(0, config.FACTION_HUMAN, "Wall", wx, wy, is_constructed=False)
+                                                game_state.buildings.append(nb)
 
                                     placement_building_type = None
                                     wall_start_node = None

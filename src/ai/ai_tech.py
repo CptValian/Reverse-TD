@@ -68,6 +68,50 @@ AI_DIFFICULTY_LEVELS = {
         "unit_atk_bonus": 0.4,
         "can_build_defenses": True,
         "can_tech_ranged": True
+    },
+    7: {
+        "resource_multiplier": 3.4,
+        "attack_wave_interval": 20,
+        "max_army_size": 65,
+        "max_workers": 22,
+        "unlocked_techs": ["Drone", "Swarmer", "Spitter", "SpineCrawler"],
+        "unit_hp_bonus": 0.65,
+        "unit_atk_bonus": 0.55,
+        "can_build_defenses": True,
+        "can_tech_ranged": True
+    },
+    8: {
+        "resource_multiplier": 4.0,
+        "attack_wave_interval": 16,
+        "max_army_size": 80,
+        "max_workers": 25,
+        "unlocked_techs": ["Drone", "Swarmer", "Spitter", "SpineCrawler"],
+        "unit_hp_bonus": 0.85,
+        "unit_atk_bonus": 0.70,
+        "can_build_defenses": True,
+        "can_tech_ranged": True
+    },
+    9: {
+        "resource_multiplier": 4.8,
+        "attack_wave_interval": 12,
+        "max_army_size": 100,
+        "max_workers": 28,
+        "unlocked_techs": ["Drone", "Swarmer", "Spitter", "SpineCrawler"],
+        "unit_hp_bonus": 1.10,
+        "unit_atk_bonus": 0.90,
+        "can_build_defenses": True,
+        "can_tech_ranged": True
+    },
+    10: {
+        "resource_multiplier": 6.0,
+        "attack_wave_interval": 8,
+        "max_army_size": 130,
+        "max_workers": 30,
+        "unlocked_techs": ["Drone", "Swarmer", "Spitter", "SpineCrawler"],
+        "unit_hp_bonus": 1.50,
+        "unit_atk_bonus": 1.20,
+        "can_build_defenses": True,
+        "can_tech_ranged": True
     }
 }
 # Backward compatibility mapping string to int

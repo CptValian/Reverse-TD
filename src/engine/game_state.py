@@ -163,15 +163,23 @@ class GameState:
 
     def add_resources(self, owner_id, res_type, amount):
         if owner_id in self.resources_player:
+            # Facteur de difficulté de carte sur la récolte du joueur humain (owner_id == 0)
+            mult = 1.0
+            if owner_id == 0:
+                map_mults = {1: 1.0, 2: 0.75, 3: 0.50}
+                mult = map_mults.get(getattr(self, 'map_type', 1), 1.0)
+
+            actual_amount = amount * mult
+
             if res_type not in self.resources_player[owner_id]:
                 self.resources_player[owner_id][res_type] = 0
-            self.resources_player[owner_id][res_type] += amount
+            self.resources_player[owner_id][res_type] += actual_amount
 
             if owner_id not in self.resources_gathered_player:
                 self.resources_gathered_player[owner_id] = {}
             if res_type not in self.resources_gathered_player[owner_id]:
                 self.resources_gathered_player[owner_id][res_type] = 0
-            self.resources_gathered_player[owner_id][res_type] += amount
+            self.resources_gathered_player[owner_id][res_type] += actual_amount
 
     def deduct_resources(self, owner_id, res_type, amount=None):
         if owner_id not in self.resources_player:
@@ -238,9 +246,13 @@ class GameState:
                 u2 = units_list[j]
                 dx = u2.x - u1.x
                 dy = u2.y - u1.y
-                dist = math.hypot(dx, dy)
                 min_dist = u1.radius + u2.radius
 
+                # Dynamic bounding box check before hypot
+                if abs(dx) >= min_dist or abs(dy) >= min_dist:
+                    continue
+
+                dist = math.hypot(dx, dy)
                 if dist < min_dist:
                     overlap = min_dist - dist
                     if dist == 0:
@@ -248,7 +260,6 @@ class GameState:
                     nx = dx / dist
                     ny = dy / dist
 
-                    # Repousser les deux unités à parts égales
                     push_x = nx * (overlap / 2.0)
                     push_y = ny * (overlap / 2.0)
 
@@ -257,22 +268,26 @@ class GameState:
                     u2.x += push_x
                     u2.y += push_y
 
-        # Résoudre également la collision unités / bâtiments
+        # Unit / Building collision resolution
+        active_buildings = [b for b in self.buildings if b.alive]
         for u in units_list:
-            for b in self.buildings:
-                if b.alive:
-                    dx = u.x - b.x
-                    dy = u.y - b.y
-                    dist = math.hypot(dx, dy)
-                    min_dist = u.radius + b.radius
-                    if dist < min_dist:
-                        overlap = min_dist - dist
-                        if dist == 0:
-                            dx, dy, dist = 1.0, 0.0, 1.0
-                        nx = dx / dist
-                        ny = dy / dist
-                        u.x += nx * overlap
-                        u.y += ny * overlap
+            for b in active_buildings:
+                dx = u.x - b.x
+                dy = u.y - b.y
+                min_dist = u.radius + b.radius
+
+                if abs(dx) >= min_dist or abs(dy) >= min_dist:
+                    continue
+
+                dist = math.hypot(dx, dy)
+                if dist < min_dist:
+                    overlap = min_dist - dist
+                    if dist == 0:
+                        dx, dy, dist = 1.0, 0.0, 1.0
+                    nx = dx / dist
+                    ny = dy / dist
+                    u.x += nx * overlap
+                    u.y += ny * overlap
 
     def update(self, dt):
         if self.state != "PLAYING":
