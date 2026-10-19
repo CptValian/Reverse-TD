@@ -1,4 +1,5 @@
 import sys
+import math
 import pygame
 import config
 from src.engine.camera import Camera
@@ -50,7 +51,7 @@ def main():
 
             elif game_state.state == "MENU":
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    buttons = menu.draw_main_menu(screen, game_state.num_ais, game_state.ai_difficulty)
+                    buttons = menu.draw_main_menu(screen, game_state.num_ais, game_state.ai_difficulty, game_state.map_type)
                     if buttons["start"].collidepoint(event.pos):
                         game_state.start_new_game()
                         # Positionner la caméra sur le spawn du joueur humanoïde
@@ -76,6 +77,11 @@ def main():
                         diffs = [1, 2, 3, 4, 5, 6]
                         curr_idx = diffs.index(game_state.ai_difficulty) if game_state.ai_difficulty in diffs else 0
                         game_state.ai_difficulty = diffs[(curr_idx + 1) % len(diffs)]
+
+                    elif buttons.get("map_type") and buttons["map_type"].collidepoint(event.pos):
+                        m_types = [1, 2, 3]
+                        curr_m_idx = m_types.index(game_state.map_type) if game_state.map_type in m_types else 0
+                        game_state.map_type = m_types[(curr_m_idx + 1) % len(m_types)]
 
                     elif buttons["quit"].collidepoint(event.pos):
                         running = False
@@ -389,7 +395,7 @@ def main():
         # 2. MISE À JOUR ET RENDU DU JEU
         # -------------------------------------------------------------
         if game_state.state == "MENU":
-            menu.draw_main_menu(screen, game_state.num_ais, game_state.ai_difficulty)
+            menu.draw_main_menu(screen, game_state.num_ais, game_state.ai_difficulty, game_state.map_type)
 
         elif game_state.state == "AI_INFO":
             menu.draw_ai_info_screen(screen)
@@ -421,6 +427,9 @@ def main():
                     sp = camera.world_to_screen((gx, gy))
                     pygame.draw.rect(screen, (40, 48, 58), (sp[0], sp[1], grid_size * camera.zoom, grid_size * camera.zoom), 1)
 
+            # Attacher temporairement game_state à camera pour les vérifications de visibilité Fog of War
+            camera.game_state = game_state
+
             # Dessiner les ressources, bâtiments et unités
             for res in game_state.resources:
                 RenderUtils.draw_entity(screen, camera, res)
@@ -428,6 +437,20 @@ def main():
                 RenderUtils.draw_entity(screen, camera, building)
             for unit in game_state.units:
                 RenderUtils.draw_entity(screen, camera, unit)
+
+            # Dessiner le calque de brouillard de guerre si actif
+            if game_state.is_fog_of_war_enabled():
+                fog_surface = pygame.Surface((config.SCREEN_WIDTH, config.SCREEN_HEIGHT), pygame.SRCALPHA)
+                fog_surface.fill((10, 12, 18, 180))  # Voile sombre semi-transparent
+
+                # Découper des cercles de vision autour des entités du joueur
+                player_entities = [e for e in game_state.units + game_state.buildings if e.alive and e.owner_id == 0]
+                for pe in player_entities:
+                    sp = camera.world_to_screen((pe.x, pe.y))
+                    vis_r = int(getattr(pe, 'vision_radius', 220) * camera.zoom)
+                    pygame.draw.circle(fog_surface, (0, 0, 0, 0), (int(sp[0]), int(sp[1])), vis_r)
+
+                screen.blit(fog_surface, (0, 0))
 
             # Preview placement ghost cursor
             if placement_building_type:

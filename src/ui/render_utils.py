@@ -14,6 +14,15 @@ class RenderUtils:
                 rect.y - entity.radius <= entity.y <= rect.y + rect.height + entity.radius):
             return
 
+        # Verification Brouillard de Guerre pour les entités ennemies et ressources neutres
+        if hasattr(camera, 'game_state') and camera.game_state:
+            gs = camera.game_state
+            if gs.is_fog_of_war_enabled():
+                # Le joueur (owner_id == 0) voit toujours ses propres entités
+                if getattr(entity, 'owner_id', None) != 0:
+                    if not gs.is_point_visible(entity.x, entity.y, owner_id=0):
+                        return
+
         # Rendu des ressources
         if hasattr(entity, 'resource_type'):
             RenderUtils._draw_resource(surface, entity, sx, sy, scaled_radius)

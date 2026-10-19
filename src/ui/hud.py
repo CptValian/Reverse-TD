@@ -34,6 +34,11 @@ class HUD:
         for entity in game_state.units + game_state.buildings:
             if not entity.alive:
                 continue
+            # Hide enemy entities on minimap if fog of war enabled and not visible
+            if entity.owner_id != 0 and game_state.is_fog_of_war_enabled():
+                if not game_state.is_point_visible(entity.x, entity.y, owner_id=0):
+                    continue
+
             mx = minimap_rect.x + int(entity.x * scale_x)
             my = minimap_rect.y + int(entity.y * scale_y)
             color = (0, 255, 0) if entity.owner_id == 0 else (255, 0, 0)

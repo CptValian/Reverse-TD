@@ -12,8 +12,9 @@ class Menu:
         self.font = pygame.font.SysFont("Segoe UI", 20)
         self.small_font = pygame.font.SysFont("Segoe UI", 16)
         self.anim_time = 0.0
+        self.ai_info_scroll_y = 0
 
-    def draw_main_menu(self, surface, selected_ai_count=1, selected_difficulty=1):
+    def draw_main_menu(self, surface, selected_ai_count=1, selected_difficulty=1, selected_map_type=1):
         self.anim_time += 0.016
 
         # Atmospheric Background Gradient & Art Elements
@@ -77,33 +78,45 @@ class Menu:
         draw_button(ai_info_btn, "AI TECHS & INFO")
         draw_button(quit_btn, "QUIT")
 
-        # Game Setup Panel (AI & Difficulty Selector in English)
-        setup_rect = pygame.Rect(self.screen_width // 2 - 400, 600, 800, 180)
+        # Game Setup Panel (AI, Difficulty, Map Type Selector)
+        setup_rect = pygame.Rect(self.screen_width // 2 - 420, 580, 840, 210)
         pygame.draw.rect(surface, (24, 30, 42), setup_rect, border_radius=10)
         pygame.draw.rect(surface, (60, 75, 100), setup_rect, 2, border_radius=10)
 
-        setup_title = self.btn_font.render("GAME SETUP & DIFFICULTY", True, config.COLOR_UI_ACCENT)
-        surface.blit(setup_title, (self.screen_width // 2 - setup_title.get_width() // 2, setup_rect.y + 15))
+        setup_title = self.btn_font.render("GAME SETUP & MAP CONFIGURATION", True, config.COLOR_UI_ACCENT)
+        surface.blit(setup_title, (self.screen_width // 2 - setup_title.get_width() // 2, setup_rect.y + 12))
 
         # AI Count Selector Buttons
         ai_label = self.font.render("Enemy AI Opponents:", True, config.COLOR_UI_TEXT)
-        surface.blit(ai_label, (setup_rect.x + 40, setup_rect.y + 65))
+        surface.blit(ai_label, (setup_rect.x + 30, setup_rect.y + 58))
 
-        ai_minus_btn = pygame.Rect(setup_rect.x + 280, setup_rect.y + 60, 40, 35)
-        ai_plus_btn = pygame.Rect(setup_rect.x + 390, setup_rect.y + 60, 40, 35)
+        ai_minus_btn = pygame.Rect(setup_rect.x + 260, setup_rect.y + 52, 40, 35)
+        ai_plus_btn = pygame.Rect(setup_rect.x + 370, setup_rect.y + 52, 40, 35)
 
         draw_button(ai_minus_btn, "-")
         draw_button(ai_plus_btn, "+")
 
         ai_val_txt = self.btn_font.render(str(selected_ai_count), True, (255, 215, 0))
-        surface.blit(ai_val_txt, (setup_rect.x + 342, setup_rect.y + 62))
+        surface.blit(ai_val_txt, (setup_rect.x + 322, setup_rect.y + 54))
 
         # Difficulty Selector Cycle Button
         diff_label = self.font.render("AI Difficulty:", True, config.COLOR_UI_TEXT)
-        surface.blit(diff_label, (setup_rect.x + 40, setup_rect.y + 120))
+        surface.blit(diff_label, (setup_rect.x + 30, setup_rect.y + 108))
 
-        diff_btn = pygame.Rect(setup_rect.x + 280, setup_rect.y + 112, 280, 40)
+        diff_btn = pygame.Rect(setup_rect.x + 260, setup_rect.y + 100, 260, 38)
         draw_button(diff_btn, f"Level {selected_difficulty}")
+
+        # Map Selector Cycle Button
+        map_label = self.font.render("Map Advantage:", True, config.COLOR_UI_TEXT)
+        surface.blit(map_label, (setup_rect.x + 30, setup_rect.y + 158))
+
+        map_names = {
+            1: "Standard (Equilibrée)",
+            2: "Désavantageuse (Ressources raréfiées)",
+            3: "Très Désavantageuse (Ressources éloignées)"
+        }
+        map_btn = pygame.Rect(setup_rect.x + 260, setup_rect.y + 150, 520, 38)
+        draw_button(map_btn, f"{map_names.get(selected_map_type, 'Standard')}")
 
         # Footer info
         footer = self.small_font.render("Resolution: 1920x1080 | Alt+Tab Friendly Borderless Fullscreen Mode", True, (120, 140, 160))
@@ -116,31 +129,62 @@ class Menu:
             "quit": quit_btn,
             "ai_minus": ai_minus_btn,
             "ai_plus": ai_plus_btn,
-            "difficulty": diff_btn
+            "difficulty": diff_btn,
+            "map_type": map_btn
         }
 
     def draw_ai_info_screen(self, surface):
         surface.fill((18, 22, 32))
 
         # Title
-        t_title = self.title_font.render("ENEMY AI MECHANICS & TECH TREES", True, (255, 215, 0))
-        surface.blit(t_title, (self.screen_width // 2 - t_title.get_width() // 2, 30))
+        t_title = self.title_font.render("CIVILISATION INSECTE ALIEN & NIVEAUX IA", True, (255, 215, 0))
+        surface.blit(t_title, (self.screen_width // 2 - t_title.get_width() // 2, 20))
 
-        # Overview
+        # Section 1: Fonctionnement de la Civilisation Insecte Alien
+        civ_box = pygame.Rect(self.screen_width // 2 - 500, 80, 1000, 140)
+        pygame.draw.rect(surface, (28, 34, 48), civ_box, border_radius=8)
+        pygame.draw.rect(surface, (216, 27, 96), civ_box, 2, border_radius=8)
+
+        t_civ_head = self.btn_font.render("FONCTIONNEMENT DE LA CIVILISATION INSECTE ALIEN", True, (216, 27, 96))
+        surface.blit(t_civ_head, (civ_box.x + 15, civ_box.y + 10))
+
+        civ_desc_lines = [
+            "• Économie de Biomasse: Les Insectes aliens récoltent de la biomasse organique pour concevoir leurs structures et muter leurs troupes.",
+            "• Conscience Collective (Hive Mind): Spawneurs rapides en essaims. Les unités mutent rapidement depuis la Ruche et le Bassin de Ponte.",
+            "• Troupes Alien: Drones (ouvriers polyvalents), Swarmers (combattants au corps-à-corps rapides) et Spitters (tireurs d'acide à distance).",
+            "• Bâtiments Alien: Hive (Ruche centrale), Spawning Pool (Bassin de ponte des troupes) et Spine Crawler (Organisme défensif)."
+        ]
+        curr_y = civ_box.y + 42
+        for line in civ_desc_lines:
+            t_line = self.small_font.render(line, True, config.COLOR_UI_TEXT)
+            surface.blit(t_line, (civ_box.x + 15, curr_y))
+            curr_y += 22
+
+        # Subtitle for Levels
+        t_lvl_head = self.btn_font.render("DESCRIPTIFS DES NIVEAUX DE DIFFICULTÉ DE L'IA", True, config.COLOR_UI_ACCENT)
+        surface.blit(t_lvl_head, (self.screen_width // 2 - 500, 230))
+
         from src.ai.ai_tech import AI_DIFFICULTY_LEVELS
 
-        y = 100
+        ai_descriptions = {
+            1: "Niveau 1 (Pasif): Revenu x1.0, vagues d'attaque toutes les 120s (max 8 unités). Troupes: Drones & Swarmers.",
+            2: "Niveau 2 (Facile): Revenu x1.2, vagues toutes les 90s (max 12 unités). Débloque les Spitters à distance. +5% HP/Atk.",
+            3: "Niveau 3 (Moyen): Revenu x1.5, vagues toutes les 70s (max 18 unités). Armées combinées Swarmer/Spitter. +10% HP/Atk.",
+            4: "Niveau 4 (Difficile): Revenu x1.8, vagues toutes les 50s (max 25 unités). Construit des Spine Crawlers. +20% HP, +15% Atk.",
+            5: "Niveau 5 (Expert - Brouillard de Guerre): Revenu x2.2, vagues toutes les 35s (max 35 unités). Brouillard actif (Tour d'observation utile). +35% HP, +25% Atk.",
+            6: "Niveau 6 (Cauchemar - Brouillard de Guerre): Revenu x2.8, vagues dévastatrices toutes les 25s (max 50 unités). Brouillard actif. +50% HP, +40% Atk."
+        }
+
+        y = 265
         for lvl, data in AI_DIFFICULTY_LEVELS.items():
-            card_rect = pygame.Rect(self.screen_width // 2 - 450, y, 900, 105)
+            card_rect = pygame.Rect(self.screen_width // 2 - 500, y, 1000, 95)
             pygame.draw.rect(surface, config.COLOR_UI_PANEL, card_rect, border_radius=8)
-            pygame.draw.rect(surface, config.COLOR_UI_ACCENT, card_rect, 1, border_radius=8)
+            pygame.draw.rect(surface, config.COLOR_UI_ACCENT if lvl <= 4 else (255, 100, 100), card_rect, 1, border_radius=8)
 
-            # Lvl header
-            header_txt = f"LEVEL {lvl} AI"
-            t_head = self.btn_font.render(header_txt, True, (255, 215, 0))
-            surface.blit(t_head, (card_rect.x + 20, y + 10))
+            header_txt = f"IA NIVEAU {lvl}" + (" [BROUILLARD DE GUERRE ACTIF]" if lvl > 4 else "")
+            t_head = self.btn_font.render(header_txt, True, (255, 215, 0) if lvl <= 4 else (255, 120, 120))
+            surface.blit(t_head, (card_rect.x + 15, y + 8))
 
-            # Details
             mult = data["resource_multiplier"]
             wave_s = data["attack_wave_interval"]
             m_army = data["max_army_size"]
@@ -148,24 +192,24 @@ class Menu:
             techs = ", ".join(data["unlocked_techs"])
             hp_b = int(data["unit_hp_bonus"] * 100)
             atk_b = int(data["unit_atk_bonus"] * 100)
-            defenses = "Yes" if data.get("can_build_defenses") else "No"
 
-            line1 = f"Resource Income: x{mult} | Attack Wave Interval: {wave_s}s | Max Workers: {m_work} | Max Army: {m_army}"
-            line2 = f"Unlocked Techs: [{techs}] | Defenses Built: {defenses} | Unit HP Bonus: +{hp_b}% | Unit Atk Bonus: +{atk_b}%"
+            desc_text = ai_descriptions.get(lvl, "")
+            line1 = f"Description: {desc_text}"
+            line2 = f"Multiplicateur: x{mult} | Vague: {wave_s}s | Max Ouvriers: {m_work} | Armée Max: {m_army} | Techs: [{techs}] | Bonus: HP +{hp_b}%, Atk +{atk_b}%"
 
-            t_l1 = self.small_font.render(line1, True, config.COLOR_UI_TEXT)
-            t_l2 = self.small_font.render(line2, True, (180, 200, 220))
+            t_l1 = self.small_font.render(line1, True, (220, 230, 242))
+            t_l2 = self.small_font.render(line2, True, (160, 180, 200))
 
-            surface.blit(t_l1, (card_rect.x + 20, y + 45))
-            surface.blit(t_l2, (card_rect.x + 20, y + 70))
+            surface.blit(t_l1, (card_rect.x + 15, y + 42))
+            surface.blit(t_l2, (card_rect.x + 15, y + 66))
 
-            y += 118
+            y += 102
 
         # Back Button
-        back_btn = pygame.Rect(self.screen_width // 2 - 120, self.screen_height - 65, 240, 45)
+        back_btn = pygame.Rect(self.screen_width // 2 - 120, self.screen_height - 60, 240, 45)
         pygame.draw.rect(surface, config.COLOR_UI_PANEL, back_btn, border_radius=6)
         pygame.draw.rect(surface, config.COLOR_UI_ACCENT, back_btn, 2, border_radius=6)
-        back_txt = self.btn_font.render("BACK TO MENU", True, config.COLOR_UI_TEXT)
+        back_txt = self.btn_font.render("RETOUR AU MENU", True, config.COLOR_UI_TEXT)
         surface.blit(back_txt, (back_btn.x + back_btn.width // 2 - back_txt.get_width() // 2, back_btn.y + 8))
 
         return {"back": back_btn}

@@ -3,10 +3,10 @@ import config
 
 BUILDING_TYPES = {
     # Medieval
-    "TownHall": {"cost": {"wood": 250, "gold": 300}, "hp": 1000, "radius": 45, "build_time": 30, "trainable": ["Worker"], "pop_bonus": 10, "attack_power": 0, "range": 220},
-    "House": {"cost": {"wood": 60}, "hp": 250, "radius": 22, "build_time": 10, "trainable": [], "pop_bonus": 5},
-    "Barracks": {"cost": {"wood": 100, "gold": 50}, "hp": 500, "radius": 35, "build_time": 20, "trainable": ["Infantry", "Archer"]},
-    "Tower": {"cost": {"wood": 80, "gold": 40}, "hp": 400, "radius": 25, "build_time": 16, "attack_power": 15, "range": 200, "trainable": []},
+    "TownHall": {"cost": {"wood": 250, "gold": 300}, "hp": 1000, "radius": 45, "build_time": 30, "trainable": ["Worker"], "pop_bonus": 10, "attack_power": 0, "range": 220, "vision": 350},
+    "House": {"cost": {"wood": 60}, "hp": 250, "radius": 22, "build_time": 10, "trainable": [], "pop_bonus": 5, "vision": 200},
+    "Barracks": {"cost": {"wood": 100, "gold": 50}, "hp": 500, "radius": 35, "build_time": 20, "trainable": ["Infantry", "Archer"], "vision": 250},
+    "Tower": {"cost": {"wood": 80, "gold": 40}, "hp": 400, "radius": 25, "build_time": 16, "attack_power": 15, "range": 200, "trainable": [], "vision": 550},
     "Wall": {"cost": {"wood": 30}, "hp": 250, "radius": 18, "build_time": 8, "trainable": []},
     "WoodStockpile": {"cost": {"wood": 80}, "hp": 350, "radius": 25, "build_time": 12, "trainable": []},
     "GoldStockpile": {"cost": {"wood": 80, "gold": 20}, "hp": 350, "radius": 25, "build_time": 12, "trainable": []},
@@ -32,6 +32,7 @@ class Building(BaseEntity):
         self.attack_cooldown = 0
         self.armor = armor_bonus
         self.pop_bonus = data.get("pop_bonus", 0)
+        self.vision_radius = data.get("vision", 250) + range_bonus
 
         # Construction
         self.is_constructed = is_constructed
