@@ -18,17 +18,7 @@ class Camera:
         move_x = 0
         move_y = 0
 
-        if keys:
-            if keys[pygame.K_z] or keys[pygame.K_UP] or keys[pygame.K_w]:
-                move_y -= 1
-            if keys[pygame.K_s] or keys[pygame.K_DOWN]:
-                move_y += 1
-            if keys[pygame.K_q] or keys[pygame.K_LEFT] or keys[pygame.K_a]:
-                move_x -= 1
-            if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
-                move_x += 1
-
-        # Edge scrolling
+        # Edge scrolling (Camera movement is strictly mouse-based to avoid key conflicts like A for Attack-Move)
         if mouse_pos:
             mx, my = mouse_pos
             margin = config.EDGE_SCROLL_MARGIN

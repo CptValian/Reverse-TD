@@ -17,7 +17,7 @@ def main():
         config.SCREEN_WIDTH = info.current_w
         config.SCREEN_HEIGHT = info.current_h
 
-    screen = pygame.display.set_mode((config.SCREEN_WIDTH, config.SCREEN_HEIGHT), pygame.FULLSCREEN | pygame.DOUBLEBUF)
+    screen = pygame.display.set_mode((config.SCREEN_WIDTH, config.SCREEN_HEIGHT), pygame.DOUBLEBUF)
     pygame.display.set_caption("RTS: Médiéval vs Alien Insecte")
     clock = pygame.time.Clock()
 
@@ -59,6 +59,9 @@ def main():
                     elif buttons["skill_tree"].collidepoint(event.pos):
                         game_state.state = "SKILL_TREE"
 
+                    elif buttons.get("ai_info") and buttons["ai_info"].collidepoint(event.pos):
+                        game_state.state = "AI_INFO"
+
                     elif buttons.get("ai_minus") and buttons["ai_minus"].collidepoint(event.pos):
                         game_state.num_ais = max(1, game_state.num_ais - 1)
 
@@ -73,27 +76,65 @@ def main():
                     elif buttons["quit"].collidepoint(event.pos):
                         running = False
 
-            elif game_state.state == "SKILL_TREE":
+            elif game_state.state == "AI_INFO":
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    buttons = progression_ui.draw(screen)
+                    buttons = menu.draw_ai_info_screen(screen)
                     if buttons.get("back") and buttons["back"].collidepoint(event.pos):
                         game_state.state = "MENU"
-                    elif buttons.get("tab_tree") and buttons["tab_tree"].collidepoint(event.pos):
-                        progression_ui.active_tab = "skill_tree"
-                    elif buttons.get("tab_troops") and buttons["tab_troops"].collidepoint(event.pos):
-                        progression_ui.active_tab = "troops"
-                    elif buttons.get("tab_buildings") and buttons["tab_buildings"].collidepoint(event.pos):
-                        progression_ui.active_tab = "buildings"
-                    else:
-                        for key, info in buttons.items():
-                            if key not in ["back", "tab_tree", "tab_troops", "tab_buildings"] and isinstance(info, dict) and info.get("rect") and info["rect"].collidepoint(event.pos):
-                                save_manager.buy_upgrade(
-                                    key,
-                                    info["type"],
-                                    cost=info.get("cost"),
-                                    cost_base=info.get("cost_base", 10),
-                                    is_tree_unlock=info.get("is_tree_unlock", False)
-                                )
+
+            elif game_state.state == "SKILL_TREE":
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button in [1, 2, 3]:
+                        buttons = progression_ui.draw(screen)
+                        clicked_button = False
+
+                        if event.button == 1:
+                            if buttons.get("back") and buttons["back"].collidepoint(event.pos):
+                                game_state.state = "MENU"
+                                clicked_button = True
+                            elif buttons.get("tab_tree") and buttons["tab_tree"].collidepoint(event.pos):
+                                progression_ui.active_tab = "skill_tree"
+                                clicked_button = True
+                            elif buttons.get("tab_troops") and buttons["tab_troops"].collidepoint(event.pos):
+                                progression_ui.active_tab = "troops"
+                                clicked_button = True
+                            elif buttons.get("tab_buildings") and buttons["tab_buildings"].collidepoint(event.pos):
+                                progression_ui.active_tab = "buildings"
+                                clicked_button = True
+                            else:
+                                for key, info in buttons.items():
+                                    if key not in ["back", "tab_tree", "tab_troops", "tab_buildings"] and isinstance(info, dict) and info.get("rect") and info["rect"].collidepoint(event.pos):
+                                        save_manager.buy_upgrade(
+                                            key,
+                                            info["type"],
+                                            cost=info.get("cost"),
+                                            cost_base=info.get("cost_base", 10),
+                                            is_tree_unlock=info.get("is_tree_unlock", False)
+                                        )
+                                        clicked_button = True
+                                        break
+
+                        # Panning drag start if not clicking UI buttons
+                        if not clicked_button:
+                            progression_ui.is_dragging = True
+                            progression_ui.drag_start_pos = event.pos
+
+                    elif event.button == 4:  # Scroll UP
+                        progression_ui.camera_offset_y += 30
+                    elif event.button == 5:  # Scroll DOWN
+                        progression_ui.camera_offset_y -= 30
+
+                elif event.type == pygame.MOUSEBUTTONUP:
+                    if event.button in [1, 2, 3]:
+                        progression_ui.is_dragging = False
+
+                elif event.type == pygame.MOUSEMOTION:
+                    if progression_ui.is_dragging:
+                        dx = event.pos[0] - progression_ui.drag_start_pos[0]
+                        dy = event.pos[1] - progression_ui.drag_start_pos[1]
+                        progression_ui.camera_offset_x += dx
+                        progression_ui.camera_offset_y += dy
+                        progression_ui.drag_start_pos = event.pos
 
             elif game_state.state in ["VICTORY", "DEFEAT"]:
                 if event.type == pygame.MOUSEBUTTONDOWN or event.type == pygame.KEYDOWN:
@@ -210,7 +251,8 @@ def main():
                                             target_y = first.y + 50
                                             if game_state.can_place_building(b_type, target_x, target_y):
                                                 if game_state.deduct_resources(0, cost):
-                                                    nb = Building(0, first.faction, b_type, target_x, target_y, is_constructed=False)
+                                                    range_bonus = 20 if (b_type == "Tower" and upgrades.get("tower_range_unlocked")) else 0
+                                                    nb = Building(0, first.faction, b_type, target_x, target_y, is_constructed=False, range_bonus=range_bonus)
                                                     game_state.buildings.append(nb)
                                         btn_x += btn_width + 8
 
@@ -226,17 +268,17 @@ def main():
                                 is_selecting_box = True
                                 box_start_pos = mouse_pos
 
-                    elif event.button == 3:  # Clic droit (Ordre de déplacement / Attaque / Récolte)
+                    elif event.button == 3:  # Clic droit (Ordre de déplacement / Attaque / Récolte / Rally Point)
                         world_click = camera.screen_to_world(mouse_pos)
                         selected_units = [u for u in game_state.units if u.selected and u.owner_id == 0]
+                        selected_buildings = [b for b in game_state.buildings if b.selected and b.owner_id == 0 and b.trainable_units]
+
+                        target_enemy = next((e for e in game_state.units + game_state.buildings if e.alive and e.owner_id != 0 and e.is_point_inside(world_click[0], world_click[1])), None)
+                        target_res = next((r for r in game_state.resources if r.alive and r.is_point_inside(world_click[0], world_click[1])), None)
+                        target_farm = next((b for b in game_state.buildings if b.alive and getattr(b, 'building_type', None) == "Farm" and b.is_point_inside(world_click[0], world_click[1])), None)
+                        target_th = next((b for b in game_state.buildings if b.alive and getattr(b, 'building_type', None) == "TownHall" and b.owner_id == 0 and b.is_point_inside(world_click[0], world_click[1])), None)
 
                         if selected_units:
-                            # Chercher si la cible est un ennemi, un gisement de ressources ou le TownHall (pour garnir)
-                            target_enemy = next((e for e in game_state.units + game_state.buildings if e.alive and e.owner_id != 0 and e.is_point_inside(world_click[0], world_click[1])), None)
-                            target_res = next((r for r in game_state.resources if r.alive and r.is_point_inside(world_click[0], world_click[1])), None)
-                            target_farm = next((b for b in game_state.buildings if b.alive and getattr(b, 'building_type', None) == "Farm" and b.is_point_inside(world_click[0], world_click[1])), None)
-                            target_th = next((b for b in game_state.buildings if b.alive and getattr(b, 'building_type', None) == "TownHall" and b.owner_id == 0 and b.is_point_inside(world_click[0], world_click[1])), None)
-
                             upgrades = game_state.save_manager.data.get("upgrades", {})
                             for unit in selected_units:
                                 if target_enemy:
@@ -250,6 +292,13 @@ def main():
                                         pass
                                 else:
                                     unit.move_to(world_click[0], world_click[1])
+
+                        elif selected_buildings:
+                            # Définir le point de ralliement (Rally Point) pour les bâtiments de production
+                            target_obj = target_res or target_farm or target_enemy
+                            for bld in selected_buildings:
+                                bld.rally_point = (world_click[0], world_click[1])
+                                bld.rally_target = target_obj
 
                 elif event.type == pygame.MOUSEBUTTONUP and event.button == 1 and is_selecting_box:
                     is_selecting_box = False
@@ -267,12 +316,12 @@ def main():
                         e.selected = False
 
                     if rect_w < 10 and rect_h < 10:
-                        # Simple clic
+                        # Simple clic (Allows clicking player or enemy entities)
                         clicked_entity = next((e for e in game_state.units + game_state.buildings if e.alive and e.is_point_inside(x2, y2)), None)
                         if clicked_entity:
                             clicked_entity.selected = True
                     else:
-                        # Sélection par cadre
+                        # Sélection par cadre (Box select selects player units only)
                         rx = min(x1, x2)
                         ry = min(y1, y2)
                         for u in game_state.units:
@@ -284,6 +333,9 @@ def main():
         # -------------------------------------------------------------
         if game_state.state == "MENU":
             menu.draw_main_menu(screen, game_state.num_ais, game_state.ai_difficulty)
+
+        elif game_state.state == "AI_INFO":
+            menu.draw_ai_info_screen(screen)
 
         elif game_state.state == "SKILL_TREE":
             progression_ui.draw(screen)

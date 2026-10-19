@@ -30,6 +30,15 @@ class RenderUtils:
         if entity.selected:
             pygame.draw.circle(surface, config.COLOR_SELECTION, (sx, sy), scaled_radius + 4, 2)
 
+            # Draw Rally Point line and marker if building with rally point selected
+            if hasattr(entity, 'building_type') and entity.owner_id == 0 and getattr(entity, 'rally_point', None):
+                rx, ry = entity.rally_point
+                rsp = camera.world_to_screen((rx, ry))
+                rsx, rsy = int(rsp[0]), int(rsp[1])
+                pygame.draw.line(surface, (0, 255, 255), (sx, sy), (rsx, rsy), 2)
+                pygame.draw.circle(surface, (0, 255, 255), (rsx, rsy), 6, 2)
+                pygame.draw.circle(surface, (255, 215, 0), (rsx, rsy), 3)
+
         # Barre de vie
         if entity.hp < entity.max_hp and entity.max_hp > 0:
             bar_width = max(20, scaled_radius * 2)

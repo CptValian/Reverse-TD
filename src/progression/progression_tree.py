@@ -11,6 +11,10 @@ class ProgressionUI:
         self.bold_font = pygame.font.SysFont("Arial", 16, bold=True)
         self.small_font = pygame.font.SysFont("Arial", 13)
         self.active_tab = "skill_tree"  # "skill_tree", "troops", "buildings"
+        self.camera_offset_x = 0
+        self.camera_offset_y = 0
+        self.is_dragging = False
+        self.drag_start_pos = (0, 0)
 
     def draw(self, surface):
         surface.fill(config.COLOR_BG)
@@ -111,12 +115,28 @@ class ProgressionUI:
                 "pos": (1520, 210)
             },
             {
+                "key": "extra_worker_start",
+                "name": "Extra Worker",
+                "desc": "Start with +1 Worker",
+                "cost": 25,
+                "parents": ["starting_res_1"],
+                "pos": (120, 370)
+            },
+            {
+                "key": "extra_melee_start",
+                "name": "Extra Melee Unit",
+                "desc": "Start with +1 Melee Unit",
+                "cost": 25,
+                "parents": ["starting_res_1"],
+                "pos": (320, 370)
+            },
+            {
                 "key": "archer_unlocked",
                 "name": "Unlock Archers",
                 "desc": "Train Archers in Barracks",
                 "cost": 30,
                 "parents": ["starting_res_1"],
-                "pos": (320, 370)
+                "pos": (520, 370)
             },
             {
                 "key": "wall_unlocked",
@@ -124,7 +144,7 @@ class ProgressionUI:
                 "desc": "Build Defensive Wooden Walls",
                 "cost": 25,
                 "parents": ["wood_stockpile_unlocked"],
-                "pos": (620, 370)
+                "pos": (720, 370)
             },
             {
                 "key": "farm_unlocked",
@@ -159,6 +179,22 @@ class ProgressionUI:
                 "pos": (620, 690)
             },
             {
+                "key": "tower_range_unlocked",
+                "name": "Arrow Tower Range",
+                "desc": "Arrow tower +10% range",
+                "cost": 25,
+                "parents": ["tower_unlocked"],
+                "pos": (620, 850)
+            },
+            {
+                "key": "looting_unlocked",
+                "name": "Looting",
+                "desc": "+5 Food per troop kill",
+                "cost": 30,
+                "parents": ["ageing_up_2"],
+                "pos": (870, 690)
+            },
+            {
                 "key": "townhall_unlocked",
                 "name": "Secondary Keep",
                 "desc": "Build Additional Town Halls",
@@ -170,12 +206,15 @@ class ProgressionUI:
 
         node_map = {n["key"]: n for n in nodes}
 
+        ox = self.camera_offset_x
+        oy = self.camera_offset_y
+
         # 1. Draw connecting lines between parents and children
         for n in nodes:
-            cx, cy = n["pos"]
+            cx, cy = n["pos"][0] + ox, n["pos"][1] + oy
             for parent_key in n["parents"]:
                 parent = node_map[parent_key]
-                px, py = parent["pos"]
+                px, py = parent["pos"][0] + ox, parent["pos"][1] + oy
                 is_parent_unlocked = upg_data.get(parent_key, 0) >= 1
                 is_node_unlocked = upg_data.get(n["key"], 0) >= 1
 
@@ -191,7 +230,7 @@ class ProgressionUI:
         # 2. Draw node cards
         for n in nodes:
             key = n["key"]
-            cx, cy = n["pos"]
+            cx, cy = n["pos"][0] + ox, n["pos"][1] + oy
             card_w, card_h = 220, 82
             card_rect = pygame.Rect(cx - card_w // 2, cy - card_h // 2, card_w, card_h)
 

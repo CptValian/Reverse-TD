@@ -94,11 +94,20 @@ class GameState:
                                 hp_bonus=int(1000 * hp_bonus_bld), armor_bonus=armor_bonus_bld)
                 self.buildings.append(base)
 
-                # 3 ouvriers de départ
-                for offset in [(-30, 40), (0, 50), (30, 40)]:
+                # Ouvriers de départ (3 de base + 1 si extra_worker_start)
+                num_workers = 3 + (1 if upgrades.get("extra_worker_start") else 0)
+                worker_offsets = [(-30, 40), (0, 50), (30, 40), (-45, 50), (45, 50)]
+                for i in range(num_workers):
+                    offset = worker_offsets[i % len(worker_offsets)]
                     u = Unit(owner_id, faction, "Worker", sx + offset[0], sy + offset[1],
                              hp_bonus=int(60 * hp_bonus_units), attack_bonus=int(5 * atk_bonus_units))
                     self.units.append(u)
+
+                # Unité de mêlée de départ si extra_melee_start
+                if upgrades.get("extra_melee_start"):
+                    u_inf = Unit(owner_id, faction, "Infantry", sx, sy + 60,
+                                 hp_bonus=int(150 * hp_bonus_units), attack_bonus=int(18 * atk_bonus_units))
+                    self.units.append(u_inf)
             else:
                 # Base Alien IA
                 base = Building(owner_id, faction, "Hive", sx, sy)
@@ -232,10 +241,15 @@ class GameState:
         self.resolve_unit_collisions()
 
         # Mise à jour des unités
+        upgrades = self.save_manager.data.get("upgrades", {})
+        has_looting = upgrades.get("looting_unlocked", 0) >= 1
+
         for unit in list(self.units):
             if unit.alive:
                 unit.update(dt, self)
             else:
+                if has_looting and unit.owner_id != 0:
+                    self.add_resources(0, "food", 5)
                 self.units.remove(unit)
 
         # Mise à jour des bâtiments et production
@@ -245,6 +259,18 @@ class GameState:
                 if produced_unit:
                     # Spawner l'unité produite au pied du bâtiment
                     new_u = Unit(building.owner_id, building.faction, produced_unit, building.x, building.y + building.radius + 15)
+
+                    # Appliquer le point de ralliement (Rally Point) si défini
+                    if building.rally_point:
+                        rx, ry = building.rally_point
+                        rt = building.rally_target
+                        if new_u.is_worker and rt and getattr(rt, 'alive', True) and (hasattr(rt, 'harvest') or getattr(rt, 'building_type', None) == "Farm"):
+                            new_u.harvest_node(rt)
+                        elif rt and getattr(rt, 'alive', True) and rt.owner_id != building.owner_id:
+                            new_u.attack_target(rt)
+                        else:
+                            new_u.move_to(rx, ry)
+
                     self.units.append(new_u)
             else:
                 self.buildings.remove(building)
