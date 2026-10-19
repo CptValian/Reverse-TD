@@ -133,20 +133,39 @@ class Menu:
             "map_type": map_btn
         }
 
-    def draw_ai_info_screen(self, surface):
-        surface.fill((18, 22, 32))
+    def draw_ai_info_screen(self, surface, scroll_y=0):
+        self.ai_info_scroll_y = scroll_y
+        surface.fill((15, 18, 26))
 
-        # Title
-        t_title = self.title_font.render("CIVILISATION INSECTE ALIEN & NIVEAUX IA", True, (255, 215, 0))
-        surface.blit(t_title, (self.screen_width // 2 - t_title.get_width() // 2, 20))
+        # Title (Fixed Header)
+        header_rect = pygame.Rect(0, 0, self.screen_width, 70)
+        pygame.draw.rect(surface, (22, 27, 38), header_rect)
+        pygame.draw.line(surface, config.COLOR_UI_ACCENT, (0, 70), (self.screen_width, 70), 2)
+
+        t_title = self.title_font.render("CIVILISATION INSECTE ALIEN & NIVEAUX D'IA", True, (255, 215, 0))
+        surface.blit(t_title, (self.screen_width // 2 - t_title.get_width() // 2, 10))
+
+        # Scrollable Viewport Surface
+        viewport_y = 75
+        viewport_h = self.screen_height - 150
+        viewport_w = min(1100, self.screen_width - 40)
+        viewport_x = (self.screen_width - viewport_w) // 2
+
+        # Create virtual canvas surface
+        from src.ai.ai_tech import AI_DIFFICULTY_LEVELS
+
+        num_lvls = len(AI_DIFFICULTY_LEVELS)
+        content_h = 240 + num_lvls * 115 + 40
+        canvas = pygame.Surface((viewport_w, content_h))
+        canvas.fill((15, 18, 26))
 
         # Section 1: Fonctionnement de la Civilisation Insecte Alien
-        civ_box = pygame.Rect(self.screen_width // 2 - 500, 80, 1000, 140)
-        pygame.draw.rect(surface, (28, 34, 48), civ_box, border_radius=8)
-        pygame.draw.rect(surface, (216, 27, 96), civ_box, 2, border_radius=8)
+        civ_box = pygame.Rect(10, 10, viewport_w - 20, 150)
+        pygame.draw.rect(canvas, (28, 34, 48), civ_box, border_radius=10)
+        pygame.draw.rect(canvas, (216, 27, 96), civ_box, 2, border_radius=10)
 
         t_civ_head = self.btn_font.render("FONCTIONNEMENT DE LA CIVILISATION INSECTE ALIEN", True, (216, 27, 96))
-        surface.blit(t_civ_head, (civ_box.x + 15, civ_box.y + 10))
+        canvas.blit(t_civ_head, (civ_box.x + 20, civ_box.y + 12))
 
         civ_desc_lines = [
             "• Économie de Biomasse: Les Insectes aliens récoltent de la biomasse organique pour concevoir leurs structures et muter leurs troupes.",
@@ -154,62 +173,98 @@ class Menu:
             "• Troupes Alien: Drones (ouvriers polyvalents), Swarmers (combattants au corps-à-corps rapides) et Spitters (tireurs d'acide à distance).",
             "• Bâtiments Alien: Hive (Ruche centrale), Spawning Pool (Bassin de ponte des troupes) et Spine Crawler (Organisme défensif)."
         ]
-        curr_y = civ_box.y + 42
+        curr_y = civ_box.y + 45
         for line in civ_desc_lines:
-            t_line = self.small_font.render(line, True, config.COLOR_UI_TEXT)
-            surface.blit(t_line, (civ_box.x + 15, curr_y))
-            curr_y += 22
+            t_line = self.font.render(line, True, config.COLOR_UI_TEXT)
+            canvas.blit(t_line, (civ_box.x + 20, curr_y))
+            curr_y += 24
 
-        # Subtitle for Levels
-        t_lvl_head = self.btn_font.render("DESCRIPTIFS DES NIVEAUX DE DIFFICULTÉ DE L'IA", True, config.COLOR_UI_ACCENT)
-        surface.blit(t_lvl_head, (self.screen_width // 2 - 500, 230))
-
-        from src.ai.ai_tech import AI_DIFFICULTY_LEVELS
+        # Subtitle for AI Levels
+        t_lvl_head = self.btn_font.render("DESCRIPTIFS DES NIVEAUX DE DIFFICULTÉ DE L'IA (1 à 10)", True, config.COLOR_UI_ACCENT)
+        canvas.blit(t_lvl_head, (15, 175))
 
         ai_descriptions = {
-            1: "Niveau 1 (Pasif): Revenu x1.0, vagues d'attaque toutes les 120s (max 8 unités). Troupes: Drones & Swarmers.",
+            1: "Niveau 1 (Passif): Revenu x1.0, vagues d'attaque toutes les 120s (max 8 unités). Troupes: Drones & Swarmers.",
             2: "Niveau 2 (Facile): Revenu x1.2, vagues toutes les 90s (max 12 unités). Débloque les Spitters à distance. +5% HP/Atk.",
             3: "Niveau 3 (Moyen): Revenu x1.5, vagues toutes les 70s (max 18 unités). Armées combinées Swarmer/Spitter. +10% HP/Atk.",
             4: "Niveau 4 (Difficile): Revenu x1.8, vagues toutes les 50s (max 25 unités). Construit des Spine Crawlers. +20% HP, +15% Atk.",
-            5: "Niveau 5 (Expert - Brouillard de Guerre): Revenu x2.2, vagues toutes les 35s (max 35 unités). Brouillard actif (Tour d'observation utile). +35% HP, +25% Atk.",
-            6: "Niveau 6 (Cauchemar - Brouillard de Guerre): Revenu x2.8, vagues dévastatrices toutes les 25s (max 50 unités). Brouillard actif. +50% HP, +40% Atk."
+            5: "Niveau 5 (Expert - Brouillard): Revenu x2.2, vagues toutes les 35s (max 35 unités). Brouillard de guerre actif. +35% HP, +25% Atk.",
+            6: "Niveau 6 (Cauchemar - Brouillard): Revenu x2.8, vagues toutes les 25s (max 50 unités). Brouillard actif. +50% HP, +40% Atk.",
+            7: "Niveau 7 (Commando Raids): Revenu x3.2, vagues toutes les 20s (max 60 unités). Priorité harcèlement des ouvriers. +65% HP, +55% Atk.",
+            8: "Niveau 8 (Tactique & Retraite): Revenu x3.8, vagues toutes les 18s (max 75 unités). Replis stratégiques quand l'armée flanche. +80% HP, +70% Atk.",
+            9: "Niveau 9 (Invasion Flanquante): Revenu x4.5, vagues toutes les 15s (max 90 unités). Attaques multi-angles et pilonnages de spores. +100% HP, +85% Atk.",
+            10: "Niveau 10 (Ruche Apocalyptique): Revenu x5.5, vagues continues toutes les 10s (max 120 unités). Swarm Frenzy (+30% Vitesse). +130% HP, +100% Atk."
         }
 
-        y = 265
-        for lvl, data in AI_DIFFICULTY_LEVELS.items():
-            card_rect = pygame.Rect(self.screen_width // 2 - 500, y, 1000, 95)
-            pygame.draw.rect(surface, config.COLOR_UI_PANEL, card_rect, border_radius=8)
-            pygame.draw.rect(surface, config.COLOR_UI_ACCENT if lvl <= 4 else (255, 100, 100), card_rect, 1, border_radius=8)
+        y = 210
+        for lvl in range(1, num_lvls + 1):
+            data = AI_DIFFICULTY_LEVELS.get(lvl, {})
+            card_rect = pygame.Rect(10, y, viewport_w - 20, 105)
 
-            header_txt = f"IA NIVEAU {lvl}" + (" [BROUILLARD DE GUERRE ACTIF]" if lvl > 4 else "")
-            t_head = self.btn_font.render(header_txt, True, (255, 215, 0) if lvl <= 4 else (255, 120, 120))
-            surface.blit(t_head, (card_rect.x + 15, y + 8))
+            is_extreme = lvl >= 7
+            is_fog = lvl > 4
+            bg_col = (40, 24, 32) if is_extreme else config.COLOR_UI_PANEL
+            border_col = (255, 60, 60) if is_extreme else (config.COLOR_UI_ACCENT if not is_fog else (255, 140, 0))
 
-            mult = data["resource_multiplier"]
-            wave_s = data["attack_wave_interval"]
-            m_army = data["max_army_size"]
-            m_work = data["max_workers"]
-            techs = ", ".join(data["unlocked_techs"])
-            hp_b = int(data["unit_hp_bonus"] * 100)
-            atk_b = int(data["unit_atk_bonus"] * 100)
+            pygame.draw.rect(canvas, bg_col, card_rect, border_radius=8)
+            pygame.draw.rect(canvas, border_col, card_rect, 1, border_radius=8)
+
+            header_txt = f"IA NIVEAU {lvl}"
+            if is_extreme:
+                header_txt += " [CAPACITÉ AVANCÉE]"
+            elif is_fog:
+                header_txt += " [BROUILLARD DE GUERRE ACTIF]"
+
+            t_head = self.btn_font.render(header_txt, True, (255, 215, 0) if not is_extreme else (255, 100, 100))
+            canvas.blit(t_head, (card_rect.x + 15, y + 8))
+
+            mult = data.get("resource_multiplier", 1.0)
+            wave_s = data.get("attack_wave_interval", 60)
+            m_army = data.get("max_army_size", 10)
+            m_work = data.get("max_workers", 5)
+            techs = ", ".join(data.get("unlocked_techs", []))
+            hp_b = int(data.get("unit_hp_bonus", 0.0) * 100)
+            atk_b = int(data.get("unit_atk_bonus", 0.0) * 100)
 
             desc_text = ai_descriptions.get(lvl, "")
-            line1 = f"Description: {desc_text}"
-            line2 = f"Multiplicateur: x{mult} | Vague: {wave_s}s | Max Ouvriers: {m_work} | Armée Max: {m_army} | Techs: [{techs}] | Bonus: HP +{hp_b}%, Atk +{atk_b}%"
+            line1 = f"Tactique: {desc_text}"
+            line2 = f"Revenu: x{mult} | Vagues: {wave_s}s | Max Ouvriers: {m_work} | Armée Max: {m_army} | Techs: [{techs}] | Bonus: HP +{hp_b}%, Atk +{atk_b}%"
 
-            t_l1 = self.small_font.render(line1, True, (220, 230, 242))
-            t_l2 = self.small_font.render(line2, True, (160, 180, 200))
+            t_l1 = self.font.render(line1, True, (230, 240, 255))
+            t_l2 = self.small_font.render(line2, True, (170, 190, 210))
 
-            surface.blit(t_l1, (card_rect.x + 15, y + 42))
-            surface.blit(t_l2, (card_rect.x + 15, y + 66))
+            canvas.blit(t_l1, (card_rect.x + 15, y + 42))
+            canvas.blit(t_l2, (card_rect.x + 15, y + 72))
 
-            y += 102
+            y += 115
 
-        # Back Button
-        back_btn = pygame.Rect(self.screen_width // 2 - 120, self.screen_height - 60, 240, 45)
-        pygame.draw.rect(surface, config.COLOR_UI_PANEL, back_btn, border_radius=6)
-        pygame.draw.rect(surface, config.COLOR_UI_ACCENT, back_btn, 2, border_radius=6)
+        # Blit scrolled portion onto main screen
+        clamp_scroll = max(0, min(scroll_y, content_h - viewport_h))
+        surface.blit(canvas, (viewport_x, viewport_y), pygame.Rect(0, clamp_scroll, viewport_w, viewport_h))
+
+        # Visual Scrollbar Track & Thumb
+        if content_h > viewport_h:
+            bar_w = 10
+            bar_x = viewport_x + viewport_w + 8
+            pygame.draw.rect(surface, (30, 36, 50), (bar_x, viewport_y, bar_w, viewport_h), border_radius=5)
+
+            thumb_h = max(30, int((viewport_h / content_h) * viewport_h))
+            thumb_y = viewport_y + int((clamp_scroll / (content_h - viewport_h)) * (viewport_h - thumb_h))
+            pygame.draw.rect(surface, config.COLOR_UI_ACCENT, (bar_x, thumb_y, bar_w, thumb_h), border_radius=5)
+
+        # Fixed Footer Panel & Back Button
+        footer_rect = pygame.Rect(0, self.screen_height - 70, self.screen_width, 70)
+        pygame.draw.rect(surface, (22, 27, 38), footer_rect)
+        pygame.draw.line(surface, (50, 60, 80), (0, self.screen_height - 70), (self.screen_width, self.screen_height - 70), 1)
+
+        back_btn = pygame.Rect(self.screen_width // 2 - 140, self.screen_height - 58, 280, 46)
+        pygame.draw.rect(surface, config.COLOR_UI_PANEL, back_btn, border_radius=8)
+        pygame.draw.rect(surface, config.COLOR_UI_ACCENT, back_btn, 2, border_radius=8)
         back_txt = self.btn_font.render("RETOUR AU MENU", True, config.COLOR_UI_TEXT)
         surface.blit(back_txt, (back_btn.x + back_btn.width // 2 - back_txt.get_width() // 2, back_btn.y + 8))
 
-        return {"back": back_btn}
+        return {
+            "back": back_btn,
+            "max_scroll": content_h - viewport_h,
+            "current_scroll": clamp_scroll
+        }

@@ -161,17 +161,28 @@ class GameState:
 
         self.state = "PLAYING"
 
+    def get_map_resource_factor(self):
+        if self.map_type == 2:
+            return 0.75
+        elif self.map_type == 3:
+            return 0.50
+        return 1.0
+
     def add_resources(self, owner_id, res_type, amount):
         if owner_id in self.resources_player:
+            effective_amount = amount
+            if owner_id == 0:
+                effective_amount = amount * self.get_map_resource_factor()
+
             if res_type not in self.resources_player[owner_id]:
                 self.resources_player[owner_id][res_type] = 0
-            self.resources_player[owner_id][res_type] += amount
+            self.resources_player[owner_id][res_type] += effective_amount
 
             if owner_id not in self.resources_gathered_player:
                 self.resources_gathered_player[owner_id] = {}
             if res_type not in self.resources_gathered_player[owner_id]:
                 self.resources_gathered_player[owner_id][res_type] = 0
-            self.resources_gathered_player[owner_id][res_type] += amount
+            self.resources_gathered_player[owner_id][res_type] += effective_amount
 
     def deduct_resources(self, owner_id, res_type, amount=None):
         if owner_id not in self.resources_player:
@@ -216,15 +227,15 @@ class GameState:
         # Collision avec d'autres bâtiments
         for b in self.buildings:
             if b.alive:
-                dist = math.hypot(b.x - x, b.y - y)
-                if dist < b.radius + radius + 10:
+                min_req = b.radius + radius + 10
+                if (b.x - x)**2 + (b.y - y)**2 < min_req * min_req:
                     return False
 
         # Collision avec ressources
         for r in self.resources:
             if r.alive:
-                dist = math.hypot(r.x - x, r.y - y)
-                if dist < r.radius + radius + 10:
+                min_req = r.radius + radius + 10
+                if (r.x - x)**2 + (r.y - y)**2 < min_req * min_req:
                     return False
 
         return True
@@ -238,10 +249,11 @@ class GameState:
                 u2 = units_list[j]
                 dx = u2.x - u1.x
                 dy = u2.y - u1.y
-                dist = math.hypot(dx, dy)
+                dist_sq = dx * dx + dy * dy
                 min_dist = u1.radius + u2.radius
 
-                if dist < min_dist:
+                if dist_sq < min_dist * min_dist:
+                    dist = math.sqrt(dist_sq)
                     overlap = min_dist - dist
                     if dist == 0:
                         dx, dy, dist = 1.0, 0.0, 1.0
@@ -257,10 +269,68 @@ class GameState:
                     u2.x += push_x
                     u2.y += push_y
 
-        # Résoudre également la collision unités / bâtiments
+        # Résoudre également la collision unités / bâtiments (AABB / OBB pour Murs, Cercles pour autres bâtiments)
         for u in units_list:
             for b in self.buildings:
-                if b.alive:
+                if not b.alive:
+                    continue
+
+                if b.building_type == "Wall":
+                    # Exact Oriented Bounding Box (OBB) vs Unit Circle collision
+                    w_len = getattr(b, 'wall_length', 40)
+                    w_wid = getattr(b, 'wall_width', 18)
+                    w_ang = getattr(b, 'wall_angle', 0.0)
+
+                    hl = w_len / 2.0
+                    hw = w_wid / 2.0
+
+                    dx = u.x - b.x
+                    dy = u.y - b.y
+
+                    cos_a = math.cos(-w_ang)
+                    sin_a = math.sin(-w_ang)
+
+                    local_x = dx * cos_a - dy * sin_a
+                    local_y = dx * sin_a + dy * cos_a
+
+                    cx = max(-hl, min(hl, local_x))
+                    cy = max(-hw, min(hw, local_y))
+
+                    lx = local_x - cx
+                    ly = local_y - cy
+                    dist_sq = lx * lx + ly * ly
+
+                    if dist_sq < u.radius * u.radius:
+                        dist = math.sqrt(dist_sq)
+                        if dist > 0.0001:
+                            overlap = u.radius - dist
+                            nx = lx / dist
+                            ny = ly / dist
+                        else:
+                            # Center is inside rectangle - push along closest edge
+                            d_pos_x = hl - local_x
+                            d_neg_x = local_x + hl
+                            d_pos_y = hw - local_y
+                            d_neg_y = local_y + hw
+                            min_d = min(d_pos_x, d_neg_x, d_pos_y, d_neg_y)
+                            if min_d == d_pos_x:
+                                nx, ny = 1.0, 0.0; overlap = d_pos_x + u.radius
+                            elif min_d == d_neg_x:
+                                nx, ny = -1.0, 0.0; overlap = d_neg_x + u.radius
+                            elif min_d == d_pos_y:
+                                nx, ny = 0.0, 1.0; overlap = d_pos_y + u.radius
+                            else:
+                                nx, ny = 0.0, -1.0; overlap = d_neg_y + u.radius
+
+                        push_lx = nx * overlap
+                        push_ly = ny * overlap
+
+                        cos_back = math.cos(w_ang)
+                        sin_back = math.sin(w_ang)
+
+                        u.x += push_lx * cos_back - push_ly * sin_back
+                        u.y += push_lx * sin_back + push_ly * cos_back
+                else:
                     dx = u.x - b.x
                     dy = u.y - b.y
                     dist = math.hypot(dx, dy)

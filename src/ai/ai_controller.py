@@ -106,10 +106,23 @@ class AIController:
                         nb = Building(self.owner_id, self.faction, def_type, dx, dy, is_constructed=False)
                         game_state.buildings.append(nb)
 
+        # Apply AI stat bonuses to newly spawned AI units
+        hp_mult = self.config.get("unit_hp_bonus", 0.0)
+        atk_mult = self.config.get("unit_atk_bonus", 0.0)
+        speed_bonus = 25 if self.config.get("swarm_frenzy") else 0
+
+        for u in ai_units:
+            if not getattr(u, '_ai_buffed', False):
+                u.max_hp = int(u.max_hp * (1.0 + hp_mult))
+                u.hp = min(u.hp, u.max_hp)
+                u.attack_power = int(u.attack_power * (1.0 + atk_mult))
+                u.speed += speed_bonus
+                u._ai_buffed = True
+
         # 6. Army Unit Queueing (Swarmer & Spitter Tech)
         army_units = [u for u in ai_units if not u.is_worker]
         for prod in production_blds:
-            if prod.is_constructed and len(prod.production_queue) < 3:
+            if prod.is_constructed and len(prod.production_queue) < 4:
                 available_troops = ["Swarmer"] if self.faction == config.FACTION_ALIEN else ["Infantry"]
                 if self.config.get("can_tech_ranged", True):
                     if self.faction == config.FACTION_ALIEN:
@@ -122,17 +135,23 @@ class AIController:
                 if game_state.deduct_resources(self.owner_id, cost_dict):
                     prod.queue_unit(chosen_unit)
 
-        # 7. Defense Response when base is under attack
+        # 7. Defense Response & Tactical Retreat (Level 8+)
         player_units = [u for u in game_state.units if u.alive and u.owner_id != self.owner_id]
         if self.spawn_point and player_units:
             nearby_threats = [u for u in player_units if math.hypot(u.x - self.spawn_point[0], u.y - self.spawn_point[1]) < 450]
             if nearby_threats:
                 closest_threat = min(nearby_threats, key=lambda u: math.hypot(u.x - self.spawn_point[0], u.y - self.spawn_point[1]))
                 for u in army_units:
-                    if u.state == "idle":
+                    if u.state in ["idle", "move"]:
                         u.attack_target(closest_threat)
 
-        # 8. Continuous Strategic Wave Attacks
+        # Tactical Retreat: retreat damaged AI units back to base if outnumbered (Level 8+)
+        if self.config.get("tactical_retreat") and self.spawn_point:
+            for u in army_units:
+                if u.hp < u.max_hp * 0.30 and u.state == "attack":
+                    u.move_to(self.spawn_point[0] + random.randint(-40, 40), self.spawn_point[1] + random.randint(-40, 40))
+
+        # 8. Continuous Strategic Wave Attacks & Flanking (Level 9+)
         wave_interval = self.config.get("attack_wave_interval", 45)
         min_wave_size = 2 if self.difficulty == 1 else 4
 
@@ -140,14 +159,14 @@ class AIController:
             if len(army_units) >= min_wave_size:
                 self.timer_wave = 0.0
 
-                # Priority targeting: Workers > Production Buildings > Town Hall / Hive > Any unit
                 player_targets = [e for e in game_state.buildings + game_state.units if e.alive and e.owner_id != self.owner_id]
                 if player_targets:
                     p_workers = [e for e in player_targets if getattr(e, 'is_worker', False)]
                     p_townhalls = [e for e in player_targets if getattr(e, 'building_type', None) in ["TownHall", "Hive"]]
                     p_buildings = [e for e in player_targets if hasattr(e, 'building_type')]
 
-                    if p_workers and random.random() < 0.4:
+                    # Worker Raid Priority for Level 7+
+                    if p_workers and (self.config.get("worker_raid_priority") or random.random() < 0.4):
                         target = random.choice(p_workers)
                     elif p_townhalls and random.random() < 0.5:
                         target = p_townhalls[0]
@@ -156,5 +175,19 @@ class AIController:
                     else:
                         target = random.choice(player_targets)
 
-                    for u in army_units:
-                        u.attack_move_to(target.x, target.y)
+                    # Flanking Attack: Split army into 2 groups (Level 9+)
+                    if self.config.get("flanking_attacks") and len(army_units) >= 6:
+                        mid = len(army_units) // 2
+                        group1 = army_units[:mid]
+                        group2 = army_units[mid:]
+
+                        flank_offset1 = (target.x - 120, target.y - 120)
+                        flank_offset2 = (target.x + 120, target.y + 120)
+
+                        for u in group1:
+                            u.attack_move_to(flank_offset1[0], flank_offset1[1])
+                        for u in group2:
+                            u.attack_move_to(flank_offset2[0], flank_offset2[1])
+                    else:
+                        for u in army_units:
+                            u.attack_move_to(target.x, target.y)

@@ -158,14 +158,35 @@ class RenderUtils:
                 pygame.draw.polygon(surface, (180, 40, 40), [(sx, sy - radius - 8), (sx - radius//2, sy - radius//3), (sx + radius//2, sy - radius//3)])
 
             elif b_type == "Wall":
-                # Heavy Wooden Log Palisade Wall
-                pygame.draw.rect(surface, (110, 65, 25), rect, border_radius=4)
-                pygame.draw.rect(surface, (180, 120, 50), rect, width=2, border_radius=4)
-                # Vertical Log Stakes
-                log_w = max(3, radius // 2)
-                for lx in range(sx - radius + 2, sx + radius - 2, log_w + 1):
-                    pygame.draw.line(surface, (70, 40, 15), (lx, sy - radius + 2), (lx, sy + radius - 2), 2)
-                    pygame.draw.polygon(surface, (180, 120, 50), [(lx - 1, sy - radius + 2), (lx, sy - radius - 2), (lx + 1, sy - radius + 2)])
+                # Thin Oriented Palisade Wall Segment
+                import math
+                w_len = getattr(building, 'wall_length', 40)
+                w_wid = getattr(building, 'wall_width', 18)
+                w_ang = getattr(building, 'wall_angle', 0.0)
+
+                scaled_l = max(10, int(w_len * camera.zoom))
+                scaled_w = max(6, int(w_wid * camera.zoom))
+
+                cos_a = math.cos(w_ang)
+                sin_a = math.sin(w_ang)
+
+                hl = scaled_l / 2.0
+                hw = scaled_w / 2.0
+
+                local_corners = [(-hl, -hw), (hl, -hw), (hl, hw), (-hl, hw)]
+                screen_pts = []
+                for lx, ly in local_corners:
+                    px = sx + lx * cos_a - ly * sin_a
+                    py = sy + lx * sin_a + ly * cos_a
+                    screen_pts.append((px, py))
+
+                pygame.draw.polygon(surface, (110, 65, 25), screen_pts)
+                pygame.draw.polygon(surface, (180, 120, 50), screen_pts, width=2)
+
+                # Inner log ridge lines
+                p1_mid = ((screen_pts[0][0] + screen_pts[3][0]) / 2.0, (screen_pts[0][1] + screen_pts[3][1]) / 2.0)
+                p2_mid = ((screen_pts[1][0] + screen_pts[2][0]) / 2.0, (screen_pts[1][1] + screen_pts[2][1]) / 2.0)
+                pygame.draw.line(surface, (70, 40, 15), p1_mid, p2_mid, max(1, int(2 * camera.zoom)))
 
             elif b_type == "WoodStockpile":
                 # Lumber Storage Yard
