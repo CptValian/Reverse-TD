@@ -44,12 +44,22 @@ class RenderUtils:
     @staticmethod
     def _draw_resource(surface, res, sx, sy, radius):
         if res.resource_type == "gold":
-            # Gisement d'or (Pépites / Cristaux dorés)
             pygame.draw.circle(surface, (218, 165, 32), (sx, sy), radius)
             pygame.draw.circle(surface, (255, 215, 0), (sx, sy), int(radius * 0.7))
             pygame.draw.circle(surface, (255, 250, 205), (sx - radius//3, sy - radius//3), int(radius * 0.3))
+        elif res.resource_type == "wood":
+            # Arbre / Forêt (Tronc marron + feuillage vert)
+            pygame.draw.rect(surface, (101, 67, 33), (sx - radius//4, sy, radius//2, radius))
+            pygame.draw.circle(surface, (34, 139, 34), (sx, sy - radius//3), int(radius * 0.8))
+            pygame.draw.circle(surface, (50, 205, 50), (sx - radius//3, sy - radius//2), int(radius * 0.5))
+        elif res.resource_type == "food":
+            # Baies / Cultures (Fond vert + petits fruits oranges)
+            pygame.draw.circle(surface, (46, 125, 50), (sx, sy), radius)
+            pygame.draw.circle(surface, (255, 140, 0), (sx - radius//3, sy - radius//3), max(2, radius//4))
+            pygame.draw.circle(surface, (255, 140, 0), (sx + radius//3, sy + radius//4), max(2, radius//4))
+            pygame.draw.circle(surface, (255, 165, 0), (sx, sy + radius//3), max(2, radius//4))
         else:
-            # Biomasse Alien (Pustule violette/verte palpitante)
+            # Biomasse Alien
             pygame.draw.circle(surface, (106, 27, 154), (sx, sy), radius)
             pygame.draw.circle(surface, (156, 39, 176), (sx, sy), int(radius * 0.7))
             pygame.draw.circle(surface, (76, 175, 80), (sx, sy), int(radius * 0.3))
@@ -92,6 +102,29 @@ class RenderUtils:
                 pygame.draw.circle(surface, (110, 110, 120), (sx, sy), radius)
                 pygame.draw.circle(surface, (220, 220, 230), (sx, sy), radius, width=3)
                 pygame.draw.circle(surface, (180, 50, 50), (sx, sy), max(2, radius // 2))
+
+            elif b_type == "Wall":
+                # Palisade en bois
+                pygame.draw.rect(surface, (139, 69, 19), rect, border_radius=3)
+                pygame.draw.rect(surface, (205, 133, 63), rect, width=2, border_radius=3)
+
+            elif b_type == "WoodStockpile":
+                # Stock de bois
+                pygame.draw.rect(surface, (110, 70, 35), rect, border_radius=4)
+                pygame.draw.line(surface, (180, 120, 60), (sx - radius + 4, sy - radius//2), (sx + radius - 4, sy - radius//2), 4)
+                pygame.draw.line(surface, (180, 120, 60), (sx - radius + 4, sy), (sx + radius - 4, sy), 4)
+                pygame.draw.line(surface, (180, 120, 60), (sx - radius + 4, sy + radius//2), (sx + radius - 4, sy + radius//2), 4)
+
+            elif b_type == "GoldStockpile":
+                # Stock d'or
+                pygame.draw.rect(surface, (80, 80, 90), rect, border_radius=4)
+                pygame.draw.circle(surface, (255, 215, 0), (sx, sy), max(3, radius//2))
+
+            elif b_type == "Farm":
+                # Ferme
+                pygame.draw.rect(surface, (160, 120, 60), rect, border_radius=4)
+                pygame.draw.rect(surface, (218, 165, 32), (sx - radius + 4, sy - radius + 4, radius - 2, radius - 2))
+                pygame.draw.rect(surface, (34, 139, 34), (sx + 2, sy + 2, radius - 4, radius - 4))
 
         else:
             # --- ALIEN INSECT ---

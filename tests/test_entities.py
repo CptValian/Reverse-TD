@@ -8,10 +8,15 @@ class DummyGameState:
     def __init__(self):
         self.units = []
         self.buildings = []
-        self.resources_player = {0: {"gold": 0, "biomass": 0}, 1: {"gold": 0, "biomass": 0}}
+        self.resources_player = {
+            0: {"gold": 0, "wood": 0, "food": 0, "biomass": 0},
+            1: {"gold": 0, "wood": 0, "food": 0, "biomass": 0}
+        }
 
     def add_resources(self, owner_id, res_type, amount):
         if owner_id in self.resources_player:
+            if res_type not in self.resources_player[owner_id]:
+                self.resources_player[owner_id][res_type] = 0
             self.resources_player[owner_id][res_type] += amount
 
 class TestEntities(unittest.TestCase):
@@ -52,6 +57,23 @@ class TestEntities(unittest.TestCase):
         u1.attack_move_to(200, 200)
         self.assertTrue(u1.attack_move_mode)
         self.assertEqual(u1.state, "move")
+
+    def test_farm_harvesting(self):
+        gs = DummyGameState()
+        base = Building(owner_id=0, faction=config.FACTION_HUMAN, building_type="TownHall", x=100, y=100)
+        farm = Building(owner_id=0, faction=config.FACTION_HUMAN, building_type="Farm", x=130, y=100)
+        worker = Unit(owner_id=0, faction=config.FACTION_HUMAN, unit_type="Worker", x=130, y=100)
+
+        gs.buildings.extend([base, farm])
+        gs.units.append(worker)
+
+        worker.harvest_node(farm)
+        # Ticks de récolte
+        for _ in range(50):
+            worker.update(0.1, gs)
+
+        self.assertGreater(worker.carried_resource, 0)
+        self.assertEqual(worker.resource_type, "food")
 
 if __name__ == '__main__':
     unittest.main()

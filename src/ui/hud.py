@@ -15,7 +15,7 @@ class HUD:
         pygame.draw.rect(surface, config.COLOR_UI_BG, top_bar)
         pygame.draw.line(surface, config.COLOR_UI_ACCENT, (0, 40), (self.screen_width, 40), 2)
 
-        res_text = f"Or: {int(player_res.get('gold', 0))} | Biomasse: {int(player_res.get('biomass', 0))} | Unités: {game_state.get_unit_count(0)}"
+        res_text = f"Or: {int(player_res.get('gold', 0))} | Bois: {int(player_res.get('wood', 0))} | Nourriture: {int(player_res.get('food', 0))} | Bio: {int(player_res.get('biomass', 0))} | Unités: {game_state.get_unit_count(0)}"
         img_res = self.title_font.render(res_text, True, config.COLOR_UI_TEXT)
         surface.blit(img_res, (20, 8))
 
@@ -63,6 +63,17 @@ class HUD:
             img_info = self.font.render(info_text, True, config.COLOR_UI_TEXT)
             surface.blit(img_info, (panel_rect.x + 20, panel_rect.y + 10))
 
+            upgrades = game_state.save_manager.data.get("upgrades", {})
+
+            def format_cost_str(cost_obj):
+                if isinstance(cost_obj, dict):
+                    parts = []
+                    name_map = {"gold": "Or", "wood": "Bois", "food": "Nourri", "biomass": "Bio"}
+                    for k, v in cost_obj.items():
+                        parts.append(f"{v} {name_map.get(k, k)}")
+                    return ", ".join(parts)
+                return str(cost_obj)
+
             # Si c'est un bâtiment
             if hasattr(first, 'building_type'):
                 btn_x = panel_rect.x + 20
@@ -70,20 +81,27 @@ class HUD:
 
                 # Boutons de recrutement
                 if first.trainable_units and first.is_constructed:
-                    for u_type in first.trainable_units:
-                        u_data = config.UNIT_TYPES.get(u_type, {})
-                        cost = u_data.get("cost", 50)
-                        res_name = "Or" if u_data.get("res_type", "gold") == "gold" else "Bio"
+                    # Filter trainable units by unlock status
+                    trainable = []
+                    for u in first.trainable_units:
+                        if u == "Archer" and not upgrades.get("archer_unlocked"):
+                            continue
+                        trainable.append(u)
 
-                        btn_rect = pygame.Rect(btn_x, btn_y, 150, 40)
+                    for u_type in trainable:
+                        from src.entities.unit import UNIT_TYPES
+                        u_data = UNIT_TYPES.get(u_type, {})
+                        cost_str = format_cost_str(u_data.get("cost", 50))
+
+                        btn_rect = pygame.Rect(btn_x, btn_y, 160, 42)
                         pygame.draw.rect(surface, (60, 64, 72), btn_rect, border_radius=4)
                         pygame.draw.rect(surface, config.COLOR_UI_ACCENT, btn_rect, 1, border_radius=4)
 
                         t_name = self.font.render(f"+ {u_type}", True, config.COLOR_UI_TEXT)
-                        t_cost = self.font.render(f"{cost} {res_name}", True, config.COLOR_UI_ACCENT)
-                        surface.blit(t_name, (btn_x + 8, btn_y + 4))
-                        surface.blit(t_cost, (btn_x + 8, btn_y + 20))
-                        btn_x += 160
+                        t_cost = self.font.render(cost_str, True, config.COLOR_UI_ACCENT)
+                        surface.blit(t_name, (btn_x + 6, btn_y + 3))
+                        surface.blit(t_cost, (btn_x + 6, btn_y + 20))
+                        btn_x += 170
 
                 # Affichage de la file d'attente de production
                 queue_x = panel_rect.x + 20
@@ -114,20 +132,37 @@ class HUD:
 
             # Si un ouvrier est sélectionné (boutons de construction)
             elif getattr(first, 'is_worker', False):
-                btn_x = panel_rect.x + 20
+                btn_x = panel_rect.x + 10
                 btn_y = panel_rect.y + 40
-                buildings_to_build = ["Barracks", "Tower"] if first.faction == config.FACTION_HUMAN else ["SpawningPool", "SpineCrawler"]
-                for b_type in buildings_to_build:
-                    b_data = config.BUILDING_TYPES.get(b_type, {})
-                    cost = b_data.get("cost", 100)
-                    res_name = "Or" if b_data.get("res_type", "gold") == "gold" else "Bio"
+                if first.faction == config.FACTION_HUMAN:
+                    buildings_to_build = ["Barracks"]
+                    if upgrades.get("wall_unlocked"):
+                        buildings_to_build.append("Wall")
+                    if upgrades.get("tower_unlocked"):
+                        buildings_to_build.append("Tower")
+                    if upgrades.get("wood_stockpile_unlocked"):
+                        buildings_to_build.append("WoodStockpile")
+                    if upgrades.get("gold_stockpile_unlocked"):
+                        buildings_to_build.append("GoldStockpile")
+                    if upgrades.get("farm_unlocked"):
+                        buildings_to_build.append("Farm")
+                    if upgrades.get("townhall_unlocked"):
+                        buildings_to_build.append("TownHall")
+                else:
+                    buildings_to_build = ["SpawningPool", "SpineCrawler"]
 
-                    btn_rect = pygame.Rect(btn_x, btn_y, 170, 45)
+                from src.entities.building import BUILDING_TYPES
+                for b_type in buildings_to_build:
+                    b_data = BUILDING_TYPES.get(b_type, {})
+                    cost_str = format_cost_str(b_data.get("cost", {}))
+
+                    btn_width = 125
+                    btn_rect = pygame.Rect(btn_x, btn_y, btn_width, 45)
                     pygame.draw.rect(surface, (60, 64, 72), btn_rect, border_radius=4)
                     pygame.draw.rect(surface, config.COLOR_UI_ACCENT, btn_rect, 1, border_radius=4)
 
                     t_name = self.font.render(f"Bâtir {b_type}", True, config.COLOR_UI_TEXT)
-                    t_cost = self.font.render(f"{cost} {res_name} ({b_data.get('build_time', 10)}s)", True, config.COLOR_UI_ACCENT)
-                    surface.blit(t_name, (btn_x + 8, btn_y + 4))
-                    surface.blit(t_cost, (btn_x + 8, btn_y + 24))
-                    btn_x += 180
+                    t_cost = self.font.render(cost_str, True, config.COLOR_UI_ACCENT)
+                    surface.blit(t_name, (btn_x + 4, btn_y + 4))
+                    surface.blit(t_cost, (btn_x + 4, btn_y + 24))
+                    btn_x += btn_width + 8

@@ -15,11 +15,19 @@ class MockGameState:
             1: {"gold": 500, "biomass": 500}
         }
 
-    def deduct_resources(self, owner_id, res_type, amount):
-        if self.resources_player[owner_id][res_type] >= amount:
-            self.resources_player[owner_id][res_type] -= amount
+    def deduct_resources(self, owner_id, res_type, amount=None):
+        if isinstance(res_type, dict):
+            for r, c in res_type.items():
+                if self.resources_player[owner_id].get(r, 0) < c:
+                    return False
+            for r, c in res_type.items():
+                self.resources_player[owner_id][r] -= c
             return True
-        return False
+        else:
+            if self.resources_player[owner_id].get(res_type, 0) >= amount:
+                self.resources_player[owner_id][res_type] -= amount
+                return True
+            return False
 
     def can_place_building(self, building_type, x, y, owner_id=None):
         return True

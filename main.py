@@ -60,12 +60,24 @@ def main():
             elif game_state.state == "SKILL_TREE":
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     buttons = progression_ui.draw(screen)
-                    if buttons["back"].collidepoint(event.pos):
+                    if buttons.get("back") and buttons["back"].collidepoint(event.pos):
                         game_state.state = "MENU"
+                    elif buttons.get("tab_tree") and buttons["tab_tree"].collidepoint(event.pos):
+                        progression_ui.active_tab = "skill_tree"
+                    elif buttons.get("tab_troops") and buttons["tab_troops"].collidepoint(event.pos):
+                        progression_ui.active_tab = "troops"
+                    elif buttons.get("tab_buildings") and buttons["tab_buildings"].collidepoint(event.pos):
+                        progression_ui.active_tab = "buildings"
                     else:
                         for key, info in buttons.items():
-                            if key != "back" and isinstance(info, dict) and info["rect"].collidepoint(event.pos):
-                                save_manager.buy_upgrade(key, info["type"], info["cost_base"])
+                            if key not in ["back", "tab_tree", "tab_troops", "tab_buildings"] and isinstance(info, dict) and info.get("rect") and info["rect"].collidepoint(event.pos):
+                                save_manager.buy_upgrade(
+                                    key,
+                                    info["type"],
+                                    cost=info.get("cost"),
+                                    cost_base=info.get("cost_base", 10),
+                                    is_tree_unlock=info.get("is_tree_unlock", False)
+                                )
 
             elif game_state.state in ["VICTORY", "DEFEAT"]:
                 if event.type == pygame.MOUSEBUTTONDOWN or event.type == pygame.KEYDOWN:
@@ -105,38 +117,61 @@ def main():
                             selected_entities = [e for e in game_state.units + game_state.buildings if e.selected and e.owner_id == 0]
                             if selected_entities:
                                 first = selected_entities[0]
+                                upgrades = game_state.save_manager.data.get("upgrades", {})
                                 if hasattr(first, 'building_type') and first.trainable_units:
-                                    # Bouton d'entraînement d'unités
+                                    trainable = []
+                                    for u in first.trainable_units:
+                                        if u == "Archer" and not upgrades.get("archer_unlocked"):
+                                            continue
+                                        trainable.append(u)
+
                                     panel_x = 180
                                     btn_x = panel_x + 20
-                                    for u_type in first.trainable_units:
-                                        btn_rect = pygame.Rect(btn_x, config.SCREEN_HEIGHT - 100, 140, 40)
+                                    from src.entities.unit import UNIT_TYPES
+                                    for u_type in trainable:
+                                        btn_rect = pygame.Rect(btn_x, config.SCREEN_HEIGHT - 100, 160, 42)
                                         if btn_rect.collidepoint(event.pos):
-                                            cost = 100 if u_type in ["Infantry", "Swarmer"] else (120 if u_type in ["Archer", "Spitter"] else 50)
-                                            if game_state.deduct_resources(0, "gold", cost):
-                                                first.queue_unit(u_type, train_time=5)
-                                        btn_x += 150
+                                            u_data = UNIT_TYPES.get(u_type, {})
+                                            cost = u_data.get("cost", {"gold": 50})
+                                            if game_state.deduct_resources(0, cost):
+                                                first.queue_unit(u_type, train_time=u_data.get("train_time", 5))
+                                        btn_x += 170
 
                                 elif getattr(first, 'is_worker', False):
-                                    # Bouton de construction de bâtiment pour l'ouvrier
                                     panel_x = 180
-                                    btn_x = panel_x + 20
-                                    buildings_to_build = ["Barracks", "Tower"] if first.faction == config.FACTION_HUMAN else ["SpawningPool", "SpineCrawler"]
-                                    for b_type in buildings_to_build:
-                                        btn_rect = pygame.Rect(btn_x, config.SCREEN_HEIGHT - 110, 170, 45)
-                                        if btn_rect.collidepoint(event.pos):
-                                            b_data = config.BUILDING_TYPES.get(b_type, {})
-                                            cost = b_data.get("cost", 100)
-                                            res_t = b_data.get("res_type", "gold" if first.faction == config.FACTION_HUMAN else "biomass")
+                                    btn_x = panel_x + 10
+                                    if first.faction == config.FACTION_HUMAN:
+                                        buildings_to_build = ["Barracks"]
+                                        if upgrades.get("wall_unlocked"):
+                                            buildings_to_build.append("Wall")
+                                        if upgrades.get("tower_unlocked"):
+                                            buildings_to_build.append("Tower")
+                                        if upgrades.get("wood_stockpile_unlocked"):
+                                            buildings_to_build.append("WoodStockpile")
+                                        if upgrades.get("gold_stockpile_unlocked"):
+                                            buildings_to_build.append("GoldStockpile")
+                                        if upgrades.get("farm_unlocked"):
+                                            buildings_to_build.append("Farm")
+                                        if upgrades.get("townhall_unlocked"):
+                                            buildings_to_build.append("TownHall")
+                                    else:
+                                        buildings_to_build = ["SpawningPool", "SpineCrawler"]
 
-                                            # Emplacement de construction près de l'ouvrier
+                                    from src.entities.building import BUILDING_TYPES
+                                    for b_type in buildings_to_build:
+                                        btn_width = 125
+                                        btn_rect = pygame.Rect(btn_x, config.SCREEN_HEIGHT - 110, btn_width, 45)
+                                        if btn_rect.collidepoint(event.pos):
+                                            b_data = BUILDING_TYPES.get(b_type, {})
+                                            cost = b_data.get("cost", {})
+
                                             target_x = first.x + 50
                                             target_y = first.y + 50
                                             if game_state.can_place_building(b_type, target_x, target_y):
-                                                if game_state.deduct_resources(0, res_t, cost):
+                                                if game_state.deduct_resources(0, cost):
                                                     nb = Building(0, first.faction, b_type, target_x, target_y, is_constructed=False)
                                                     game_state.buildings.append(nb)
-                                        btn_x += 180
+                                        btn_x += btn_width + 8
 
                         else:
                             # Clic dans la zone de jeu
@@ -158,12 +193,15 @@ def main():
                             # Chercher si la cible est un ennemi ou un gisement de ressources
                             target_enemy = next((e for e in game_state.units + game_state.buildings if e.alive and e.owner_id != 0 and e.is_point_inside(world_click[0], world_click[1])), None)
                             target_res = next((r for r in game_state.resources if r.alive and r.is_point_inside(world_click[0], world_click[1])), None)
+                            target_farm = next((b for b in game_state.buildings if b.alive and getattr(b, 'building_type', None) == "Farm" and b.is_point_inside(world_click[0], world_click[1])), None)
 
                             for unit in selected_units:
                                 if target_enemy:
                                     unit.attack_target(target_enemy)
                                 elif target_res and unit.is_worker:
                                     unit.harvest_node(target_res)
+                                elif target_farm and unit.is_worker:
+                                    unit.harvest_node(target_farm)
                                 else:
                                     unit.move_to(world_click[0], world_click[1])
 

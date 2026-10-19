@@ -16,6 +16,8 @@ COLOR_HUMAN_PRIMARY = (30, 136, 229)
 COLOR_ALIEN_PRIMARY = (216, 27, 96)
 COLOR_RESOURCE_GOLD = (255, 215, 0)
 COLOR_RESOURCE_BIOMASS = (76, 175, 80)
+COLOR_RESOURCE_WOOD = (139, 69, 19)
+COLOR_RESOURCE_FOOD = (255, 165, 0)
 COLOR_UI_BG = (24, 28, 36)
 COLOR_UI_PANEL = (40, 44, 52)
 COLOR_UI_TEXT = (240, 240, 240)
@@ -40,6 +42,6 @@ DEFAULT_HARVEST_CAPACITY = 20
 
 
 # Meta-Progression (Points)
-POINT_TYPE_COMMAND = "Commandement"     # Arbre de compétences / Pouvoirs
-POINT_TYPE_FORGE = "Forge"             # Statstiques des unités
-POINT_TYPE_ARCHITECTURE = "Architecture" # Statistiques des bâtiments
+POINT_TYPE_COMMAND = "LandShard"         # Arbre de compétences / Déblocages
+POINT_TYPE_FORGE = "SwarmerBlood"        # Statistiques des troupes / workers
+POINT_TYPE_ARCHITECTURE = "Pykrite"      # Statistiques des bâtiments
