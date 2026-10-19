@@ -16,6 +16,10 @@ DEFAULT_SAVE_DATA = {
         "farm_unlocked": 0,
         "archer_unlocked": 0,
         "tower_unlocked": 0,
+        "tower_range_unlocked": 0,
+        "looting_unlocked": 0,
+        "extra_worker_start": 0,
+        "extra_melee_start": 0,
         "townhall_unlocked": 0,
 
         # SwarmerBlood (Stats Troupes / Workers)

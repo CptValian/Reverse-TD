@@ -63,5 +63,40 @@ class TestNewFeatures(unittest.TestCase):
         self.assertEqual(gs.player_age, 2)
         self.assertEqual(th.max_hp, int(initial_hp * 1.2))
 
+    def test_new_skill_tree_upgrades_and_rally_points(self):
+        # 1. Tower range bonus
+        tower_base = Building(0, config.FACTION_HUMAN, "Tower", 100, 100, range_bonus=0)
+        tower_upg = Building(0, config.FACTION_HUMAN, "Tower", 100, 100, range_bonus=20)
+        self.assertEqual(tower_upg.attack_range, tower_base.attack_range + 20)
+
+        # 2. Starting worker & melee extra
+        self.sm.data["upgrades"]["extra_worker_start"] = 1
+        self.sm.data["upgrades"]["extra_melee_start"] = 1
+        gs = GameState(self.sm)
+        gs.start_new_game()
+        player_workers = [u for u in gs.units if u.owner_id == 0 and u.unit_type == "Worker"]
+        player_infantry = [u for u in gs.units if u.owner_id == 0 and u.unit_type == "Infantry"]
+        self.assertEqual(len(player_workers), 4)  # 3 base + 1
+        self.assertEqual(len(player_infantry), 1)
+
+        # 3. Looting upgrade food reward
+        enemy_unit = Unit(1, config.FACTION_ALIEN, "Swarmer", 200, 200)
+        enemy_unit.alive = False
+        gs.units.append(enemy_unit)
+        self.sm.data["upgrades"]["looting_unlocked"] = 1
+        food_before = gs.resources_player[0]["food"]
+        gs.update(0.1)
+        self.assertEqual(gs.resources_player[0]["food"], food_before + 5)
+
+        # 4. Rally point on production building
+        barracks = Building(0, config.FACTION_HUMAN, "Barracks", 100, 100)
+        barracks.rally_point = (300, 300)
+        barracks.queue_unit("Infantry", train_time=0.05)
+        gs.buildings.append(barracks)
+        gs.update(0.1)
+        new_inf = next((u for u in gs.units if u.unit_type == "Infantry" and u.owner_id == 0 and u != player_infantry[0]), None)
+        self.assertIsNotNone(new_inf)
+        self.assertEqual(new_inf.target_pos, (300, 300))
+
 if __name__ == "__main__":
     unittest.main()

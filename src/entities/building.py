@@ -19,7 +19,7 @@ BUILDING_TYPES = {
 }
 
 class Building(BaseEntity):
-    def __init__(self, owner_id, faction, building_type, x, y, hp_bonus=0, armor_bonus=0, is_constructed=True):
+    def __init__(self, owner_id, faction, building_type, x, y, hp_bonus=0, armor_bonus=0, is_constructed=True, range_bonus=0):
         data = BUILDING_TYPES.get(building_type, {"cost": {"wood": 50}, "hp": 500, "radius": 35, "build_time": 10, "trainable": []})
         max_hp = data["hp"] + hp_bonus
         super().__init__(owner_id, faction, x, y, max_hp, radius=data["radius"])
@@ -28,7 +28,7 @@ class Building(BaseEntity):
         self.res_type = data.get("res_type", "gold" if faction == config.FACTION_HUMAN else "biomass")
         self.trainable_units = list(data.get("trainable", []))
         self.attack_power = data.get("attack_power", 0)
-        self.attack_range = data.get("range", 0)
+        self.attack_range = data.get("range", 0) + range_bonus
         self.attack_cooldown = 0
         self.armor = armor_bonus
         self.pop_bonus = data.get("pop_bonus", 0)
@@ -41,6 +41,10 @@ class Building(BaseEntity):
         # Garrisoning
         self.garrisoned_units = []  # liste d'unités de paysans abrités
         self.max_garrison = 10 if building_type == "TownHall" else 0
+
+        # Rally Point
+        self.rally_point = None  # (x, y) tuple
+        self.rally_target = None  # Target entity (e.g. ResourceNode)
 
         # File de production
         self.production_queue = []  # liste de dicts {"unit_type": str, "time_remaining": float, "total_time": float}

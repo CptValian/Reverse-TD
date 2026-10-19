@@ -52,18 +52,53 @@ class HUD:
         pygame.draw.rect(surface, config.COLOR_UI_PANEL, panel_rect)
         pygame.draw.rect(surface, config.COLOR_UI_ACCENT, panel_rect, 2)
 
-        selected_entities = [e for e in game_state.units + game_state.buildings if e.selected and e.owner_id == 0]
+        selected_entities = [e for e in game_state.units + game_state.buildings if e.selected]
         if selected_entities:
             first = selected_entities[0]
+            is_enemy = (first.owner_id != 0)
+
             name = getattr(first, 'unit_type', getattr(first, 'building_type', 'Entité'))
             status_extra = ""
             if hasattr(first, 'is_constructed') and not first.is_constructed:
                 pct = int((1.0 - first.build_timer / max(0.001, first.total_build_time)) * 100)
                 status_extra = f" [Under Construction: {pct}%]"
 
-            info_text = f"Selected: {name} (HP: {int(first.hp)}/{first.max_hp}){status_extra}"
-            img_info = self.font.render(info_text, True, config.COLOR_UI_TEXT)
+            owner_label = " [ENEMY]" if is_enemy else ""
+            info_text = f"Selected: {name}{owner_label} (HP: {int(first.hp)}/{first.max_hp}){status_extra}"
+            img_info = self.font.render(info_text, True, (255, 100, 100) if is_enemy else config.COLOR_UI_TEXT)
             surface.blit(img_info, (panel_rect.x + 20, panel_rect.y + 10))
+
+            # Helper for enemy descriptions & stats
+            if is_enemy:
+                if hasattr(first, 'building_type'):
+                    b_type = first.building_type
+                    b_funcs = {
+                        "Hive": "Main Base & Hatchery - Trains Drones and stores gathered biomass.",
+                        "SpawningPool": "Spawning Structure - Trains Swarmers and Spitter ranged troops.",
+                        "SpineCrawler": "Defensive Organism - Attacks ground targets entering its boundary.",
+                        "TownHall": "Main Base - Trains Peasants and stores resources.",
+                        "Barracks": "Military Facility - Trains Infantry and Archer units.",
+                        "Tower": "Watchtower - Shoots arrows at nearby enemy targets.",
+                        "Wall": "Fortification Wall - Blocks pathing and protects base.",
+                        "Farm": "Agriculture - Supplies food for units.",
+                        "WoodStockpile": "Resource Drop-off - Stores gathered wood.",
+                        "GoldStockpile": "Resource Drop-off - Stores gathered gold."
+                    }
+                    func_desc = b_funcs.get(b_type, "Enemy structure.")
+                    t_func = self.font.render(f"Function: {func_desc}", True, (255, 215, 0))
+                    surface.blit(t_func, (panel_rect.x + 20, panel_rect.y + 45))
+                else:
+                    # Enemy unit stats
+                    u_type = getattr(first, 'unit_type', 'Unit')
+                    atk = getattr(first, 'attack_power', 0)
+                    rng = getattr(first, 'attack_range', 0)
+                    spd = getattr(first, 'speed', 0)
+                    role = "Worker" if getattr(first, 'is_worker', False) else "Combat Unit"
+
+                    stats_txt = f"Role: {role} | Attack Power: {atk} | Attack Range: {rng} | Speed: {spd}"
+                    t_stats = self.font.render(stats_txt, True, (255, 215, 0))
+                    surface.blit(t_stats, (panel_rect.x + 20, panel_rect.y + 45))
+                return
 
             upgrades = game_state.save_manager.data.get("upgrades", {})
 

@@ -57,7 +57,8 @@ class Menu:
 
         start_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y, btn_width, btn_height)
         skill_tree_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y + btn_height + gap, btn_width, btn_height)
-        quit_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y + (btn_height + gap) * 2, btn_width, btn_height)
+        ai_info_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y + (btn_height + gap) * 2, btn_width, btn_height)
+        quit_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y + (btn_height + gap) * 3, btn_width, btn_height)
 
         def draw_button(rect, text, is_primary=False):
             mouse_p = pygame.mouse.get_pos()
@@ -73,34 +74,35 @@ class Menu:
 
         draw_button(start_btn, "LAUNCH GAME", is_primary=True)
         draw_button(skill_tree_btn, "SKILL TREE & UPGRADES")
+        draw_button(ai_info_btn, "AI TECHS & INFO")
         draw_button(quit_btn, "QUIT")
 
         # Game Setup Panel (AI & Difficulty Selector in English)
-        setup_rect = pygame.Rect(self.screen_width // 2 - 400, 540, 800, 180)
+        setup_rect = pygame.Rect(self.screen_width // 2 - 400, 600, 800, 180)
         pygame.draw.rect(surface, (24, 30, 42), setup_rect, border_radius=10)
         pygame.draw.rect(surface, (60, 75, 100), setup_rect, 2, border_radius=10)
 
         setup_title = self.btn_font.render("GAME SETUP & DIFFICULTY", True, config.COLOR_UI_ACCENT)
-        surface.blit(setup_title, (self.screen_width // 2 - setup_title.get_width() // 2, 555))
+        surface.blit(setup_title, (self.screen_width // 2 - setup_title.get_width() // 2, setup_rect.y + 15))
 
         # AI Count Selector Buttons
         ai_label = self.font.render("Enemy AI Opponents:", True, config.COLOR_UI_TEXT)
-        surface.blit(ai_label, (setup_rect.x + 40, 605))
+        surface.blit(ai_label, (setup_rect.x + 40, setup_rect.y + 65))
 
-        ai_minus_btn = pygame.Rect(setup_rect.x + 280, 600, 40, 35)
-        ai_plus_btn = pygame.Rect(setup_rect.x + 390, 600, 40, 35)
+        ai_minus_btn = pygame.Rect(setup_rect.x + 280, setup_rect.y + 60, 40, 35)
+        ai_plus_btn = pygame.Rect(setup_rect.x + 390, setup_rect.y + 60, 40, 35)
 
         draw_button(ai_minus_btn, "-")
         draw_button(ai_plus_btn, "+")
 
         ai_val_txt = self.btn_font.render(str(selected_ai_count), True, (255, 215, 0))
-        surface.blit(ai_val_txt, (setup_rect.x + 342, 602))
+        surface.blit(ai_val_txt, (setup_rect.x + 342, setup_rect.y + 62))
 
         # Difficulty Selector Cycle Button
         diff_label = self.font.render("AI Difficulty:", True, config.COLOR_UI_TEXT)
-        surface.blit(diff_label, (setup_rect.x + 40, 660))
+        surface.blit(diff_label, (setup_rect.x + 40, setup_rect.y + 120))
 
-        diff_btn = pygame.Rect(setup_rect.x + 280, 652, 280, 40)
+        diff_btn = pygame.Rect(setup_rect.x + 280, setup_rect.y + 112, 280, 40)
         draw_button(diff_btn, f"Level {selected_difficulty}")
 
         # Footer info
@@ -110,8 +112,60 @@ class Menu:
         return {
             "start": start_btn,
             "skill_tree": skill_tree_btn,
+            "ai_info": ai_info_btn,
             "quit": quit_btn,
             "ai_minus": ai_minus_btn,
             "ai_plus": ai_plus_btn,
             "difficulty": diff_btn
         }
+
+    def draw_ai_info_screen(self, surface):
+        surface.fill((18, 22, 32))
+
+        # Title
+        t_title = self.title_font.render("ENEMY AI MECHANICS & TECH TREES", True, (255, 215, 0))
+        surface.blit(t_title, (self.screen_width // 2 - t_title.get_width() // 2, 30))
+
+        # Overview
+        from src.ai.ai_tech import AI_DIFFICULTY_LEVELS
+
+        y = 100
+        for lvl, data in AI_DIFFICULTY_LEVELS.items():
+            card_rect = pygame.Rect(self.screen_width // 2 - 450, y, 900, 105)
+            pygame.draw.rect(surface, config.COLOR_UI_PANEL, card_rect, border_radius=8)
+            pygame.draw.rect(surface, config.COLOR_UI_ACCENT, card_rect, 1, border_radius=8)
+
+            # Lvl header
+            header_txt = f"LEVEL {lvl} AI"
+            t_head = self.btn_font.render(header_txt, True, (255, 215, 0))
+            surface.blit(t_head, (card_rect.x + 20, y + 10))
+
+            # Details
+            mult = data["resource_multiplier"]
+            wave_s = data["attack_wave_interval"]
+            m_army = data["max_army_size"]
+            m_work = data["max_workers"]
+            techs = ", ".join(data["unlocked_techs"])
+            hp_b = int(data["unit_hp_bonus"] * 100)
+            atk_b = int(data["unit_atk_bonus"] * 100)
+            defenses = "Yes" if data.get("can_build_defenses") else "No"
+
+            line1 = f"Resource Income: x{mult} | Attack Wave Interval: {wave_s}s | Max Workers: {m_work} | Max Army: {m_army}"
+            line2 = f"Unlocked Techs: [{techs}] | Defenses Built: {defenses} | Unit HP Bonus: +{hp_b}% | Unit Atk Bonus: +{atk_b}%"
+
+            t_l1 = self.small_font.render(line1, True, config.COLOR_UI_TEXT)
+            t_l2 = self.small_font.render(line2, True, (180, 200, 220))
+
+            surface.blit(t_l1, (card_rect.x + 20, y + 45))
+            surface.blit(t_l2, (card_rect.x + 20, y + 70))
+
+            y += 118
+
+        # Back Button
+        back_btn = pygame.Rect(self.screen_width // 2 - 120, self.screen_height - 65, 240, 45)
+        pygame.draw.rect(surface, config.COLOR_UI_PANEL, back_btn, border_radius=6)
+        pygame.draw.rect(surface, config.COLOR_UI_ACCENT, back_btn, 2, border_radius=6)
+        back_txt = self.btn_font.render("BACK TO MENU", True, config.COLOR_UI_TEXT)
+        surface.blit(back_txt, (back_btn.x + back_btn.width // 2 - back_txt.get_width() // 2, back_btn.y + 8))
+
+        return {"back": back_btn}
