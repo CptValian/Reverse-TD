@@ -3,15 +3,15 @@ from src.entities.base_entity import BaseEntity
 import config
 
 UNIT_TYPES = {
-    # Médiéval
-    "Worker": {"cost": {"food": 50}, "hp": 60, "speed": 120, "attack": 5, "range": 25, "is_worker": True, "radius": 12, "train_time": 4},
-    "Infantry": {"cost": {"food": 60, "gold": 40}, "hp": 150, "speed": 100, "attack": 18, "range": 30, "is_worker": False, "radius": 15, "train_time": 6},
-    "Archer": {"cost": {"food": 50, "wood": 50}, "hp": 90, "speed": 110, "attack": 14, "range": 180, "is_worker": False, "radius": 13, "train_time": 7},
+    # Medieval
+    "Worker": {"cost": {"food": 50}, "hp": 60, "speed": 100, "attack": 5, "range": 25, "is_worker": True, "radius": 12, "train_time": 10},
+    "Infantry": {"cost": {"food": 60, "gold": 40}, "hp": 150, "speed": 90, "attack": 18, "range": 30, "is_worker": False, "radius": 15, "train_time": 14},
+    "Archer": {"cost": {"food": 50, "wood": 50}, "hp": 90, "speed": 100, "attack": 14, "range": 180, "is_worker": False, "radius": 13, "train_time": 16},
 
     # Alien
-    "Drone": {"cost": {"biomass": 50}, "hp": 55, "speed": 130, "attack": 6, "range": 25, "is_worker": True, "radius": 12, "train_time": 3},
-    "Swarmer": {"cost": {"biomass": 60}, "hp": 100, "speed": 150, "attack": 15, "range": 25, "is_worker": False, "radius": 12, "train_time": 3},
-    "Spitter": {"cost": {"biomass": 130}, "hp": 80, "speed": 105, "attack": 16, "range": 170, "is_worker": False, "radius": 14, "train_time": 7}
+    "Drone": {"cost": {"biomass": 50}, "hp": 55, "speed": 105, "attack": 6, "range": 25, "is_worker": True, "radius": 12, "train_time": 9},
+    "Swarmer": {"cost": {"biomass": 60}, "hp": 100, "speed": 125, "attack": 15, "range": 25, "is_worker": False, "radius": 12, "train_time": 12},
+    "Spitter": {"cost": {"biomass": 130}, "hp": 80, "speed": 95, "attack": 16, "range": 170, "is_worker": False, "radius": 14, "train_time": 18}
 }
 
 class Unit(BaseEntity):

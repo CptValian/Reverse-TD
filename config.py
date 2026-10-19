@@ -1,7 +1,7 @@
 # Configuration globale du jeu RTS (Médiéval vs Alien Insecte)
 
-SCREEN_WIDTH = 1280
-SCREEN_HEIGHT = 720
+SCREEN_WIDTH = 1920
+SCREEN_HEIGHT = 1080
 FPS = 60
 
 # Thème / Factions
@@ -36,9 +36,9 @@ CAMERA_ZOOM_SPEED = 0.1
 EDGE_SCROLL_MARGIN = 20
 
 # Vitesse des unités et taux de collecte
-DEFAULT_UNIT_SPEED = 120
-DEFAULT_HARVEST_RATE = 5
-DEFAULT_HARVEST_CAPACITY = 20
+DEFAULT_UNIT_SPEED = 100
+DEFAULT_HARVEST_RATE = 2.0
+DEFAULT_HARVEST_CAPACITY = 15
 
 
 # Meta-Progression (Points)
