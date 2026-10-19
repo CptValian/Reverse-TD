@@ -10,7 +10,7 @@ from src.progression.save_manager import SaveManager
 from src.progression.rewards import Rewards
 
 class GameState:
-    def __init__(self, save_manager, num_ais=1, ai_difficulty="Très Facile"):
+    def __init__(self, save_manager, num_ais=1, ai_difficulty="Very Easy"):
         self.save_manager = save_manager
         self.num_ais = num_ais
         self.ai_difficulty = ai_difficulty

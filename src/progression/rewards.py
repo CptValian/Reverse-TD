@@ -2,11 +2,11 @@ import config
 
 class Rewards:
     DIFFICULTY_MULTIPLIER = {
-        "Très Facile": 1.0,
-        "Facile": 1.25,
-        "Moyen": 1.75,
-        "Difficile": 2.5,
-        "Extrême": 4.0
+        "Very Easy": 0.8,
+        "Easy": 1.0,
+        "Medium": 1.5,
+        "Hard": 2.2,
+        "Extreme": 3.5
     }
 
     @staticmethod

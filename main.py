@@ -54,6 +54,17 @@ def main():
                     elif buttons["skill_tree"].collidepoint(event.pos):
                         game_state.state = "SKILL_TREE"
 
+                    elif buttons.get("ai_minus") and buttons["ai_minus"].collidepoint(event.pos):
+                        game_state.num_ais = max(1, game_state.num_ais - 1)
+
+                    elif buttons.get("ai_plus") and buttons["ai_plus"].collidepoint(event.pos):
+                        game_state.num_ais = min(4, game_state.num_ais + 1)
+
+                    elif buttons.get("difficulty") and buttons["difficulty"].collidepoint(event.pos):
+                        diffs = ["Very Easy", "Easy", "Medium", "Hard", "Extreme"]
+                        curr_idx = diffs.index(game_state.ai_difficulty) if game_state.ai_difficulty in diffs else 0
+                        game_state.ai_difficulty = diffs[(curr_idx + 1) % len(diffs)]
+
                     elif buttons["quit"].collidepoint(event.pos):
                         running = False
 
@@ -285,17 +296,17 @@ def main():
 
         elif game_state.state == "VICTORY":
             screen.fill((20, 60, 20))
-            txt = menu.title_font.render("VICTOIRE GLORIEUSE !", True, (100, 255, 100))
-            screen.blit(txt, (config.SCREEN_WIDTH // 2 - txt.get_width() // 2, 300))
-            sub = menu.font.render("Points de progression obtenus. Clic pour continuer.", True, (255, 255, 255))
-            screen.blit(sub, (config.SCREEN_WIDTH // 2 - sub.get_width() // 2, 380))
+            txt = menu.title_font.render("GLORIOUS VICTORY!", True, (100, 255, 100))
+            screen.blit(txt, (config.SCREEN_WIDTH // 2 - txt.get_width() // 2, 400))
+            sub = menu.font.render("Progression reward points earned. Click to return to Menu.", True, (255, 255, 255))
+            screen.blit(sub, (config.SCREEN_WIDTH // 2 - sub.get_width() // 2, 480))
 
         elif game_state.state == "DEFEAT":
             screen.fill((60, 20, 20))
-            txt = menu.title_font.render("DÉFAITE...", True, (255, 100, 100))
-            screen.blit(txt, (config.SCREEN_WIDTH // 2 - txt.get_width() // 2, 300))
-            sub = menu.font.render("Vos défenses ont succombé. Clic pour continuer.", True, (255, 255, 255))
-            screen.blit(sub, (config.SCREEN_WIDTH // 2 - sub.get_width() // 2, 380))
+            txt = menu.title_font.render("DEFEAT...", True, (255, 100, 100))
+            screen.blit(txt, (config.SCREEN_WIDTH // 2 - txt.get_width() // 2, 400))
+            sub = menu.font.render("Your defenses have fallen. Click to return to Menu.", True, (255, 255, 255))
+            screen.blit(sub, (config.SCREEN_WIDTH // 2 - sub.get_width() // 2, 480))
 
         pygame.display.flip()
 

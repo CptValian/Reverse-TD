@@ -15,7 +15,7 @@ class HUD:
         pygame.draw.rect(surface, config.COLOR_UI_BG, top_bar)
         pygame.draw.line(surface, config.COLOR_UI_ACCENT, (0, 40), (self.screen_width, 40), 2)
 
-        res_text = f"Or: {int(player_res.get('gold', 0))} | Bois: {int(player_res.get('wood', 0))} | Nourriture: {int(player_res.get('food', 0))} | Bio: {int(player_res.get('biomass', 0))} | Unités: {game_state.get_unit_count(0)}"
+        res_text = f"Gold: {int(player_res.get('gold', 0))} | Wood: {int(player_res.get('wood', 0))} | Food: {int(player_res.get('food', 0))} | Biomass: {int(player_res.get('biomass', 0))} | Units: {game_state.get_unit_count(0)}"
         img_res = self.title_font.render(res_text, True, config.COLOR_UI_TEXT)
         surface.blit(img_res, (20, 8))
 
@@ -57,9 +57,9 @@ class HUD:
             status_extra = ""
             if hasattr(first, 'is_constructed') and not first.is_constructed:
                 pct = int((1.0 - first.build_timer / max(0.001, first.total_build_time)) * 100)
-                status_extra = f" [En construction: {pct}%]"
+                status_extra = f" [Under Construction: {pct}%]"
 
-            info_text = f"Sélection: {name} (PV: {int(first.hp)}/{first.max_hp}){status_extra}"
+            info_text = f"Selected: {name} (HP: {int(first.hp)}/{first.max_hp}){status_extra}"
             img_info = self.font.render(info_text, True, config.COLOR_UI_TEXT)
             surface.blit(img_info, (panel_rect.x + 20, panel_rect.y + 10))
 
@@ -68,7 +68,7 @@ class HUD:
             def format_cost_str(cost_obj):
                 if isinstance(cost_obj, dict):
                     parts = []
-                    name_map = {"gold": "Or", "wood": "Bois", "food": "Nourri", "biomass": "Bio"}
+                    name_map = {"gold": "Gold", "wood": "Wood", "food": "Food", "biomass": "Bio"}
                     for k, v in cost_obj.items():
                         parts.append(f"{v} {name_map.get(k, k)}")
                     return ", ".join(parts)
@@ -107,7 +107,7 @@ class HUD:
                 queue_x = panel_rect.x + 20
                 queue_y = panel_rect.y + 85
                 if first.production_queue:
-                    q_title = self.font.render("File d'attente:", True, config.COLOR_UI_TEXT)
+                    q_title = self.font.render("Queue:", True, config.COLOR_UI_TEXT)
                     surface.blit(q_title, (queue_x, queue_y))
                     qx = queue_x + 100
                     for idx, item in enumerate(first.production_queue[:5]):
@@ -161,7 +161,7 @@ class HUD:
                     pygame.draw.rect(surface, (60, 64, 72), btn_rect, border_radius=4)
                     pygame.draw.rect(surface, config.COLOR_UI_ACCENT, btn_rect, 1, border_radius=4)
 
-                    t_name = self.font.render(f"Bâtir {b_type}", True, config.COLOR_UI_TEXT)
+                    t_name = self.font.render(f"Build {b_type}", True, config.COLOR_UI_TEXT)
                     t_cost = self.font.render(cost_str, True, config.COLOR_UI_ACCENT)
                     surface.blit(t_name, (btn_x + 4, btn_y + 4))
                     surface.blit(t_cost, (btn_x + 4, btn_y + 24))

@@ -2,19 +2,19 @@ from src.entities.base_entity import BaseEntity
 import config
 
 BUILDING_TYPES = {
-    # Médiéval
-    "TownHall": {"cost": {"wood": 250, "gold": 300}, "hp": 1000, "radius": 45, "build_time": 15, "trainable": ["Worker"]},
-    "Barracks": {"cost": {"wood": 100, "gold": 50}, "hp": 500, "radius": 35, "build_time": 10, "trainable": ["Infantry", "Archer"]},
-    "Tower": {"cost": {"wood": 80, "gold": 40}, "hp": 400, "radius": 25, "build_time": 8, "attack_power": 15, "range": 200, "trainable": []},
-    "Wall": {"cost": {"wood": 30}, "hp": 250, "radius": 18, "build_time": 4, "trainable": []},
-    "WoodStockpile": {"cost": {"wood": 80}, "hp": 350, "radius": 25, "build_time": 6, "trainable": []},
-    "GoldStockpile": {"cost": {"wood": 80, "gold": 20}, "hp": 350, "radius": 25, "build_time": 6, "trainable": []},
-    "Farm": {"cost": {"wood": 100}, "hp": 300, "radius": 30, "build_time": 8, "trainable": []},
+    # Medieval
+    "TownHall": {"cost": {"wood": 250, "gold": 300}, "hp": 1000, "radius": 45, "build_time": 30, "trainable": ["Worker"]},
+    "Barracks": {"cost": {"wood": 100, "gold": 50}, "hp": 500, "radius": 35, "build_time": 20, "trainable": ["Infantry", "Archer"]},
+    "Tower": {"cost": {"wood": 80, "gold": 40}, "hp": 400, "radius": 25, "build_time": 16, "attack_power": 15, "range": 200, "trainable": []},
+    "Wall": {"cost": {"wood": 30}, "hp": 250, "radius": 18, "build_time": 8, "trainable": []},
+    "WoodStockpile": {"cost": {"wood": 80}, "hp": 350, "radius": 25, "build_time": 12, "trainable": []},
+    "GoldStockpile": {"cost": {"wood": 80, "gold": 20}, "hp": 350, "radius": 25, "build_time": 12, "trainable": []},
+    "Farm": {"cost": {"wood": 100}, "hp": 300, "radius": 30, "build_time": 15, "trainable": []},
 
     # Alien
-    "Hive": {"cost": {"biomass": 400}, "hp": 1000, "radius": 45, "build_time": 15, "trainable": ["Drone"]},
-    "SpawningPool": {"cost": {"biomass": 150}, "hp": 500, "radius": 35, "build_time": 10, "trainable": ["Swarmer", "Spitter"]},
-    "SpineCrawler": {"cost": {"biomass": 100}, "hp": 400, "radius": 25, "build_time": 8, "attack_power": 18, "range": 180, "trainable": []}
+    "Hive": {"cost": {"biomass": 400}, "hp": 1000, "radius": 45, "build_time": 30, "trainable": ["Drone"]},
+    "SpawningPool": {"cost": {"biomass": 150}, "hp": 500, "radius": 35, "build_time": 20, "trainable": ["Swarmer", "Spitter"]},
+    "SpineCrawler": {"cost": {"biomass": 100}, "hp": 400, "radius": 25, "build_time": 16, "attack_power": 18, "range": 180, "trainable": []}
 }
 
 class Building(BaseEntity):

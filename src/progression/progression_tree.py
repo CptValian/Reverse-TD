@@ -15,7 +15,7 @@ class ProgressionUI:
     def draw(self, surface):
         surface.fill(config.COLOR_BG)
 
-        title = self.title_font.render("CENTRE D'AMÉLIORATIONS & ARBRE DE COMPÉTENCES", True, config.COLOR_UI_ACCENT)
+        title = self.title_font.render("UPGRADE CENTER & SKILL TREE", True, config.COLOR_UI_ACCENT)
         surface.blit(title, (self.screen_width // 2 - title.get_width() // 2, 20))
 
         # Display points
@@ -30,9 +30,9 @@ class ProgressionUI:
 
         buttons = {}
 
-        # Onglets / Tabs
-        tab_w = 260
-        tab_h = 38
+        # Tabs
+        tab_w = 300
+        tab_h = 42
         tab_y = 90
         start_x = self.screen_width // 2 - (tab_w * 3 + 20) // 2
 
@@ -46,11 +46,11 @@ class ProgressionUI:
             pygame.draw.rect(surface, bg_col, rect, border_radius=6)
             pygame.draw.rect(surface, border_col, rect, 2, border_radius=6)
             t_surf = self.bold_font.render(label, True, config.COLOR_UI_TEXT if is_active else (180, 180, 180))
-            surface.blit(t_surf, (rect.x + rect.width // 2 - t_surf.get_width() // 2, rect.y + 8))
+            surface.blit(t_surf, (rect.x + rect.width // 2 - t_surf.get_width() // 2, rect.y + 10))
 
-        draw_tab(tab_tree_rect, "1. Arbre de Compétences", self.active_tab == "skill_tree")
-        draw_tab(tab_troops_rect, "2. Troupes (SwarmerBlood)", self.active_tab == "troops")
-        draw_tab(tab_bld_rect, "3. Bâtiments (Pykrite)", self.active_tab == "buildings")
+        draw_tab(tab_tree_rect, "1. Tech Tree (LandShard)", self.active_tab == "skill_tree")
+        draw_tab(tab_troops_rect, "2. Troops (SwarmerBlood)", self.active_tab == "troops")
+        draw_tab(tab_bld_rect, "3. Buildings (Pykrite)", self.active_tab == "buildings")
 
         buttons["tab_tree"] = tab_tree_rect
         buttons["tab_troops"] = tab_troops_rect
@@ -67,11 +67,11 @@ class ProgressionUI:
             self._draw_buildings_tab(surface, buttons, upg_data, py_pts)
 
         # Back Button
-        back_btn = pygame.Rect(self.screen_width // 2 - 100, self.screen_height - 60, 200, 42)
+        back_btn = pygame.Rect(self.screen_width // 2 - 120, self.screen_height - 65, 240, 45)
         pygame.draw.rect(surface, config.COLOR_UI_PANEL, back_btn, border_radius=6)
         pygame.draw.rect(surface, config.COLOR_UI_ACCENT, back_btn, 2, border_radius=6)
-        back_txt = self.bold_font.render("RETOUR", True, config.COLOR_UI_TEXT)
-        surface.blit(back_txt, (back_btn.x + back_btn.width // 2 - back_txt.get_width() // 2, back_btn.y + 10))
+        back_txt = self.bold_font.render("BACK TO MENU", True, config.COLOR_UI_TEXT)
+        surface.blit(back_txt, (back_btn.x + back_btn.width // 2 - back_txt.get_width() // 2, back_btn.y + 12))
         buttons["back"] = back_btn
 
         return buttons
@@ -80,67 +80,67 @@ class ProgressionUI:
         nodes = [
             {
                 "key": "starting_res_1",
-                "name": "Ressources Départ 1",
-                "desc": "+100 ressources au départ",
+                "name": "Starting Cache I",
+                "desc": "+100 Starting Resources",
                 "cost": 20,
                 "parents": [],
-                "pos": (250, 200)
+                "pos": (450, 240)
             },
             {
                 "key": "wood_stockpile_unlocked",
-                "name": "Stock de bois",
-                "desc": "Dépôt de bois pour ouvriers",
+                "name": "Lumber Stockpile",
+                "desc": "Drop-off for Wood Workers",
                 "cost": 20,
                 "parents": [],
-                "pos": (640, 200)
+                "pos": (960, 240)
             },
             {
                 "key": "gold_stockpile_unlocked",
-                "name": "Stock d'or",
-                "desc": "Dépôt d'or pour ouvriers",
+                "name": "Gold Stockpile",
+                "desc": "Drop-off for Gold Workers",
                 "cost": 20,
                 "parents": [],
-                "pos": (1030, 200)
+                "pos": (1470, 240)
             },
             {
                 "key": "archer_unlocked",
-                "name": "Débloquer Archer",
-                "desc": "Entraîner Archers à la Caserne",
+                "name": "Unlock Archers",
+                "desc": "Train Archers in Barracks",
                 "cost": 30,
                 "parents": ["starting_res_1"],
-                "pos": (250, 360)
+                "pos": (450, 440)
             },
             {
                 "key": "wall_unlocked",
-                "name": "Murs en bois",
-                "desc": "Construire des murs en bois",
+                "name": "Wooden Walls",
+                "desc": "Build Defensive Wooden Walls",
                 "cost": 25,
                 "parents": ["wood_stockpile_unlocked"],
-                "pos": (520, 360)
+                "pos": (780, 440)
             },
             {
                 "key": "farm_unlocked",
-                "name": "Ferme",
-                "desc": "Production passive de nourriture",
+                "name": "Farms & Grain",
+                "desc": "Harvest Food for Troops",
                 "cost": 25,
                 "parents": ["wood_stockpile_unlocked"],
-                "pos": (760, 360)
+                "pos": (1140, 440)
             },
             {
                 "key": "tower_unlocked",
-                "name": "Tour d'archer",
-                "desc": "Construire tours de défense",
+                "name": "Watchtower",
+                "desc": "Build Defending Watchtowers",
                 "cost": 35,
                 "parents": ["archer_unlocked", "wall_unlocked"],
-                "pos": (385, 510)
+                "pos": (615, 640)
             },
             {
                 "key": "townhall_unlocked",
-                "name": "Autre Forum",
-                "desc": "Construire un autre Forum",
+                "name": "Secondary Keep",
+                "desc": "Build Additional Town Halls",
                 "cost": 40,
                 "parents": ["farm_unlocked", "gold_stockpile_unlocked"],
-                "pos": (895, 510)
+                "pos": (1305, 640)
             }
         ]
 
@@ -177,17 +177,17 @@ class ProgressionUI:
             if is_unlocked:
                 bg_col = (25, 50, 35)
                 border_col = (76, 175, 80)
-                status_txt = "DÉBLOQUÉ"
+                status_txt = "UNLOCKED"
                 status_col = (100, 255, 100)
             elif parents_unlocked:
                 bg_col = config.COLOR_UI_PANEL
                 border_col = config.COLOR_UI_ACCENT
-                status_txt = f"Coût: {n['cost']} LandShard"
+                status_txt = f"Cost: {n['cost']} LandShard"
                 status_col = config.COLOR_UI_ACCENT
             else:
                 bg_col = (30, 32, 38)
                 border_col = (70, 70, 75)
-                status_txt = "VERROUILLÉ"
+                status_txt = "LOCKED"
                 status_col = (120, 120, 120)
 
             pygame.draw.rect(surface, bg_col, card_rect, border_radius=6)
@@ -215,41 +215,40 @@ class ProgressionUI:
 
     def _draw_troops_tab(self, surface, buttons, upg_data, points):
         available_upgrades = [
-            # Worker (Toujours débloqué)
-            {"key": "worker_hp_lvl", "unit": "Ouvrier", "name": "PV Ouvrier (+15%)", "cost_base": 10},
-            {"key": "worker_speed_lvl", "unit": "Ouvrier", "name": "Vitesse Ouvrier (+10%)", "cost_base": 12},
+            # Worker
+            {"key": "worker_hp_lvl", "unit": "Worker", "name": "Peasant Worker HP (+15%)", "cost_base": 10},
+            {"key": "worker_speed_lvl", "unit": "Worker", "name": "Peasant Worker Movement (+10%)", "cost_base": 12},
 
-            # Infantry (Toujours débloqué)
-            {"key": "infantry_hp_lvl", "unit": "Soldat CàC", "name": "PV Soldat CàC (+10%)", "cost_base": 12},
-            {"key": "infantry_attack_lvl", "unit": "Soldat CàC", "name": "Attaque Soldat CàC (+10%)", "cost_base": 15},
+            # Infantry
+            {"key": "infantry_hp_lvl", "unit": "Infantry", "name": "Footman Soldier HP (+10%)", "cost_base": 12},
+            {"key": "infantry_attack_lvl", "unit": "Infantry", "name": "Footman Attack Power (+10%)", "cost_base": 15},
         ]
 
-        # Archer (Uniquement si débloqué)
+        # Archer
         if upg_data.get("archer_unlocked"):
-            available_upgrades.append({"key": "archer_hp_lvl", "unit": "Archer", "name": "PV Archer (+10%)", "cost_base": 15})
-            available_upgrades.append({"key": "archer_attack_lvl", "unit": "Archer", "name": "Attaque Archer (+10%)", "cost_base": 18})
+            available_upgrades.append({"key": "archer_hp_lvl", "unit": "Archer", "name": "Archer HP (+10%)", "cost_base": 15})
+            available_upgrades.append({"key": "archer_attack_lvl", "unit": "Archer", "name": "Archer Attack Damage (+10%)", "cost_base": 18})
 
         self._render_upgrade_list(surface, buttons, available_upgrades, "SwarmerBlood", upg_data)
 
     def _draw_buildings_tab(self, surface, buttons, upg_data, points):
         available_upgrades = [
-            # TownHall & Barracks (Débloqués par défaut)
-            {"key": "townhall_hp_lvl", "bld": "Forum Base", "name": "PV Forum Principal (+15%)", "cost_base": 15},
-            {"key": "barracks_hp_lvl", "bld": "Caserne", "name": "PV Caserne (+15%)", "cost_base": 12},
+            {"key": "townhall_hp_lvl", "bld": "TownHall", "name": "Town Hall Keep Durability (+15%)", "cost_base": 15},
+            {"key": "barracks_hp_lvl", "bld": "Barracks", "name": "Barracks Fortification (+15%)", "cost_base": 12},
         ]
 
         if upg_data.get("wall_unlocked"):
-            available_upgrades.append({"key": "wall_hp_lvl", "bld": "Murs en bois", "name": "PV Murs (+20%)", "cost_base": 10})
+            available_upgrades.append({"key": "wall_hp_lvl", "bld": "Wall", "name": "Wooden Wall Health (+20%)", "cost_base": 10})
 
         if upg_data.get("tower_unlocked"):
-            available_upgrades.append({"key": "tower_hp_lvl", "bld": "Tour d'archer", "name": "PV Tour (+15%)", "cost_base": 15})
-            available_upgrades.append({"key": "tower_attack_lvl", "bld": "Tour d'archer", "name": "Attaque Tour (+10%)", "cost_base": 20})
+            available_upgrades.append({"key": "tower_hp_lvl", "bld": "Tower", "name": "Watchtower Health (+15%)", "cost_base": 15})
+            available_upgrades.append({"key": "tower_attack_lvl", "bld": "Tower", "name": "Watchtower Arrow Damage (+10%)", "cost_base": 20})
 
         if upg_data.get("farm_unlocked"):
-            available_upgrades.append({"key": "farm_hp_lvl", "bld": "Ferme", "name": "PV Ferme (+15%)", "cost_base": 10})
+            available_upgrades.append({"key": "farm_hp_lvl", "bld": "Farm", "name": "Farm Structure HP (+15%)", "cost_base": 10})
 
         if upg_data.get("wood_stockpile_unlocked") or upg_data.get("gold_stockpile_unlocked"):
-            available_upgrades.append({"key": "stockpile_hp_lvl", "bld": "Stocks", "name": "PV Stocks (+15%)", "cost_base": 10})
+            available_upgrades.append({"key": "stockpile_hp_lvl", "bld": "Stockpiles", "name": "Stockpile Reinforced Walls (+15%)", "cost_base": 10})
 
         self._render_upgrade_list(surface, buttons, available_upgrades, "Pykrite", upg_data)
 
@@ -276,7 +275,7 @@ class ProgressionUI:
             pygame.draw.rect(surface, (50, 70, 95), btn_rect, border_radius=4)
             pygame.draw.rect(surface, config.COLOR_UI_ACCENT, btn_rect, 1, border_radius=4)
 
-            btn_txt = self.font.render(f"+1 (Coût: {cost})", True, config.COLOR_UI_TEXT)
+            btn_txt = self.font.render(f"+1 (Cost: {cost})", True, config.COLOR_UI_TEXT)
             surface.blit(btn_txt, (btn_rect.x + btn_rect.width // 2 - btn_txt.get_width() // 2, btn_rect.y + 8))
 
             buttons[key] = {
