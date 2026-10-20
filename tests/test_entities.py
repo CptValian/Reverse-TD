@@ -68,12 +68,16 @@ class TestEntities(unittest.TestCase):
         gs.units.append(worker)
 
         worker.harvest_node(farm)
-        # Ticks de récolte
-        for _ in range(50):
-            worker.update(0.1, gs)
+        # Worker should enter inside the farm
+        worker.update(0.1, gs)
+        self.assertIn(worker, farm.garrisoned_units)
+        self.assertFalse(worker.alive)
 
-        self.assertGreater(worker.carried_resource, 0)
-        self.assertEqual(worker.resource_type, "food")
+        # Ticks of farm operation
+        for _ in range(50):
+            farm.update(0.1, gs)
+
+        self.assertGreater(gs.resources_player[0]["food"], 0)
 
 if __name__ == '__main__':
     unittest.main()

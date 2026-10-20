@@ -200,22 +200,32 @@ def main():
 
                             if selected_units:
                                 upgrades = game_state.save_manager.data.get("upgrades", {})
+                                is_shift_held = bool(pygame.key.get_mods() & pygame.KMOD_SHIFT)
+
                                 for unit in selected_units:
                                     if target_enemy:
-                                        unit.attack_target(target_enemy)
+                                        cmd = {"type": "attack", "target": target_enemy}
                                     elif target_unconstructed and unit.is_worker:
-                                        unit.construct_building(target_unconstructed)
+                                        cmd = {"type": "construct", "target": target_unconstructed}
                                     elif target_damaged_bld and unit.is_worker and upgrades.get("building_repair_unlocked"):
-                                        unit.repair_building(target_damaged_bld)
+                                        cmd = {"type": "repair", "target": target_damaged_bld}
                                     elif target_res and unit.is_worker:
-                                        unit.harvest_node(target_res)
+                                        cmd = {"type": "harvest", "target": target_res}
                                     elif target_farm and unit.is_worker:
-                                        unit.harvest_node(target_farm)
+                                        cmd = {"type": "harvest", "target": target_farm}
                                     elif target_th and unit.is_worker and upgrades.get("garrison_unlocked"):
-                                        if target_th.garrison_unit(unit):
-                                            pass
+                                        cmd = {"type": "garrison", "target": target_th}
                                     else:
-                                        unit.move_to(world_click[0], world_click[1])
+                                        cmd = {"type": "move", "pos": (world_click[0], world_click[1])}
+
+                                    if is_shift_held:
+                                        unit.command_queue.append(cmd)
+                                        if unit.state == "idle":
+                                            unit.pop_next_command(game_state)
+                                    else:
+                                        unit.command_queue.clear()
+                                        unit.command_queue.append(cmd)
+                                        unit.pop_next_command(game_state)
 
                             elif selected_buildings:
                                 # Définir le point de ralliement (Rally Point) pour les bâtiments de production
@@ -262,6 +272,7 @@ def main():
                                         wall_angle = math.atan2(dy, dx)
 
                                         if game_state.deduct_resources(0, total_wall_cost):
+                                            created_wall_segs = []
                                             for step_i in range(num_segs):
                                                 r1 = step_i / float(num_segs)
                                                 r2 = (step_i + 1) / float(num_segs)
@@ -283,6 +294,18 @@ def main():
                                                         wall_angle=wall_angle
                                                     )
                                                     game_state.buildings.append(nb)
+                                                    created_wall_segs.append(nb)
+
+                                            # Automatically queue construction of all wall segments in sequence
+                                            selected_workers = [u for u in game_state.units if u.selected and u.owner_id == 0 and u.is_worker]
+                                            is_shift_held = bool(pygame.key.get_mods() & pygame.KMOD_SHIFT)
+                                            for w in selected_workers:
+                                                if not is_shift_held:
+                                                    w.command_queue.clear()
+                                                for seg in created_wall_segs:
+                                                    w.command_queue.append({"type": "construct", "target": seg})
+                                                if w.state == "idle":
+                                                    w.pop_next_command(game_state)
 
                                     placement_building_type = None
                                     wall_start_node = None
@@ -306,8 +329,17 @@ def main():
 
                                         # Automatically send selected worker(s) to construct the new building
                                         selected_workers = [u for u in game_state.units if u.selected and u.owner_id == 0 and u.is_worker]
+                                        is_shift_held = bool(pygame.key.get_mods() & pygame.KMOD_SHIFT)
                                         for w in selected_workers:
-                                            w.construct_building(nb)
+                                            cmd = {"type": "construct", "target": nb}
+                                            if is_shift_held:
+                                                w.command_queue.append(cmd)
+                                                if w.state == "idle":
+                                                    w.pop_next_command(game_state)
+                                            else:
+                                                w.command_queue.clear()
+                                                w.command_queue.append(cmd)
+                                                w.pop_next_command(game_state)
 
                                         placement_building_type = None
 
@@ -330,25 +362,31 @@ def main():
                                 first = selected_entities[0]
                                 upgrades = game_state.save_manager.data.get("upgrades", {})
 
-                                if getattr(first, 'building_type', None) == "TownHall":
+                                b_type = getattr(first, 'building_type', None)
+                                if b_type in ["TownHall", "Farm"]:
                                     minimap_size = 150
                                     panel_x = minimap_size + 30
                                     panel_y = config.SCREEN_HEIGHT - 150
 
-                                    if upgrades.get("garrison_unlocked"):
-                                        ungarr_btn = pygame.Rect(panel_x + 460, panel_y + 8, 80, 26)
+                                    if b_type == "TownHall":
+                                        if upgrades.get("garrison_unlocked"):
+                                            ungarr_btn = pygame.Rect(panel_x + 460, panel_y + 8, 80, 26)
+                                            if ungarr_btn.collidepoint(event.pos):
+                                                first.ungarrison_all(game_state)
+
+                                        next_age = game_state.player_age + 1
+                                        if upgrades.get(f"ageing_up_{next_age}"):
+                                            age_btn = pygame.Rect(panel_x + 550, panel_y + 8, 220, 32)
+                                            if age_btn.collidepoint(event.pos):
+                                                cost_wood = 200 * next_age
+                                                cost_gold = 200 * next_age
+                                                req = {"wood": cost_wood, "gold": cost_gold}
+                                                if game_state.deduct_resources(0, req):
+                                                    game_state.age_up(0)
+                                    elif b_type == "Farm":
+                                        ungarr_btn = pygame.Rect(panel_x + 360, panel_y + 36, 90, 26)
                                         if ungarr_btn.collidepoint(event.pos):
                                             first.ungarrison_all(game_state)
-
-                                    next_age = game_state.player_age + 1
-                                    if upgrades.get(f"ageing_up_{next_age}"):
-                                        age_btn = pygame.Rect(panel_x + 550, panel_y + 8, 220, 32)
-                                        if age_btn.collidepoint(event.pos):
-                                            cost_wood = 200 * next_age
-                                            cost_gold = 200 * next_age
-                                            req = {"wood": cost_wood, "gold": cost_gold}
-                                            if game_state.deduct_resources(0, req):
-                                                game_state.age_up(0)
 
                                 if hasattr(first, 'building_type') and first.trainable_units:
                                     trainable = []
@@ -386,6 +424,8 @@ def main():
                                             buildings_to_build.append("WoodStockpile")
                                         if upgrades.get("gold_stockpile_unlocked"):
                                             buildings_to_build.append("GoldStockpile")
+                                        if upgrades.get("food_stockpile_unlocked"):
+                                            buildings_to_build.append("FoodStockpile")
                                         if upgrades.get("house_unlocked"):
                                             buildings_to_build.append("House")
                                         if upgrades.get("farm_unlocked"):

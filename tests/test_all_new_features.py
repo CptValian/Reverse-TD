@@ -90,5 +90,48 @@ class TestNewFeatures(unittest.TestCase):
 
         self.assertGreater(bld.hp, 200)
 
+    def test_building_construction_hp_progression(self):
+        bld = Building(0, config.FACTION_HUMAN, "Barracks", 100, 100, is_constructed=False)
+        self.assertEqual(bld.hp, int(bld.max_hp * 0.10))
+
+        # Advance construction
+        bld.build_progress(bld.total_build_time * 0.5)
+        self.assertGreater(bld.hp, int(bld.max_hp * 0.10))
+
+        bld.build_progress(bld.total_build_time * 0.6)
+        self.assertEqual(bld.hp, bld.max_hp)
+        self.assertTrue(bld.is_constructed)
+
+    def test_moulin_food_stockpile(self):
+        moulin = Building(0, config.FACTION_HUMAN, "FoodStockpile", 200, 200)
+        self.assertEqual(moulin.building_type, "FoodStockpile")
+
+        worker = Unit(0, config.FACTION_HUMAN, "Worker", 200, 200)
+        worker.carried_resource = 10
+        worker.resource_type = "food"
+
+        deposit = worker._find_nearest_deposit(self.game_state)
+        self.game_state.buildings.append(moulin)
+        deposit = worker._find_nearest_deposit(self.game_state)
+        self.assertEqual(deposit, moulin)
+
+    def test_command_queueing_and_alien_swarmer_morph(self):
+        swarmer = Unit(1, config.FACTION_ALIEN, "Swarmer", 300, 300)
+        pool = Building(1, config.FACTION_ALIEN, "SpawningPool", 300, 300, is_constructed=False)
+
+        swarmer.command_queue.append({"type": "construct", "target": pool})
+        swarmer.pop_next_command(self.game_state)
+
+        swarmer.update(0.1, self.game_state)
+        # Swarmer morphs (dies) and advances building construction
+        self.assertFalse(swarmer.alive)
+        self.assertGreater(pool.hp, int(pool.max_hp * 0.10))
+
+    def test_pathfinding_grid(self):
+        from src.engine.pathfinding import PathfindingGrid
+        grid = PathfindingGrid()
+        path = grid.find_path((100, 100), (500, 500), self.game_state)
+        self.assertTrue(len(path) >= 1)
+
 if __name__ == '__main__':
     unittest.main()

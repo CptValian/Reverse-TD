@@ -32,6 +32,8 @@ class Unit(BaseEntity):
         self.state = "idle"
         self.target_pos = None
         self.target_entity = None
+        self.path_waypoints = []
+        self.command_queue = []
         self.attack_cooldown = 0
         self.carried_resource = 0
         self.resource_type = None
@@ -43,43 +45,83 @@ class Unit(BaseEntity):
         self.attack_move_mode = False
         self.facing_angle = 0.0
 
-    def move_to(self, target_x, target_y):
+    def calculate_path(self, target_x, target_y, game_state):
+        if game_state:
+            from src.engine.pathfinding import PathfindingGrid
+            grid = PathfindingGrid()
+            self.path_waypoints = grid.find_path((self.x, self.y), (target_x, target_y), game_state, ignore_entity=self.target_entity)
+        else:
+            self.path_waypoints = [(target_x, target_y)]
+
+    def move_to(self, target_x, target_y, game_state=None):
         self.target_pos = (target_x, target_y)
         self.target_entity = None
         self.state = "move"
         self.attack_move_mode = False
+        self.calculate_path(target_x, target_y, game_state)
 
-    def attack_move_to(self, target_x, target_y):
+    def attack_move_to(self, target_x, target_y, game_state=None):
         self.target_pos = (target_x, target_y)
         self.target_entity = None
         self.state = "move"
         self.attack_move_mode = True
+        self.calculate_path(target_x, target_y, game_state)
 
-    def attack_target(self, target):
+    def attack_target(self, target, game_state=None):
         self.target_entity = target
         self.state = "attack"
         self.attack_move_mode = False
+        if target:
+            self.calculate_path(target.x, target.y, game_state)
 
-    def construct_building(self, building):
-        if not self.is_worker:
+    def construct_building(self, building, game_state=None):
+        if not self.is_worker and self.unit_type != "Swarmer":
             return
         self.target_entity = building
         self.state = "construct"
         self.attack_move_mode = False
+        if building:
+            self.calculate_path(building.x, building.y, game_state)
 
-    def repair_building(self, building):
+    def repair_building(self, building, game_state=None):
         if not self.is_worker:
             return
         self.target_entity = building
         self.state = "repair"
         self.attack_move_mode = False
+        if building:
+            self.calculate_path(building.x, building.y, game_state)
 
-    def harvest_node(self, node):
+    def harvest_node(self, node, game_state=None):
         if not self.is_worker:
             return
         self.target_entity = node
         self.state = "harvest"
         self.attack_move_mode = False
+        if node:
+            self.calculate_path(node.x, node.y, game_state)
+
+    def pop_next_command(self, game_state):
+        if self.command_queue:
+            cmd = self.command_queue.pop(0)
+            c_type = cmd.get("type")
+            if c_type == "move":
+                self.move_to(cmd["pos"][0], cmd["pos"][1], game_state)
+            elif c_type == "attack" and cmd.get("target") and cmd["target"].alive:
+                self.attack_target(cmd["target"], game_state)
+            elif c_type == "construct" and cmd.get("target") and cmd["target"].alive:
+                self.construct_building(cmd["target"], game_state)
+            elif c_type == "repair" and cmd.get("target") and cmd["target"].alive:
+                self.repair_building(cmd["target"], game_state)
+            elif c_type == "harvest" and cmd.get("target") and getattr(cmd["target"], "alive", True):
+                self.harvest_node(cmd["target"], game_state)
+            elif c_type == "garrison" and cmd.get("target") and cmd["target"].alive:
+                if self.distance_to(cmd["target"]) <= self.radius + cmd["target"].radius + 15:
+                    cmd["target"].garrison_unit(self)
+                else:
+                    self.move_to(cmd["target"].x, cmd["target"].y, game_state)
+            else:
+                self.pop_next_command(game_state)
 
     def update(self, dt, game_state):
         if not self.alive:
@@ -130,36 +172,94 @@ class Unit(BaseEntity):
                     nearest_enemy = e
         return nearest_enemy
 
-    def _process_movement(self, dt):
-        if not self.target_pos:
-            self.state = "idle"
-            self.attack_move_mode = False
-            return
-
-        tx, ty = self.target_pos
+    def _move_towards(self, tx, ty, dt, game_state=None):
         dist = math.hypot(tx - self.x, ty - self.y)
         if dist < 5:
             self.x, self.y = tx, ty
-            self.target_pos = None
+            return True
+
+        dir_x = (tx - self.x) / dist
+        dir_y = (ty - self.y) / dist
+        self.facing_angle = math.atan2(dir_y, dir_x)
+
+        step_x = dir_x * self.speed * dt
+        step_y = dir_y * self.speed * dt
+
+        if game_state:
+            next_x = self.x + step_x
+            next_y = self.y + step_y
+
+            collides = False
+            for b in game_state.buildings:
+                if not b.alive or b == self.target_entity:
+                    continue
+                min_dist = self.radius + b.radius
+                if (next_x - b.x)**2 + (next_y - b.y)**2 < min_dist * min_dist:
+                    collides = True
+                    break
+
+            if collides:
+                collides_x = False
+                for b in game_state.buildings:
+                    if not b.alive or b == self.target_entity:
+                        continue
+                    if (self.x + step_x - b.x)**2 + (self.y - b.y)**2 < (self.radius + b.radius)**2:
+                        collides_x = True; break
+
+                collides_y = False
+                for b in game_state.buildings:
+                    if not b.alive or b == self.target_entity:
+                        continue
+                    if (self.x - b.x)**2 + (self.y + step_y - b.y)**2 < (self.radius + b.radius)**2:
+                        collides_y = True; break
+
+                if not collides_x:
+                    self.x += step_x
+                elif not collides_y:
+                    self.y += step_y
+                else:
+                    self.x += step_x
+                    self.y += step_y
+            else:
+                self.x = next_x
+                self.y = next_y
+        else:
+            self.x += step_x
+            self.y += step_y
+
+        return False
+
+    def _process_movement(self, dt, game_state=None):
+        if not self.target_pos and not self.path_waypoints:
             self.state = "idle"
             self.attack_move_mode = False
-        else:
-            dir_x = (tx - self.x) / dist
-            dir_y = (ty - self.y) / dist
-            self.facing_angle = math.atan2(dir_y, dir_x)
-            self.x += dir_x * self.speed * dt
-            self.y += dir_y * self.speed * dt
+            self.pop_next_command(game_state)
+            return
+
+        target_wp = self.path_waypoints[0] if self.path_waypoints else self.target_pos
+        reached = self._move_towards(target_wp[0], target_wp[1], dt, game_state)
+
+        if reached:
+            if self.path_waypoints:
+                self.path_waypoints.pop(0)
+            if not self.path_waypoints:
+                self.target_pos = None
+                self.state = "idle"
+                self.attack_move_mode = False
+                self.pop_next_command(game_state)
 
     def _process_construct(self, dt, game_state):
         if not self.target_entity or not getattr(self.target_entity, 'alive', True):
             self.target_entity = None
             self.state = "idle"
+            self.pop_next_command(game_state)
             return
 
         bld = self.target_entity
         if getattr(bld, 'is_constructed', True):
             self.target_entity = None
             self.state = "idle"
+            self.pop_next_command(game_state)
             return
 
         dist = self.distance_to(bld)
@@ -170,25 +270,29 @@ class Unit(BaseEntity):
 
         if dist > self.radius + bld.radius + 15:
             # Move towards unconstructed building
-            dir_x = dx / dist
-            dir_y = dy / dist
-            self.x += dir_x * self.speed * dt
-            self.y += dir_y * self.speed * dt
+            self._move_towards(bld.x, bld.y, dt, game_state)
         else:
             # Construct building
-            bld.build_progress(dt, speed_mult=1.0)
-            self.is_harvesting_anim = 0.2
+            if self.faction == config.FACTION_ALIEN or self.unit_type in ["Drone", "Swarmer"]:
+                # Alien insect morphs/sacrifices itself to become the building
+                self.alive = False
+                bld.build_progress(dt + bld.total_build_time * 0.5, speed_mult=1.0)
+            else:
+                bld.build_progress(dt, speed_mult=1.0)
+                self.is_harvesting_anim = 0.2
 
     def _process_repair(self, dt, game_state):
         if not self.target_entity or not getattr(self.target_entity, 'alive', True):
             self.target_entity = None
             self.state = "idle"
+            self.pop_next_command(game_state)
             return
 
         bld = self.target_entity
         if bld.hp >= bld.max_hp:
             self.target_entity = None
             self.state = "idle"
+            self.pop_next_command(game_state)
             return
 
         dist = self.distance_to(bld)
@@ -224,6 +328,7 @@ class Unit(BaseEntity):
             else:
                 self.state = "idle"
                 self.attack_move_mode = False
+                self.pop_next_command(game_state)
             return
 
         dist = self.distance_to(self.target_entity)
@@ -249,6 +354,7 @@ class Unit(BaseEntity):
         if not self.target_entity or not getattr(self.target_entity, 'alive', True):
             self.target_entity = None
             self.state = "idle"
+            self.pop_next_command(game_state)
             return
 
         dist = self.distance_to(self.target_entity)
@@ -270,9 +376,12 @@ class Unit(BaseEntity):
                 self.carried_resource += harvested
                 self.resource_type = self.target_entity.resource_type
             elif getattr(self.target_entity, 'building_type', None) == "Farm":
-                harvested = config.DEFAULT_HARVEST_RATE * dt
-                self.carried_resource += harvested
-                self.resource_type = "food"
+                # Worker enters inside the Farm to work
+                if self.target_entity.garrison_unit(self):
+                    return
+                else:
+                    self.state = "idle"
+                    return
             self.is_harvesting_anim = 0.2
             if self.carried_resource >= config.DEFAULT_HARVEST_CAPACITY or not getattr(self.target_entity, 'alive', True):
                 self.state = "return_resource"
@@ -281,6 +390,7 @@ class Unit(BaseEntity):
         deposit = self._find_nearest_deposit(game_state)
         if not deposit:
             self.state = "idle"
+            self.pop_next_command(game_state)
             return
 
         dist = self.distance_to(deposit)
@@ -311,6 +421,8 @@ class Unit(BaseEntity):
                 elif b_type == "WoodStockpile" and self.resource_type == "wood":
                     accepts = True
                 elif b_type == "GoldStockpile" and self.resource_type == "gold":
+                    accepts = True
+                elif b_type == "FoodStockpile" and self.resource_type == "food":
                     accepts = True
 
                 if accepts:
