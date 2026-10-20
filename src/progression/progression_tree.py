@@ -13,6 +13,7 @@ class ProgressionUI:
         self.active_tab = "skill_tree"  # "skill_tree", "troops", "buildings"
         self.camera_offset_x = 0
         self.camera_offset_y = 0
+        self.zoom_level = 1.0
         self.is_dragging = False
         self.drag_start_pos = (0, 0)
 
@@ -201,6 +202,54 @@ class ProgressionUI:
                 "cost": 25,
                 "parents": ["tower_unlocked"],
                 "pos": (600, 920)
+            },
+            {
+                "key": "forum_atk_range",
+                "name": "Forum Ballista",
+                "desc": "Forum Attack Range +10%",
+                "cost": 30,
+                "parents": ["garrison_unlocked"],
+                "pos": (1500, 560)
+            },
+            {
+                "key": "watchtower_sight",
+                "name": "Tower Optics",
+                "desc": "Watchtower Sight +20%",
+                "cost": 25,
+                "parents": ["tower_unlocked"],
+                "pos": (400, 920)
+            },
+            {
+                "key": "scout_unlocked",
+                "name": "Unlock Scout",
+                "desc": "Fast reconnaissance unit with high vision",
+                "cost": 25,
+                "parents": ["extra_worker_start"],
+                "pos": (150, 560)
+            },
+            {
+                "key": "building_repair_unlocked",
+                "name": "Building Repair",
+                "desc": "Order Workers to repair damaged structures",
+                "cost": 30,
+                "parents": ["house_unlocked"],
+                "pos": (1800, 560)
+            },
+            {
+                "key": "double_base_res_cap",
+                "name": "Rich Deposit Caches",
+                "desc": "Double resource node capacity around Forum",
+                "cost": 35,
+                "parents": ["gold_stockpile_unlocked"],
+                "pos": (1150, 380)
+            },
+            {
+                "key": "forum_passive_arrow",
+                "name": "Sentry Guard Bow",
+                "desc": "Forum fires 1 arrow automatically (+1 arrow)",
+                "cost": 35,
+                "parents": ["garrison_unlocked"],
+                "pos": (1700, 740)
             }
         ]
 
@@ -208,13 +257,21 @@ class ProgressionUI:
 
         ox = self.camera_offset_x
         oy = self.camera_offset_y
+        zoom = self.zoom_level
+
+        # Helper to scale relative to center of view
+        def transform_pos(pos):
+            cx = (pos[0] - self.screen_width // 2) * zoom + self.screen_width // 2 + ox
+            cy = (pos[1] - self.screen_height // 2) * zoom + self.screen_height // 2 + oy
+            return int(cx), int(cy)
 
         # 1. Draw connecting lines between parents and children
         for n in nodes:
-            cx, cy = n["pos"][0] + ox, n["pos"][1] + oy
+            cx, cy = transform_pos(n["pos"])
+            cx, cy = transform_pos(n["pos"])
             for parent_key in n["parents"]:
                 parent = node_map[parent_key]
-                px, py = parent["pos"][0] + ox, parent["pos"][1] + oy
+                px, py = transform_pos(parent["pos"])
                 is_parent_unlocked = upg_data.get(parent_key, 0) >= 1
                 is_node_unlocked = upg_data.get(n["key"], 0) >= 1
 
@@ -225,13 +282,14 @@ class ProgressionUI:
                 else:
                     line_color = (80, 80, 80)
 
-                pygame.draw.line(surface, line_color, (px, py + 40), (cx, cy - 40), 3)
+                pygame.draw.line(surface, line_color, (px, py + int(40 * zoom)), (cx, cy - int(40 * zoom)), max(1, int(3 * zoom)))
 
         # 2. Draw node cards
         for n in nodes:
             key = n["key"]
-            cx, cy = n["pos"][0] + ox, n["pos"][1] + oy
-            card_w, card_h = 220, 82
+            cx, cy = transform_pos(n["pos"])
+            card_w = int(220 * zoom)
+            card_h = int(82 * zoom)
             card_rect = pygame.Rect(cx - card_w // 2, cy - card_h // 2, card_w, card_h)
 
             is_unlocked = upg_data.get(key, 0) >= 1
@@ -278,63 +336,65 @@ class ProgressionUI:
 
     def _draw_troops_tab(self, surface, buttons, upg_data, points):
         available_upgrades = [
-            # Worker
-            {"key": "worker_hp_lvl", "unit": "Worker", "name": "Peasant Worker HP (+15%)", "cost_base": 10},
-            {"key": "worker_speed_lvl", "unit": "Worker", "name": "Peasant Worker Movement (+10%)", "cost_base": 12},
+            {"key": "worker_hp_lvl", "unit": "Worker", "name": "Peasant Worker HP (+15%)", "cost_base": 10, "stats": "HP: 60 | Atk: 5 | Range: 25 | Spd: 100"},
+            {"key": "worker_speed_lvl", "unit": "Worker", "name": "Peasant Worker Movement (+10%)", "cost_base": 12, "stats": "HP: 60 | Atk: 5 | Range: 25 | Spd: 100"},
 
-            # Infantry
-            {"key": "infantry_hp_lvl", "unit": "Infantry", "name": "Footman Soldier HP (+10%)", "cost_base": 12},
-            {"key": "infantry_attack_lvl", "unit": "Infantry", "name": "Footman Attack Power (+10%)", "cost_base": 15},
+            {"key": "infantry_hp_lvl", "unit": "Infantry", "name": "Footman Soldier HP (+10%)", "cost_base": 12, "stats": "HP: 150 | Atk: 18 | Range: 30 | Spd: 90"},
+            {"key": "infantry_attack_lvl", "unit": "Infantry", "name": "Footman Attack Power (+10%)", "cost_base": 15, "stats": "HP: 150 | Atk: 18 | Range: 30 | Spd: 90"},
         ]
 
-        # Archer
         if upg_data.get("archer_unlocked"):
-            available_upgrades.append({"key": "archer_hp_lvl", "unit": "Archer", "name": "Archer HP (+10%)", "cost_base": 15})
-            available_upgrades.append({"key": "archer_attack_lvl", "unit": "Archer", "name": "Archer Attack Damage (+10%)", "cost_base": 18})
+            available_upgrades.append({"key": "archer_hp_lvl", "unit": "Archer", "name": "Archer HP (+10%)", "cost_base": 15, "stats": "HP: 90 | Atk: 14 | Range: 180 | Spd: 100"})
+            available_upgrades.append({"key": "archer_attack_lvl", "unit": "Archer", "name": "Archer Attack Damage (+10%)", "cost_base": 18, "stats": "HP: 90 | Atk: 14 | Range: 180 | Spd: 100"})
 
         self._render_upgrade_list(surface, buttons, available_upgrades, "SwarmerBlood", upg_data)
 
     def _draw_buildings_tab(self, surface, buttons, upg_data, points):
         available_upgrades = [
-            {"key": "townhall_hp_lvl", "bld": "TownHall", "name": "Town Hall Keep Durability (+15%)", "cost_base": 15},
-            {"key": "barracks_hp_lvl", "bld": "Barracks", "name": "Barracks Fortification (+15%)", "cost_base": 12},
+            {"key": "townhall_hp_lvl", "bld": "TownHall", "name": "Town Hall Keep Durability (+15%)", "cost_base": 15, "stats": "HP: 1000 | Armor: 0 | Pop: +10 | Range: 220"},
+            {"key": "barracks_hp_lvl", "bld": "Barracks", "name": "Barracks Fortification (+15%)", "cost_base": 12, "stats": "HP: 500 | Build Time: 20s"},
         ]
 
         if upg_data.get("wall_unlocked"):
-            available_upgrades.append({"key": "wall_hp_lvl", "bld": "Wall", "name": "Wooden Wall Health (+20%)", "cost_base": 10})
+            available_upgrades.append({"key": "wall_hp_lvl", "bld": "Wall", "name": "Wooden Wall Health (+20%)", "cost_base": 10, "stats": "HP: 250 | Width: 20 | Length: 40"})
 
         if upg_data.get("tower_unlocked"):
-            available_upgrades.append({"key": "tower_hp_lvl", "bld": "Tower", "name": "Watchtower Health (+15%)", "cost_base": 15})
-            available_upgrades.append({"key": "tower_attack_lvl", "bld": "Tower", "name": "Watchtower Arrow Damage (+10%)", "cost_base": 20})
+            available_upgrades.append({"key": "tower_hp_lvl", "bld": "Tower", "name": "Watchtower Health (+15%)", "cost_base": 15, "stats": "HP: 400 | Atk: 15 | Range: 200 | Vis: 550"})
+            available_upgrades.append({"key": "tower_attack_lvl", "bld": "Tower", "name": "Watchtower Arrow Damage (+10%)", "cost_base": 20, "stats": "HP: 400 | Atk: 15 | Range: 200 | Vis: 550"})
 
         if upg_data.get("farm_unlocked"):
-            available_upgrades.append({"key": "farm_hp_lvl", "bld": "Farm", "name": "Farm Structure HP (+15%)", "cost_base": 10})
+            available_upgrades.append({"key": "farm_hp_lvl", "bld": "Farm", "name": "Farm Structure HP (+15%)", "cost_base": 10, "stats": "HP: 300 | Food Harvest Source"})
 
         if upg_data.get("wood_stockpile_unlocked") or upg_data.get("gold_stockpile_unlocked"):
-            available_upgrades.append({"key": "stockpile_hp_lvl", "bld": "Stockpiles", "name": "Stockpile Reinforced Walls (+15%)", "cost_base": 10})
+            available_upgrades.append({"key": "stockpile_hp_lvl", "bld": "Stockpiles", "name": "Stockpile Reinforced Walls (+15%)", "cost_base": 10, "stats": "HP: 350 | Drop-off Depot"})
 
         self._render_upgrade_list(surface, buttons, available_upgrades, "Pykrite", upg_data)
 
     def _render_upgrade_list(self, surface, buttons, upgrades, point_type, upg_data):
         y = 170
-        x_left = self.screen_width // 2 - 350
-        width = 700
+        x_left = self.screen_width // 2 - 380
+        width = 760
 
         for upg in upgrades:
             key = upg["key"]
             lvl = upg_data.get(key, 0)
             cost = upg["cost_base"] * (lvl + 1)
 
-            card_rect = pygame.Rect(x_left, y, width, 52)
+            card_rect = pygame.Rect(x_left, y, width, 58)
             pygame.draw.rect(surface, config.COLOR_UI_PANEL, card_rect, border_radius=6)
             pygame.draw.rect(surface, (70, 75, 85), card_rect, 1, border_radius=6)
 
             # Name & Level
             txt_name = self.bold_font.render(f"{upg['name']}  [Niv. {lvl}]", True, config.COLOR_UI_TEXT)
-            surface.blit(txt_name, (x_left + 20, y + 15))
+            surface.blit(txt_name, (x_left + 20, y + 8))
+
+            # Stats line
+            if "stats" in upg:
+                t_stats = self.small_font.render(f"Base Stats: {upg['stats']}", True, (180, 200, 220))
+                surface.blit(t_stats, (x_left + 20, y + 32))
 
             # Upgrade Button
-            btn_rect = pygame.Rect(x_left + width - 180, y + 8, 160, 36)
+            btn_rect = pygame.Rect(x_left + width - 180, y + 10, 160, 38)
             pygame.draw.rect(surface, (50, 70, 95), btn_rect, border_radius=4)
             pygame.draw.rect(surface, config.COLOR_UI_ACCENT, btn_rect, 1, border_radius=4)
 
@@ -348,4 +408,4 @@ class ProgressionUI:
                 "is_tree_unlock": False
             }
 
-            y += 62
+            y += 68

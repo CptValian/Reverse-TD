@@ -127,9 +127,17 @@ class GameState:
 
             if faction == config.FACTION_HUMAN:
                 # Base humaine
+                range_bonus = 22 if upgrades.get("forum_atk_range") else 0
                 base = Building(owner_id, faction, "TownHall", sx, sy,
-                                hp_bonus=int(1000 * hp_bonus_bld), armor_bonus=armor_bonus_bld)
+                                hp_bonus=int(1000 * hp_bonus_bld), armor_bonus=armor_bonus_bld, range_bonus=range_bonus)
                 self.buildings.append(base)
+
+                # Doubler la capacité des gisements autour du forum de départ si l'amélioration est active
+                if upgrades.get("double_base_res_cap"):
+                    for r in self.resources:
+                        if math.hypot(r.x - sx, r.y - sy) < 400:
+                            r.amount *= 2
+                            r.max_amount *= 2
 
                 # Ouvriers de départ (3 de base + 1 si extra_worker_start)
                 num_workers = 3 + (1 if upgrades.get("extra_worker_start") else 0)
@@ -227,6 +235,8 @@ class GameState:
         # Collision avec d'autres bâtiments
         for b in self.buildings:
             if b.alive:
+                if building_type == "Wall" and b.building_type == "Wall":
+                    continue  # Wall sections can connect seamlessly adjacent to each other
                 min_req = b.radius + radius + 10
                 if (b.x - x)**2 + (b.y - y)**2 < min_req * min_req:
                     return False
@@ -363,6 +373,13 @@ class GameState:
             else:
                 if has_looting and unit.owner_id != 0:
                     self.add_resources(0, "food", 5)
+
+                # AI Level 12 Biomass Reward on enemy kill
+                if unit.owner_id == 0:
+                    for ai in self.ai_controllers:
+                        if ai.config.get("biomass_on_kill"):
+                            self.add_resources(ai.owner_id, "biomass", 15)
+
                 self.units.remove(unit)
 
         # Mise à jour des bâtiments et production
@@ -405,6 +422,7 @@ class GameState:
         if not player_buildings and not player_units:
             self.state = "DEFEAT"
             rewards = Rewards.calculate_rewards(False, self.num_ais, self.ai_difficulty, survival_time=self.game_time)
+            self.last_match_rewards = rewards
             self.save_manager.add_points(
                 landshard=rewards[config.POINT_TYPE_COMMAND],
                 swarmerblood=rewards[config.POINT_TYPE_FORGE],
@@ -414,6 +432,7 @@ class GameState:
         elif not ai_buildings and not ai_units:
             self.state = "VICTORY"
             rewards = Rewards.calculate_rewards(True, self.num_ais, self.ai_difficulty, survival_time=self.game_time)
+            self.last_match_rewards = rewards
             self.save_manager.add_points(
                 landshard=rewards[config.POINT_TYPE_COMMAND],
                 swarmerblood=rewards[config.POINT_TYPE_FORGE],

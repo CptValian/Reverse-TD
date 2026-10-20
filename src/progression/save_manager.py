@@ -22,6 +22,14 @@ DEFAULT_SAVE_DATA = {
         "extra_melee_start": 0,
         "townhall_unlocked": 0,
 
+        # New requested Skill Tree upgrades
+        "forum_atk_range": 0,          # Forum attack range +10%
+        "watchtower_sight": 0,         # Watchtower sight +20%
+        "scout_unlocked": 0,           # Scout unit unlock
+        "building_repair_unlocked": 0, # Worker building repair order
+        "double_base_res_cap": 0,      # Double starting resource node capacity around base
+        "forum_passive_arrow": 0,      # Forum shoots base arrow even without workers (arrows = workers + 1)
+
         # SwarmerBlood (Stats Troupes / Workers)
         "worker_hp_lvl": 0,
         "worker_speed_lvl": 0,

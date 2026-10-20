@@ -89,42 +89,73 @@ class AIController:
                     nb = Building(self.owner_id, self.faction, prod_type, bx, by, is_constructed=False)
                     game_state.buildings.append(nb)
 
-        # 5. Defensive Turrets / Spine Crawlers
-        if self.config.get("can_build_defenses", True):
+        # 5. Defensive Turrets / Spine Crawlers (Gated strictly at Level 4+)
+        if self.difficulty >= 4 and self.config.get("can_build_defenses", True):
             defenses = [b for b in ai_buildings if b.building_type in ["SpineCrawler", "Tower"]]
-            target_def = 3 if self.difficulty >= 4 else 1
+            target_def = 3 if self.difficulty >= 6 else 2
 
             if len(defenses) < target_def and self.spawn_point:
                 def_type = "SpineCrawler" if self.faction == config.FACTION_ALIEN else "Tower"
                 cost_dict = BUILDING_TYPES.get(def_type, {}).get("cost", {res_type: 100})
 
-                dx = self.spawn_point[0] + random.choice([-90, 90])
-                dy = self.spawn_point[1] + random.choice([-90, 90])
+                dx = self.spawn_point[0] + random.choice([-100, 100])
+                dy = self.spawn_point[1] + random.choice([-100, 100])
 
                 if game_state.can_place_building(def_type, dx, dy):
                     if game_state.deduct_resources(self.owner_id, cost_dict):
                         nb = Building(self.owner_id, self.faction, def_type, dx, dy, is_constructed=False)
                         game_state.buildings.append(nb)
 
-        # Apply AI stat bonuses to newly spawned AI units
+        # 5b. Biomass Generators (Level 10+)
+        if self.config.get("can_build_biomass_gen") and self.spawn_point:
+            bio_gens = [b for b in ai_buildings if b.building_type == "BiomassGenerator"]
+            if len(bio_gens) < 3:
+                gx = self.spawn_point[0] + random.randint(-140, 140)
+                gy = self.spawn_point[1] + random.randint(-140, 140)
+                cost_dict = BUILDING_TYPES.get("BiomassGenerator", {}).get("cost", {"biomass": 300})
+                if game_state.can_place_building("BiomassGenerator", gx, gy):
+                    if game_state.deduct_resources(self.owner_id, cost_dict):
+                        nb = Building(self.owner_id, self.faction, "BiomassGenerator", gx, gy, is_constructed=False)
+                        game_state.buildings.append(nb)
+
+            # Income generation from constructed Biomass Generators
+            active_gens = [b for b in bio_gens if b.is_constructed]
+            if active_gens and hasattr(game_state, 'add_resources'):
+                game_state.add_resources(self.owner_id, "biomass", 5 * len(active_gens) * dt)
+
+        # Apply AI stat bonuses & Creep Buffs (Level 8+)
         hp_mult = self.config.get("unit_hp_bonus", 0.0)
         atk_mult = self.config.get("unit_atk_bonus", 0.0)
-        speed_bonus = 25 if self.config.get("swarm_frenzy") else 0
+        speed_frenzy = 25 if self.config.get("swarm_frenzy") else 0
 
         for u in ai_units:
             if not getattr(u, '_ai_buffed', False):
+                u.base_speed = u.speed
+                u.base_attack = u.attack_power
                 u.max_hp = int(u.max_hp * (1.0 + hp_mult))
                 u.hp = min(u.hp, u.max_hp)
                 u.attack_power = int(u.attack_power * (1.0 + atk_mult))
-                u.speed += speed_bonus
+                u.speed += speed_frenzy
                 u._ai_buffed = True
 
-        # 6. Army Unit Queueing (Swarmer & Spitter Tech)
+            # Creep spread speed & attack buff (+25% when near Hive/Base, Level 8+)
+            if self.config.get("creep_spread") and bases:
+                near_base = any(math.hypot(u.x - b.x, u.y - b.y) <= 300 for b in bases)
+                if near_base and not getattr(u, '_on_creep', False):
+                    u.speed = int(u.speed * 1.25)
+                    u.attack_power = int(u.attack_power * 1.25)
+                    u._on_creep = True
+                elif not near_base and getattr(u, '_on_creep', False):
+                    u.speed = int(u.speed / 1.25)
+                    u.attack_power = int(u.attack_power / 1.25)
+                    u._on_creep = False
+
+        # 6. Army Unit Queueing (Spitter strictly at Level 6+)
         army_units = [u for u in ai_units if not u.is_worker]
         for prod in production_blds:
             if prod.is_constructed and len(prod.production_queue) < 4:
                 available_troops = ["Swarmer"] if self.faction == config.FACTION_ALIEN else ["Infantry"]
-                if self.config.get("can_tech_ranged", True):
+                if self.difficulty >= 6 and self.config.get("can_tech_ranged", True):
                     if self.faction == config.FACTION_ALIEN:
                         available_troops.append("Spitter")
                     else:
