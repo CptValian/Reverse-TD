@@ -68,8 +68,59 @@ AI_DIFFICULTY_LEVELS = {
         "unit_atk_bonus": 0.4,
         "can_build_defenses": True,
         "can_tech_ranged": True
+    },
+    7: {
+        "resource_multiplier": 3.2,
+        "attack_wave_interval": 20,
+        "max_army_size": 60,
+        "max_workers": 22,
+        "unlocked_techs": ["Drone", "Swarmer", "Spitter", "SpineCrawler"],
+        "unit_hp_bonus": 0.65,
+        "unit_atk_bonus": 0.55,
+        "can_build_defenses": True,
+        "can_tech_ranged": True,
+        "worker_raid_priority": True
+    },
+    8: {
+        "resource_multiplier": 3.8,
+        "attack_wave_interval": 18,
+        "max_army_size": 75,
+        "max_workers": 25,
+        "unlocked_techs": ["Drone", "Swarmer", "Spitter", "SpineCrawler"],
+        "unit_hp_bonus": 0.80,
+        "unit_atk_bonus": 0.70,
+        "can_build_defenses": True,
+        "can_tech_ranged": True,
+        "worker_raid_priority": True,
+        "tactical_retreat": True
+    },
+    9: {
+        "resource_multiplier": 4.5,
+        "attack_wave_interval": 15,
+        "max_army_size": 90,
+        "max_workers": 28,
+        "unlocked_techs": ["Drone", "Swarmer", "Spitter", "SpineCrawler"],
+        "unit_hp_bonus": 1.00,
+        "unit_atk_bonus": 0.85,
+        "can_build_defenses": True,
+        "can_tech_ranged": True,
+        "worker_raid_priority": True,
+        "tactical_retreat": True,
+        "flanking_attacks": True
+    },
+    10: {
+        "resource_multiplier": 5.5,
+        "attack_wave_interval": 10,
+        "max_army_size": 120,
+        "max_workers": 30,
+        "unlocked_techs": ["Drone", "Swarmer", "Spitter", "SpineCrawler"],
+        "unit_hp_bonus": 1.30,
+        "unit_atk_bonus": 1.00,
+        "can_build_defenses": True,
+        "can_tech_ranged": True,
+        "worker_raid_priority": True,
+        "tactical_retreat": True,
+        "flanking_attacks": True,
+        "swarm_frenzy": True
     }
 }
-# Backward compatibility mapping string to int
-for _k, _v in list(AI_DIFFICULTY_LEVELS.items()):
-    pass

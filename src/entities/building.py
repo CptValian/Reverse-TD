@@ -19,11 +19,21 @@ BUILDING_TYPES = {
 }
 
 class Building(BaseEntity):
-    def __init__(self, owner_id, faction, building_type, x, y, hp_bonus=0, armor_bonus=0, is_constructed=True, range_bonus=0):
+    def __init__(self, owner_id, faction, building_type, x, y, hp_bonus=0, armor_bonus=0, is_constructed=True, range_bonus=0, wall_length=40, wall_width=18, wall_angle=0.0):
         data = BUILDING_TYPES.get(building_type, {"cost": {"wood": 50}, "hp": 500, "radius": 35, "build_time": 10, "trainable": []})
         max_hp = data["hp"] + hp_bonus
-        super().__init__(owner_id, faction, x, y, max_hp, radius=data["radius"])
+
+        radius = data["radius"]
+        if building_type == "Wall":
+            radius = max(wall_length / 2.0, wall_width / 2.0)
+
+        super().__init__(owner_id, faction, x, y, max_hp, radius=radius)
         self.building_type = building_type
+
+        # Wall oriented rectangle parameters
+        self.wall_length = wall_length
+        self.wall_width = wall_width
+        self.wall_angle = wall_angle
         self.cost = data.get("cost", {"wood": 50})
         self.res_type = data.get("res_type", "gold" if faction == config.FACTION_HUMAN else "biomass")
         self.trainable_units = list(data.get("trainable", []))

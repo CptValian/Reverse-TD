@@ -88,7 +88,7 @@ class ProgressionUI:
                 "desc": "+100 Starting Resources",
                 "cost": 20,
                 "parents": [],
-                "pos": (320, 210)
+                "pos": (300, 200)
             },
             {
                 "key": "wood_stockpile_unlocked",
@@ -96,7 +96,7 @@ class ProgressionUI:
                 "desc": "Drop-off for Wood Workers",
                 "cost": 20,
                 "parents": [],
-                "pos": (720, 210)
+                "pos": (750, 200)
             },
             {
                 "key": "gold_stockpile_unlocked",
@@ -104,7 +104,7 @@ class ProgressionUI:
                 "desc": "Drop-off for Gold Workers",
                 "cost": 20,
                 "parents": [],
-                "pos": (1120, 210)
+                "pos": (1150, 200)
             },
             {
                 "key": "house_unlocked",
@@ -112,7 +112,7 @@ class ProgressionUI:
                 "desc": "Build Houses for +5 Pop Max",
                 "cost": 20,
                 "parents": [],
-                "pos": (1520, 210)
+                "pos": (1550, 200)
             },
             {
                 "key": "extra_worker_start",
@@ -120,7 +120,7 @@ class ProgressionUI:
                 "desc": "Start with +1 Worker",
                 "cost": 25,
                 "parents": ["starting_res_1"],
-                "pos": (120, 370)
+                "pos": (150, 380)
             },
             {
                 "key": "extra_melee_start",
@@ -128,7 +128,7 @@ class ProgressionUI:
                 "desc": "Start with +1 Melee Unit",
                 "cost": 25,
                 "parents": ["starting_res_1"],
-                "pos": (320, 370)
+                "pos": (450, 380)
             },
             {
                 "key": "archer_unlocked",
@@ -136,7 +136,7 @@ class ProgressionUI:
                 "desc": "Train Archers in Barracks",
                 "cost": 30,
                 "parents": ["starting_res_1"],
-                "pos": (520, 370)
+                "pos": (750, 380)
             },
             {
                 "key": "wall_unlocked",
@@ -144,7 +144,7 @@ class ProgressionUI:
                 "desc": "Build Defensive Wooden Walls",
                 "cost": 25,
                 "parents": ["wood_stockpile_unlocked"],
-                "pos": (720, 370)
+                "pos": (1050, 380)
             },
             {
                 "key": "farm_unlocked",
@@ -152,7 +152,7 @@ class ProgressionUI:
                 "desc": "Harvest Food for Troops",
                 "cost": 25,
                 "parents": ["wood_stockpile_unlocked"],
-                "pos": (920, 370)
+                "pos": (1350, 380)
             },
             {
                 "key": "garrison_unlocked",
@@ -160,7 +160,7 @@ class ProgressionUI:
                 "desc": "Garrison Peasants into Town Hall",
                 "cost": 30,
                 "parents": ["house_unlocked"],
-                "pos": (1370, 370)
+                "pos": (1650, 380)
             },
             {
                 "key": "ageing_up_2",
@@ -168,7 +168,7 @@ class ProgressionUI:
                 "desc": "Advance Age (Boost Bld HP & unlocks)",
                 "cost": 50,
                 "parents": ["archer_unlocked", "wall_unlocked", "farm_unlocked"],
-                "pos": (620, 530)
+                "pos": (900, 560)
             },
             {
                 "key": "tower_unlocked",
@@ -176,15 +176,7 @@ class ProgressionUI:
                 "desc": "Build Defending Watchtowers",
                 "cost": 35,
                 "parents": ["ageing_up_2"],
-                "pos": (620, 690)
-            },
-            {
-                "key": "tower_range_unlocked",
-                "name": "Arrow Tower Range",
-                "desc": "Arrow tower +10% range",
-                "cost": 25,
-                "parents": ["tower_unlocked"],
-                "pos": (620, 850)
+                "pos": (600, 740)
             },
             {
                 "key": "looting_unlocked",
@@ -192,7 +184,7 @@ class ProgressionUI:
                 "desc": "+5 Food per troop kill",
                 "cost": 30,
                 "parents": ["ageing_up_2"],
-                "pos": (870, 690)
+                "pos": (900, 740)
             },
             {
                 "key": "townhall_unlocked",
@@ -200,7 +192,15 @@ class ProgressionUI:
                 "desc": "Build Additional Town Halls",
                 "cost": 40,
                 "parents": ["ageing_up_2"],
-                "pos": (1120, 690)
+                "pos": (1200, 740)
+            },
+            {
+                "key": "tower_range_unlocked",
+                "name": "Arrow Tower Range",
+                "desc": "Arrow tower +10% range",
+                "cost": 25,
+                "parents": ["tower_unlocked"],
+                "pos": (600, 920)
             }
         ]
 

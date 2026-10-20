@@ -74,7 +74,7 @@ def main():
                         game_state.num_ais = min(4, game_state.num_ais + 1)
 
                     elif buttons.get("difficulty") and buttons["difficulty"].collidepoint(event.pos):
-                        diffs = [1, 2, 3, 4, 5, 6]
+                        diffs = list(range(1, 11))
                         curr_idx = diffs.index(game_state.ai_difficulty) if game_state.ai_difficulty in diffs else 0
                         game_state.ai_difficulty = diffs[(curr_idx + 1) % len(diffs)]
 
@@ -87,10 +87,18 @@ def main():
                         running = False
 
             elif game_state.state == "AI_INFO":
-                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    buttons = menu.draw_ai_info_screen(screen)
-                    if buttons.get("back") and buttons["back"].collidepoint(event.pos):
-                        game_state.state = "MENU"
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1:
+                        buttons = menu.draw_ai_info_screen(screen, getattr(menu, 'ai_info_scroll_y', 0))
+                        if buttons.get("back") and buttons["back"].collidepoint(event.pos):
+                            game_state.state = "MENU"
+                            menu.ai_info_scroll_y = 0
+                    elif event.button == 4:  # Scroll Up
+                        menu.ai_info_scroll_y = max(0, getattr(menu, 'ai_info_scroll_y', 0) - 40)
+                    elif event.button == 5:  # Scroll Down
+                        buttons = menu.draw_ai_info_screen(screen, getattr(menu, 'ai_info_scroll_y', 0))
+                        max_s = buttons.get("max_scroll", 1000)
+                        menu.ai_info_scroll_y = min(max_s, getattr(menu, 'ai_info_scroll_y', 0) + 40)
 
             elif game_state.state == "SKILL_TREE":
                 if event.type == pygame.MOUSEBUTTONDOWN:
@@ -234,18 +242,33 @@ def main():
                                     length = math.hypot(dx, dy)
 
                                     if length >= 15:
-                                        seg_spacing = 30.0
+                                        seg_spacing = 40.0
                                         num_segs = max(1, int(round(length / seg_spacing)))
                                         unit_cost_wood = cost.get("wood", 30)
                                         total_wall_cost = {"wood": unit_cost_wood * num_segs}
+                                        wall_angle = math.atan2(dy, dx)
 
                                         if game_state.deduct_resources(0, total_wall_cost):
-                                            for step in range(num_segs + 1):
-                                                ratio = step / max(1, num_segs)
-                                                wx = p1[0] + dx * ratio
-                                                wy = p1[1] + dy * ratio
-                                                if game_state.can_place_building("Wall", wx, wy):
-                                                    nb = Building(0, config.FACTION_HUMAN, "Wall", wx, wy, is_constructed=False)
+                                            for step_i in range(num_segs):
+                                                r1 = step_i / float(num_segs)
+                                                r2 = (step_i + 1) / float(num_segs)
+                                                x1 = p1[0] + dx * r1
+                                                y1 = p1[1] + dy * r1
+                                                x2 = p1[0] + dx * r2
+                                                y2 = p1[1] + dy * r2
+
+                                                cx = (x1 + x2) / 2.0
+                                                cy = (y1 + y2) / 2.0
+                                                seg_len = math.hypot(x2 - x1, y2 - y1)
+
+                                                if game_state.can_place_building("Wall", cx, cy):
+                                                    nb = Building(
+                                                        0, config.FACTION_HUMAN, "Wall", cx, cy,
+                                                        is_constructed=False,
+                                                        wall_length=seg_len + 6.0,
+                                                        wall_width=18,
+                                                        wall_angle=wall_angle
+                                                    )
                                                     game_state.buildings.append(nb)
 
                                     placement_building_type = None
@@ -398,7 +421,7 @@ def main():
             menu.draw_main_menu(screen, game_state.num_ais, game_state.ai_difficulty, game_state.map_type)
 
         elif game_state.state == "AI_INFO":
-            menu.draw_ai_info_screen(screen)
+            menu.draw_ai_info_screen(screen, menu.ai_info_scroll_y)
 
         elif game_state.state == "SKILL_TREE":
             progression_ui.draw(screen)
