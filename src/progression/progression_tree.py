@@ -182,10 +182,18 @@ class ProgressionUI:
             {
                 "key": "tower_unlocked",
                 "name": "Watchtower",
-                "desc": "Build Defending Watchtowers",
+                "desc": "High sight range watchtower",
+                "cost": 30,
+                "parents": ["ageing_up_2"],
+                "pos": (500, 740)
+            },
+            {
+                "key": "arrow_tower_unlocked",
+                "name": "Arrow Tower",
+                "desc": "Defensive archer shooting tower",
                 "cost": 35,
                 "parents": ["ageing_up_2"],
-                "pos": (660, 740)
+                "pos": (780, 740)
             },
             {
                 "key": "looting_unlocked",
@@ -208,8 +216,72 @@ class ProgressionUI:
                 "name": "Arrow Tower Range",
                 "desc": "Arrow tower +10% range",
                 "cost": 25,
-                "parents": ["tower_unlocked"],
-                "pos": (820, 920)
+                "parents": ["arrow_tower_unlocked"],
+                "pos": (780, 920)
+            },
+            {
+                "key": "worker_spawn_speed",
+                "name": "Fast Worker Guild",
+                "desc": "Worker spawn time -10%",
+                "cost": 15,
+                "parents": ["extra_worker_start"],
+                "pos": (100, 740)
+            },
+            {
+                "key": "melee_spawn_speed",
+                "name": "Footman Drill",
+                "desc": "Melee spawn time -10%",
+                "cost": 15,
+                "parents": ["extra_melee_start"],
+                "pos": (380, 740)
+            },
+            {
+                "key": "archer_spawn_speed",
+                "name": "Bowyer Crafting",
+                "desc": "Archer spawn time -10%",
+                "cost": 15,
+                "parents": ["archer_unlocked"],
+                "pos": (660, 560)
+            },
+            {
+                "key": "forum_atk_sight_range",
+                "name": "Forum Citadel",
+                "desc": "Forum Atk & Sight Range +25%",
+                "cost": 25,
+                "parents": ["forum_atk_range"],
+                "pos": (2060, 740)
+            },
+            {
+                "key": "high_starting_res",
+                "name": "Starting Cache II",
+                "desc": "+250 Starting Resources",
+                "cost": 20,
+                "parents": ["starting_res_1"],
+                "pos": (200, 560)
+            },
+            {
+                "key": "start_with_scout",
+                "name": "Frontier Scout",
+                "desc": "Start with 1 Scout unit",
+                "cost": 20,
+                "parents": ["scout_unlocked"],
+                "pos": (100, 920)
+            },
+            {
+                "key": "bank_unlocked",
+                "name": "Royal Bank",
+                "desc": "Passive gold generation building",
+                "cost": 30,
+                "parents": ["gold_stockpile_unlocked"],
+                "pos": (1220, 560)
+            },
+            {
+                "key": "sanctuary_unlocked",
+                "name": "Sanctuary / Healer",
+                "desc": "Heals 1 troop @ 8 HP/sec",
+                "cost": 30,
+                "parents": ["farm_unlocked"],
+                "pos": (1500, 560)
             },
             {
                 "key": "forum_atk_range",

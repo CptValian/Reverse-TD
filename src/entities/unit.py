@@ -12,7 +12,8 @@ UNIT_TYPES = {
     # Alien
     "Drone": {"cost": {"biomass": 50}, "hp": 55, "speed": 105, "attack": 6, "range": 25, "is_worker": True, "radius": 12, "train_time": 9},
     "Swarmer": {"cost": {"biomass": 60}, "hp": 100, "speed": 125, "attack": 15, "range": 25, "is_worker": False, "radius": 12, "train_time": 12},
-    "Spitter": {"cost": {"biomass": 130}, "hp": 80, "speed": 95, "attack": 16, "range": 170, "is_worker": False, "radius": 14, "train_time": 18}
+    "Spitter": {"cost": {"biomass": 130}, "hp": 80, "speed": 95, "attack": 16, "range": 170, "is_worker": False, "radius": 14, "train_time": 18},
+    "Queen": {"cost": {"biomass": 250}, "hp": 220, "speed": 90, "attack": 22, "range": 160, "is_worker": False, "radius": 16, "train_time": 22}
 }
 
 class Unit(BaseEntity):
@@ -75,7 +76,7 @@ class Unit(BaseEntity):
             self.calculate_path(target.x, target.y, game_state)
 
     def construct_building(self, building, game_state=None):
-        if not self.is_worker and self.unit_type != "Swarmer":
+        if not self.is_worker:
             return
         self.target_entity = building
         self.state = "construct"
@@ -259,6 +260,17 @@ class Unit(BaseEntity):
         if getattr(bld, 'is_constructed', True):
             self.target_entity = None
             self.state = "idle"
+            # If worker, check if there is another nearby unconstructed building/wall to continue building automatically in series
+            if self.is_worker and not self.command_queue and game_state:
+                nearby_unconstructed = [
+                    b for b in game_state.buildings
+                    if b.alive and not b.is_constructed and b.owner_id == self.owner_id and self.distance_to(b) <= 450
+                ]
+                if nearby_unconstructed:
+                    next_bld = min(nearby_unconstructed, key=lambda b: self.distance_to(b))
+                    self.construct_building(next_bld, game_state)
+                    return
+
             self.pop_next_command(game_state)
             return
 
@@ -273,11 +285,11 @@ class Unit(BaseEntity):
             self._move_towards(bld.x, bld.y, dt, game_state)
         else:
             # Construct building
-            if self.faction == config.FACTION_ALIEN or self.unit_type in ["Drone", "Swarmer"]:
-                # Alien insect morphs/sacrifices itself to become the building
+            if self.unit_type == "Drone":
+                # Alien Drone morphs/sacrifices itself to become the building
                 self.alive = False
-                bld.build_progress(dt + bld.total_build_time * 0.5, speed_mult=1.0)
-            else:
+                bld.is_being_built = True
+            elif self.is_worker:
                 bld.build_progress(dt, speed_mult=1.0)
                 self.is_harvesting_anim = 0.2
 
@@ -346,7 +358,31 @@ class Unit(BaseEntity):
         else:
             # À portée d'attaque
             if self.attack_cooldown <= 0:
-                self.target_entity.take_damage(self.attack_power)
+                if self.attack_range > 50 or self.unit_type in ["Archer", "Spitter", "Queen"]:
+                    from src.entities.projectile import Projectile
+                    p_type = "arrow"
+                    if self.unit_type == "Spitter":
+                        p_type = "spitter_spore"
+                    elif self.unit_type == "Queen":
+                        p_type = "queen_spore"
+
+                    on_hit = None
+                    if self.unit_type == "Queen":
+                        def on_hit_cb(target, prev_hp, gs):
+                            if not target.alive:
+                                swarmer = Unit(self.owner_id, self.faction, "Swarmer", target.x, target.y)
+                                gs.units.append(swarmer)
+                        on_hit = on_hit_cb
+
+                    proj = Projectile(self.x, self.y, self.target_entity, self.attack_power, speed=500, owner_id=self.owner_id, projectile_type=p_type, on_hit_callback=on_hit)
+                    if hasattr(game_state, 'projectiles'):
+                        game_state.projectiles.append(proj)
+                    else:
+                        # Fallback if projectiles list not initialized
+                        self.target_entity.take_damage(self.attack_power)
+                else:
+                    self.target_entity.take_damage(self.attack_power)
+
                 self.attack_cooldown = 1.0  # Temps de recharge
                 self.is_attacking_anim = 0.3  # Animation flash/projectile pendant 0.3s
 
@@ -423,6 +459,8 @@ class Unit(BaseEntity):
                 elif b_type == "GoldStockpile" and self.resource_type == "gold":
                     accepts = True
                 elif b_type == "FoodStockpile" and self.resource_type == "food":
+                    accepts = True
+                elif b_type == "BiomassStockpile" and self.resource_type == "biomass":
                     accepts = True
 
                 if accepts:

@@ -24,6 +24,7 @@ class GameState:
         self.units = []
         self.buildings = []
         self.resources = []
+        self.projectiles = []
         self.ai_controllers = []
 
         # Statistiques des joueurs (owner_id 0 = Humain, owner_id 1..N = IA)
@@ -72,6 +73,7 @@ class GameState:
         self.units.clear()
         self.buildings.clear()
         self.resources.clear()
+        self.projectiles.clear()
         self.ai_controllers.clear()
         self.resources_player.clear()
 
@@ -84,7 +86,7 @@ class GameState:
         armor_bonus_bld = upgrades.get("building_armor_lvl", 0) * 1.0
 
         # Initialisation des ressources des joueurs
-        extra_res_bonus = 100 if upgrades.get("starting_res_1") else 0
+        extra_res_bonus = (100 if upgrades.get("starting_res_1") else 0) + (250 if upgrades.get("high_starting_res") else 0)
         self.resources_player[0] = {
             "gold": 200 + extra_res_bonus,
             "wood": 200 + extra_res_bonus,
@@ -127,9 +129,11 @@ class GameState:
 
             if faction == config.FACTION_HUMAN:
                 # Base humaine
-                range_bonus = 22 if upgrades.get("forum_atk_range") else 0
+                range_bonus = (22 if upgrades.get("forum_atk_range") else 0) + (55 if upgrades.get("forum_atk_sight_range") else 0)
                 base = Building(owner_id, faction, "TownHall", sx, sy,
                                 hp_bonus=int(1000 * hp_bonus_bld), armor_bonus=armor_bonus_bld, range_bonus=range_bonus)
+                if upgrades.get("forum_atk_sight_range"):
+                    base.vision_radius = int(base.vision_radius * 1.25)
                 self.buildings.append(base)
 
                 # Doubler la capacité des gisements autour du forum de départ si l'amélioration est active
@@ -153,13 +157,24 @@ class GameState:
                     u_inf = Unit(owner_id, faction, "Infantry", sx, sy + 60,
                                  hp_bonus=int(150 * hp_bonus_units), attack_bonus=int(18 * atk_bonus_units))
                     self.units.append(u_inf)
+
+                # Scout de départ si start_with_scout
+                if upgrades.get("start_with_scout"):
+                    u_scout = Unit(owner_id, faction, "Scout", sx + 60, sy + 30,
+                                   hp_bonus=int(70 * hp_bonus_units), attack_bonus=int(6 * atk_bonus_units))
+                    self.units.append(u_scout)
             else:
                 # Base Alien IA
                 base = Building(owner_id, faction, "Hive", sx, sy)
                 self.buildings.append(base)
 
-                # 3 Drones de départ
-                for offset in [(-30, 40), (0, 50), (30, 40)]:
+                # Drones de départ (3 de base, +2 si IA Niveau 15)
+                from src.ai.ai_tech import AI_DIFFICULTY_LEVELS
+                ai_cfg = AI_DIFFICULTY_LEVELS.get(self.ai_difficulty, {})
+                num_drones = 3 + ai_cfg.get("extra_starting_drones", 0)
+                offsets = [(-30, 40), (0, 50), (30, 40), (-45, 50), (45, 50)]
+                for i in range(num_drones):
+                    offset = offsets[i % len(offsets)]
                     u = Unit(owner_id, faction, "Drone", sx + offset[0], sy + offset[1])
                     self.units.append(u)
 
@@ -408,6 +423,13 @@ class GameState:
 
         # Nettoyage des gisements épuisés
         self.resources = [r for r in self.resources if r.alive]
+
+        # Mise à jour des projectiles
+        for proj in list(self.projectiles):
+            if proj.alive:
+                proj.update(dt, self)
+            else:
+                self.projectiles.remove(proj)
 
         # Mise à jour des IA
         for ai in self.ai_controllers:

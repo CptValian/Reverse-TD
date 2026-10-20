@@ -35,6 +35,10 @@ class RenderUtils:
         elif hasattr(entity, 'unit_type'):
             RenderUtils._draw_unit(surface, camera, entity, sx, sy, scaled_radius)
 
+        # Rendu des projectiles
+        elif hasattr(entity, 'projectile_type'):
+            RenderUtils._draw_projectile(surface, camera, entity, sx, sy)
+
         # Cercles de sélection
         if entity.selected:
             pygame.draw.circle(surface, config.COLOR_SELECTION, (sx, sy), scaled_radius + 4, 2)
@@ -63,6 +67,24 @@ class RenderUtils:
 
             pygame.draw.rect(surface, config.COLOR_HEALTH_BG, (bx, by, bar_width, bar_height))
             pygame.draw.rect(surface, config.COLOR_HEALTH_BAR, (bx, by, int(bar_width * health_ratio), bar_height))
+
+    @staticmethod
+    def _draw_projectile(surface, camera, proj, sx, sy):
+        import math
+        p_type = proj.projectile_type
+        p_size = max(3, int(4 * camera.zoom))
+
+        if p_type == "arrow":
+            pygame.draw.circle(surface, (255, 235, 59), (sx, sy), p_size)
+            pygame.draw.circle(surface, (255, 255, 255), (sx, sy), max(1, p_size - 2))
+        elif p_type in ["spitter_spore", "queen_spore"]:
+            col = (0, 255, 128) if p_type == "spitter_spore" else (216, 27, 96)
+            pygame.draw.circle(surface, col, (sx, sy), p_size + 2)
+            pygame.draw.circle(surface, (255, 255, 255), (sx, sy), max(1, p_size - 1))
+        elif p_type == "spine":
+            pygame.draw.circle(surface, (255, 87, 34), (sx, sy), p_size + 1)
+        else:
+            pygame.draw.circle(surface, (255, 255, 255), (sx, sy), p_size)
 
     @staticmethod
     def _draw_resource(surface, res, sx, sy, radius):
@@ -147,20 +169,38 @@ class RenderUtils:
                 pygame.draw.circle(surface, (255, 215, 0), (sx - radius//2, sy + radius//4), 3)
                 pygame.draw.circle(surface, (255, 215, 0), (sx + radius//2, sy + radius//4), 3)
 
-            elif b_type == "Tower":
-                # Stone Defensive Watchtower
-                # Octagonal Stone Base
+            elif b_type in ["Tower", "ArrowTower"]:
+                # Stone Defensive Arrow Tower
                 pygame.draw.circle(surface, (100, 105, 115), (sx, sy), radius)
                 pygame.draw.circle(surface, (200, 205, 215), (sx, sy), radius, width=3)
-
-                # Wooden Platform Top
                 pygame.draw.circle(surface, (139, 69, 19), (sx, sy), int(radius * 0.7))
                 pygame.draw.circle(surface, (218, 165, 32), (sx, sy), int(radius * 0.7), width=2)
-
-                # Arrow Slit / Archer Window
                 pygame.draw.rect(surface, (20, 20, 25), (sx - 3, sy - radius//2, 6, 12))
-                # Red Roof Cap
                 pygame.draw.polygon(surface, (180, 40, 40), [(sx, sy - radius - 8), (sx - radius//2, sy - radius//3), (sx + radius//2, sy - radius//3)])
+
+            elif b_type == "WatchTower":
+                # High Sight Optics Watchtower
+                pygame.draw.circle(surface, (80, 120, 160), (sx, sy), radius)
+                pygame.draw.circle(surface, (0, 220, 255), (sx, sy), radius, width=3)
+                pygame.draw.circle(surface, (255, 255, 255), (sx, sy), int(radius * 0.4))
+
+            elif b_type == "Bank":
+                # Royal Bank
+                pygame.draw.rect(surface, (70, 80, 90), rect, border_radius=6)
+                pygame.draw.rect(surface, (255, 215, 0), rect, width=3, border_radius=6)
+                # Gold Coin emblem
+                pygame.draw.circle(surface, (255, 215, 0), (sx, sy), max(4, radius // 2))
+                pygame.draw.circle(surface, (255, 255, 255), (sx, sy), max(2, radius // 4))
+
+            elif b_type == "Sanctuary":
+                # Healing Sanctuary
+                pygame.draw.circle(surface, (230, 240, 250), (sx, sy), radius)
+                pygame.draw.circle(surface, (76, 175, 80), (sx, sy), radius, width=3)
+                # Red Cross
+                cw = max(3, radius // 3)
+                cl = max(8, radius)
+                pygame.draw.rect(surface, (220, 40, 40), (sx - cw//2, sy - cl//2, cw, cl))
+                pygame.draw.rect(surface, (220, 40, 40), (sx - cl//2, sy - cw//2, cl, cw))
 
             elif b_type == "Wall":
                 # Continuous Solid Palisade Wall Segment without separation gaps
@@ -307,6 +347,12 @@ class RenderUtils:
                 pygame.draw.circle(surface, (0, 230, 118), (sx, sy), int(radius * 0.6))
                 pygame.draw.circle(surface, (255, 255, 255), (sx - radius//3, sy - radius//3), int(radius * 0.2))
 
+            elif b_type == "BiomassStockpile":
+                # Biomass Storage Depot
+                pygame.draw.circle(surface, (90, 30, 110), (sx, sy), radius)
+                pygame.draw.circle(surface, (180, 60, 220), (sx, sy), radius, width=2)
+                pygame.draw.circle(surface, (76, 175, 80), (sx, sy), int(radius * 0.5))
+
         # Visual overlay for building under construction
         if not building.is_constructed:
             # Semi-transparent scaffolding grid / outline
@@ -422,6 +468,12 @@ class RenderUtils:
                 p3 = (sx + int(math.cos(facing - 2.2) * radius), sy + int(math.sin(facing - 2.2) * radius))
                 pygame.draw.polygon(surface, (50, 230, 50), [p1, p2, p3])
                 pygame.draw.polygon(surface, (220, 255, 0), [p1, p2, p3], width=2)
+
+            elif u_type == "Queen":
+                # Majestic Alien Queen
+                pygame.draw.circle(surface, (180, 20, 120), (sx, sy), radius)
+                pygame.draw.circle(surface, (255, 215, 0), (sx, sy), radius, width=3)
+                pygame.draw.circle(surface, (255, 0, 128), (sx, sy), max(2, radius - 5))
 
         # Attack visual animations (Arrow / Spore Stream)
         if unit.is_attacking_anim > 0 and unit.target_entity:

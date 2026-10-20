@@ -22,7 +22,7 @@ class AIController:
     def _assign_builder_to_building(self, nb, ai_units, game_state):
         if not nb or getattr(nb, 'is_constructed', True):
             return
-        idle_builders = [u for u in ai_units if u.alive and (u.is_worker or u.unit_type == "Swarmer") and u.state == "idle"]
+        idle_builders = [u for u in ai_units if u.alive and u.is_worker and u.state == "idle"]
         if idle_builders:
             builder = min(idle_builders, key=lambda u: u.distance_to(nb))
             builder.construct_building(nb, game_state)
@@ -135,6 +135,43 @@ class AIController:
         if active_gens and hasattr(game_state, 'add_resources'):
             game_state.add_resources(self.owner_id, "biomass", 5 * len(active_gens) * dt)
 
+        # 5c. Biomass Stockpile (Level 5+)
+        stockpiles = [b for b in ai_buildings if b.building_type in ["BiomassStockpile", "WoodStockpile", "GoldStockpile"]]
+        if self.config.get("can_build_biomass_stockpile") and resources and len(stockpiles) < 3:
+            # Find resources distant from any base/stockpile
+            distant_res = []
+            for r in resources:
+                dist_to_depot = min([math.hypot(r.x - b.x, r.y - b.y) for b in bases + stockpiles] or [9999])
+                if dist_to_depot > 400:
+                    distant_res.append(r)
+
+            if distant_res:
+                target_r = distant_res[0]
+                sx = target_r.x + random.choice([-50, 50])
+                sy = target_r.y + random.choice([-50, 50])
+                b_type = "BiomassStockpile" if self.faction == config.FACTION_ALIEN else "WoodStockpile"
+                cost_dict = BUILDING_TYPES.get(b_type, {}).get("cost", {res_type: 80})
+                if game_state.can_place_building(b_type, sx, sy):
+                    if game_state.deduct_resources(self.owner_id, cost_dict):
+                        nb = Building(self.owner_id, self.faction, b_type, sx, sy, is_constructed=False)
+                        game_state.buildings.append(nb)
+                        self._assign_builder_to_building(nb, ai_units, game_state)
+
+        # 5d. Second Hive Expansion (Level 15+)
+        if self.config.get("can_build_second_hive") and len(bases) < 2 and resources:
+            far_res = [r for r in resources if min([math.hypot(r.x - b.x, r.y - b.y) for b in bases] or [0]) > 600]
+            if far_res:
+                target_r = far_res[0]
+                hx = target_r.x + random.choice([-70, 70])
+                hy = target_r.y + random.choice([-70, 70])
+                hive_type = "Hive" if self.faction == config.FACTION_ALIEN else "TownHall"
+                cost_dict = BUILDING_TYPES.get(hive_type, {}).get("cost", {res_type: 400})
+                if game_state.can_place_building(hive_type, hx, hy):
+                    if game_state.deduct_resources(self.owner_id, cost_dict):
+                        nb = Building(self.owner_id, self.faction, hive_type, hx, hy, is_constructed=False)
+                        game_state.buildings.append(nb)
+                        self._assign_builder_to_building(nb, ai_units, game_state)
+
         # Ensure all unconstructed AI buildings have an assigned AI builder/swarmer
         unconstructed_ai_blds = [b for b in ai_buildings if not b.is_constructed]
         for ub in unconstructed_ai_blds:
@@ -168,7 +205,7 @@ class AIController:
                     u.attack_power = int(u.attack_power / 1.25)
                     u._on_creep = False
 
-        # 6. Army Unit Queueing (Spitter strictly at Level 6+)
+        # 6. Army Unit Queueing (Spitter at Level 6+, Queen at Level 14+)
         army_units = [u for u in ai_units if not u.is_worker]
         for prod in production_blds:
             if prod.is_constructed and len(prod.production_queue) < 4:
@@ -178,6 +215,9 @@ class AIController:
                         available_troops.append("Spitter")
                     else:
                         available_troops.append("Archer")
+
+                if self.config.get("can_train_queen") and self.faction == config.FACTION_ALIEN:
+                    available_troops.append("Queen")
 
                 chosen_unit = random.choice(available_troops)
                 cost_dict = UNIT_TYPES.get(chosen_unit, {}).get("cost", {res_type: 60})

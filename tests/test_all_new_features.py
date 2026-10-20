@@ -17,13 +17,13 @@ class TestNewFeatures(unittest.TestCase):
         w1 = Building(0, config.FACTION_HUMAN, "Wall", 100, 100, wall_length=40, wall_width=20, wall_angle=0.0)
         w2 = Building(0, config.FACTION_HUMAN, "Wall", 138, 100, wall_length=40, wall_width=20, wall_angle=0.0)
 
-        # Both wall sections have their own HP
-        self.assertEqual(w1.hp, 250)
-        self.assertEqual(w2.hp, 250)
+        # Both wall sections have their own HP (750 each now)
+        self.assertEqual(w1.hp, 750)
+        self.assertEqual(w2.hp, 750)
 
         w1.take_damage(50)
-        self.assertEqual(w1.hp, 200)
-        self.assertEqual(w2.hp, 250)
+        self.assertEqual(w1.hp, 700)
+        self.assertEqual(w2.hp, 750)
 
         # GameState allows placing adjacent wall sections
         self.game_state.buildings.append(w1)
@@ -77,6 +77,8 @@ class TestNewFeatures(unittest.TestCase):
         self.game_state.buildings.append(forum)
 
         forum.update(1.1, self.game_state)
+        for proj in list(self.game_state.projectiles):
+            proj.update(1.0, self.game_state)
         self.assertLess(enemy.hp, enemy.max_hp)
 
     def test_worker_repair(self):
@@ -116,16 +118,16 @@ class TestNewFeatures(unittest.TestCase):
         self.assertEqual(deposit, moulin)
 
     def test_command_queueing_and_alien_swarmer_morph(self):
-        swarmer = Unit(1, config.FACTION_ALIEN, "Swarmer", 300, 300)
+        drone = Unit(1, config.FACTION_ALIEN, "Drone", 300, 300)
         pool = Building(1, config.FACTION_ALIEN, "SpawningPool", 300, 300, is_constructed=False)
 
-        swarmer.command_queue.append({"type": "construct", "target": pool})
-        swarmer.pop_next_command(self.game_state)
+        drone.command_queue.append({"type": "construct", "target": pool})
+        drone.pop_next_command(self.game_state)
 
-        swarmer.update(0.1, self.game_state)
-        # Swarmer morphs (dies) and advances building construction
-        self.assertFalse(swarmer.alive)
-        self.assertGreater(pool.hp, int(pool.max_hp * 0.10))
+        drone.update(0.1, self.game_state)
+        # Drone morphs (dies) and sets building under construction
+        self.assertFalse(drone.alive)
+        self.assertTrue(getattr(pool, 'is_being_built', False))
 
     def test_pathfinding_grid(self):
         from src.engine.pathfinding import PathfindingGrid
