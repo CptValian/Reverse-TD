@@ -89,7 +89,7 @@ class ProgressionUI:
                 "desc": "+100 Starting Resources",
                 "cost": 20,
                 "parents": [],
-                "pos": (300, 200)
+                "pos": (200, 200)
             },
             {
                 "key": "wood_stockpile_unlocked",
@@ -97,7 +97,7 @@ class ProgressionUI:
                 "desc": "Drop-off for Wood Workers",
                 "cost": 20,
                 "parents": [],
-                "pos": (750, 200)
+                "pos": (550, 200)
             },
             {
                 "key": "gold_stockpile_unlocked",
@@ -105,7 +105,15 @@ class ProgressionUI:
                 "desc": "Drop-off for Gold Workers",
                 "cost": 20,
                 "parents": [],
-                "pos": (1150, 200)
+                "pos": (900, 200)
+            },
+            {
+                "key": "food_stockpile_unlocked",
+                "name": "Moulin / Grain Mill",
+                "desc": "Drop-off for Food Workers",
+                "cost": 20,
+                "parents": [],
+                "pos": (1250, 200)
             },
             {
                 "key": "house_unlocked",
@@ -113,7 +121,7 @@ class ProgressionUI:
                 "desc": "Build Houses for +5 Pop Max",
                 "cost": 20,
                 "parents": [],
-                "pos": (1550, 200)
+                "pos": (1600, 200)
             },
             {
                 "key": "extra_worker_start",
@@ -121,7 +129,7 @@ class ProgressionUI:
                 "desc": "Start with +1 Worker",
                 "cost": 25,
                 "parents": ["starting_res_1"],
-                "pos": (150, 380)
+                "pos": (100, 380)
             },
             {
                 "key": "extra_melee_start",
@@ -129,7 +137,7 @@ class ProgressionUI:
                 "desc": "Start with +1 Melee Unit",
                 "cost": 25,
                 "parents": ["starting_res_1"],
-                "pos": (450, 380)
+                "pos": (380, 380)
             },
             {
                 "key": "archer_unlocked",
@@ -137,7 +145,7 @@ class ProgressionUI:
                 "desc": "Train Archers in Barracks",
                 "cost": 30,
                 "parents": ["starting_res_1"],
-                "pos": (750, 380)
+                "pos": (660, 380)
             },
             {
                 "key": "wall_unlocked",
@@ -145,7 +153,7 @@ class ProgressionUI:
                 "desc": "Build Defensive Wooden Walls",
                 "cost": 25,
                 "parents": ["wood_stockpile_unlocked"],
-                "pos": (1050, 380)
+                "pos": (940, 380)
             },
             {
                 "key": "farm_unlocked",
@@ -153,7 +161,7 @@ class ProgressionUI:
                 "desc": "Harvest Food for Troops",
                 "cost": 25,
                 "parents": ["wood_stockpile_unlocked"],
-                "pos": (1350, 380)
+                "pos": (1500, 380)
             },
             {
                 "key": "garrison_unlocked",
@@ -161,7 +169,7 @@ class ProgressionUI:
                 "desc": "Garrison Peasants into Town Hall",
                 "cost": 30,
                 "parents": ["house_unlocked"],
-                "pos": (1650, 380)
+                "pos": (1780, 380)
             },
             {
                 "key": "ageing_up_2",
@@ -169,7 +177,7 @@ class ProgressionUI:
                 "desc": "Advance Age (Boost Bld HP & unlocks)",
                 "cost": 50,
                 "parents": ["archer_unlocked", "wall_unlocked", "farm_unlocked"],
-                "pos": (900, 560)
+                "pos": (940, 560)
             },
             {
                 "key": "tower_unlocked",
@@ -177,7 +185,7 @@ class ProgressionUI:
                 "desc": "Build Defending Watchtowers",
                 "cost": 35,
                 "parents": ["ageing_up_2"],
-                "pos": (600, 740)
+                "pos": (660, 740)
             },
             {
                 "key": "looting_unlocked",
@@ -185,7 +193,7 @@ class ProgressionUI:
                 "desc": "+5 Food per troop kill",
                 "cost": 30,
                 "parents": ["ageing_up_2"],
-                "pos": (900, 740)
+                "pos": (940, 740)
             },
             {
                 "key": "townhall_unlocked",
@@ -193,7 +201,7 @@ class ProgressionUI:
                 "desc": "Build Additional Town Halls",
                 "cost": 40,
                 "parents": ["ageing_up_2"],
-                "pos": (1200, 740)
+                "pos": (1220, 740)
             },
             {
                 "key": "tower_range_unlocked",
@@ -201,7 +209,7 @@ class ProgressionUI:
                 "desc": "Arrow tower +10% range",
                 "cost": 25,
                 "parents": ["tower_unlocked"],
-                "pos": (600, 920)
+                "pos": (820, 920)
             },
             {
                 "key": "forum_atk_range",
@@ -209,7 +217,7 @@ class ProgressionUI:
                 "desc": "Forum Attack Range +10%",
                 "cost": 30,
                 "parents": ["garrison_unlocked"],
-                "pos": (1500, 560)
+                "pos": (1780, 560)
             },
             {
                 "key": "watchtower_sight",
@@ -217,39 +225,39 @@ class ProgressionUI:
                 "desc": "Watchtower Sight +20%",
                 "cost": 25,
                 "parents": ["tower_unlocked"],
-                "pos": (400, 920)
+                "pos": (500, 920)
             },
             {
                 "key": "scout_unlocked",
                 "name": "Unlock Scout",
-                "desc": "Fast reconnaissance unit with high vision",
+                "desc": "Fast reconnaissance unit",
                 "cost": 25,
                 "parents": ["extra_worker_start"],
-                "pos": (150, 560)
+                "pos": (100, 560)
             },
             {
                 "key": "building_repair_unlocked",
                 "name": "Building Repair",
-                "desc": "Order Workers to repair damaged structures",
+                "desc": "Workers repair structures",
                 "cost": 30,
                 "parents": ["house_unlocked"],
-                "pos": (1800, 560)
+                "pos": (2060, 560)
             },
             {
                 "key": "double_base_res_cap",
                 "name": "Rich Deposit Caches",
-                "desc": "Double resource node capacity around Forum",
+                "desc": "Double resource capacity at Forum",
                 "cost": 35,
                 "parents": ["gold_stockpile_unlocked"],
-                "pos": (1150, 380)
+                "pos": (1220, 380)
             },
             {
                 "key": "forum_passive_arrow",
                 "name": "Sentry Guard Bow",
-                "desc": "Forum fires 1 arrow automatically (+1 arrow)",
+                "desc": "Forum fires 1 arrow (+1 arrow)",
                 "cost": 35,
                 "parents": ["garrison_unlocked"],
-                "pos": (1700, 740)
+                "pos": (1780, 740)
             }
         ]
 
@@ -284,6 +292,12 @@ class ProgressionUI:
 
                 pygame.draw.line(surface, line_color, (px, py + int(40 * zoom)), (cx, cy - int(40 * zoom)), max(1, int(3 * zoom)))
 
+        # Dynamic fonts based on zoom level so text stays anchored inside cards
+        bold_size = max(8, min(22, int(15 * zoom)))
+        small_size = max(6, min(18, int(12 * zoom)))
+        z_bold_font = pygame.font.SysFont("Arial", bold_size, bold=True)
+        z_small_font = pygame.font.SysFont("Arial", small_size)
+
         # 2. Draw node cards
         for n in nodes:
             key = n["key"]
@@ -311,20 +325,20 @@ class ProgressionUI:
                 status_txt = "LOCKED"
                 status_col = (120, 120, 120)
 
-            pygame.draw.rect(surface, bg_col, card_rect, border_radius=6)
-            pygame.draw.rect(surface, border_col, card_rect, 2, border_radius=6)
+            pygame.draw.rect(surface, bg_col, card_rect, border_radius=max(2, int(6 * zoom)))
+            pygame.draw.rect(surface, border_col, card_rect, max(1, int(2 * zoom)), border_radius=max(2, int(6 * zoom)))
 
             # Title
-            t_title = self.bold_font.render(n["name"], True, config.COLOR_UI_TEXT if parents_unlocked or is_unlocked else (140, 140, 140))
-            surface.blit(t_title, (cx - t_title.get_width() // 2, cy - 32))
+            t_title = z_bold_font.render(n["name"], True, config.COLOR_UI_TEXT if parents_unlocked or is_unlocked else (140, 140, 140))
+            surface.blit(t_title, (cx - t_title.get_width() // 2, cy - int(32 * zoom)))
 
             # Desc
-            t_desc = self.small_font.render(n["desc"], True, (180, 180, 180) if parents_unlocked or is_unlocked else (100, 100, 100))
-            surface.blit(t_desc, (cx - t_desc.get_width() // 2, cy - 10))
+            t_desc = z_small_font.render(n["desc"], True, (180, 180, 180) if parents_unlocked or is_unlocked else (100, 100, 100))
+            surface.blit(t_desc, (cx - t_desc.get_width() // 2, cy - int(10 * zoom)))
 
             # Status / Button label
-            t_stat = self.bold_font.render(status_txt, True, status_col)
-            surface.blit(t_stat, (cx - t_stat.get_width() // 2, cy + 12))
+            t_stat = z_bold_font.render(status_txt, True, status_col)
+            surface.blit(t_stat, (cx - t_stat.get_width() // 2, cy + int(12 * zoom)))
 
             if parents_unlocked and not is_unlocked:
                 buttons[key] = {

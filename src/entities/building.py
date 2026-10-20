@@ -10,6 +10,7 @@ BUILDING_TYPES = {
     "Wall": {"cost": {"wood": 30}, "hp": 250, "radius": 18, "build_time": 8, "trainable": []},
     "WoodStockpile": {"cost": {"wood": 80}, "hp": 350, "radius": 25, "build_time": 12, "trainable": []},
     "GoldStockpile": {"cost": {"wood": 80, "gold": 20}, "hp": 350, "radius": 25, "build_time": 12, "trainable": []},
+    "FoodStockpile": {"cost": {"wood": 80}, "hp": 350, "radius": 25, "build_time": 12, "trainable": []},
     "Farm": {"cost": {"wood": 100}, "hp": 300, "radius": 30, "build_time": 15, "trainable": []},
 
     # Alien
@@ -50,10 +51,12 @@ class Building(BaseEntity):
         self.is_constructed = is_constructed
         self.total_build_time = data.get("build_time", 10)
         self.build_timer = 0.0 if is_constructed else self.total_build_time
+        if not is_constructed:
+            self.hp = max(1, int(self.max_hp * 0.10))
 
         # Garrisoning
         self.garrisoned_units = []  # liste d'unités de paysans abrités
-        self.max_garrison = 10 if building_type == "TownHall" else 0
+        self.max_garrison = 10 if building_type == "TownHall" else (4 if building_type == "Farm" else 0)
 
         # Rally Point
         self.rally_point = None  # (x, y) tuple
@@ -86,9 +89,15 @@ class Building(BaseEntity):
     def build_progress(self, dt, speed_mult=1.0):
         if not self.is_constructed:
             self.build_timer -= dt * speed_mult
+            if self.total_build_time > 0:
+                progress = max(0.0, min(1.0, 1.0 - (self.build_timer / float(self.total_build_time))))
+                target_hp = int(self.max_hp * (0.10 + 0.90 * progress))
+                self.hp = max(self.hp, target_hp)
+
             if self.build_timer <= 0:
                 self.is_constructed = True
                 self.build_timer = 0.0
+                self.hp = self.max_hp
 
     def take_damage(self, amount):
         effective_damage = max(1, amount - self.armor)
@@ -128,6 +137,11 @@ class Building(BaseEntity):
             if upgrades.get("forum_passive_arrow"):
                 num_arrows += 1  # Base passive arrow even without workers
             effective_attack = num_arrows * 12
+
+        if self.building_type == "Farm" and self.garrisoned_units and game_state:
+            harvest_rate = config.DEFAULT_HARVEST_RATE * 0.5  # Slower food harvest than berry picking
+            food_collected = len(self.garrisoned_units) * harvest_rate * dt
+            game_state.add_resources(self.owner_id, "food", food_collected)
 
         if effective_attack > 0 and game_state:
             self.attack_cooldown -= dt

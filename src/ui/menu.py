@@ -168,29 +168,40 @@ class Menu:
         canvas = pygame.Surface((viewport_w, content_h))
         canvas.fill((15, 18, 26))
 
-        # Section 1: Fonctionnement de la Civilisation Insecte Alien
-        civ_box = pygame.Rect(10, 10, viewport_w - 20, 150)
-        pygame.draw.rect(canvas, (28, 34, 48), civ_box, border_radius=10)
-        pygame.draw.rect(canvas, (216, 27, 96), civ_box, 2, border_radius=10)
-
-        t_civ_head = self.btn_font.render("FONCTIONNEMENT DE LA CIVILISATION INSECTE ALIEN", True, (216, 27, 96))
-        canvas.blit(t_civ_head, (civ_box.x + 20, civ_box.y + 12))
-
         civ_desc_lines = [
             "• Économie de Biomasse: Les Insectes aliens récoltent de la biomasse organique pour concevoir leurs structures et muter leurs troupes.",
             "• Conscience Collective (Hive Mind): Spawneurs rapides en essaims. Les unités mutent rapidement depuis la Ruche et le Bassin de Ponte.",
             "• Troupes Alien: Drones (ouvriers polyvalents), Swarmers (combattants au corps-à-corps rapides) et Spitters (tireurs d'acide à distance).",
             "• Bâtiments Alien: Hive (Ruche centrale), Spawning Pool (Bassin de ponte des troupes) et Spine Crawler (Organisme défensif)."
         ]
-        curr_y = civ_box.y + 45
-        for line in civ_desc_lines:
-            t_line = self.font.render(line, True, config.COLOR_UI_TEXT)
-            canvas.blit(t_line, (civ_box.x + 20, curr_y))
-            curr_y += 24
+
+        def wrap_text(text, font, max_w):
+            words = text.split(" ")
+            lines = []
+            cur = []
+            for word in words:
+                test_l = " ".join(cur + [word])
+                if font.size(test_l)[0] <= max_w:
+                    cur.append(word)
+                else:
+                    if cur:
+                        lines.append(" ".join(cur))
+                    cur = [word]
+            if cur:
+                lines.append(" ".join(cur))
+            return lines
+
+        wrapped_desc_lines = []
+        max_line_w = viewport_w - 60
+        for raw_line in civ_desc_lines:
+            wrapped_desc_lines.extend(wrap_text(raw_line, self.font, max_line_w))
+
+        civ_box_h = 50 + len(wrapped_desc_lines) * 24 + 10
+        civ_box = pygame.Rect(10, 10, viewport_w - 20, civ_box_h)
 
         # Subtitle for AI Levels
+        ai_head_y = civ_box.y + civ_box_h + 15
         t_lvl_head = self.btn_font.render("DESCRIPTIFS DES NIVEAUX DE DIFFICULTÉ DE L'IA (1 à 12)", True, config.COLOR_UI_ACCENT)
-        canvas.blit(t_lvl_head, (15, 175))
 
         ai_descriptions = {
             1: "Niveau 1: Revenu x1.0, vagues/120s. Troupes: Drones & Swarmers.",
@@ -207,22 +218,25 @@ class Menu:
             12: "Niveau 12 (Moisson Suprême): Revenu x2.5, vagues/10s. Tuer un ennemi donne de la Biomasse. +50% HP, +70% Atk."
         }
 
-        y = 210
+        y = ai_head_y + 35
         card_h = 120
-        content_h = 220 + num_lvls * (card_h + 10) + 40
+        content_h = y + num_lvls * (card_h + 10) + 40
         canvas = pygame.Surface((viewport_w, content_h))
         canvas.fill((15, 18, 26))
 
         # Redraw top section on resized canvas
         pygame.draw.rect(canvas, (28, 34, 48), civ_box, border_radius=10)
         pygame.draw.rect(canvas, (216, 27, 96), civ_box, 2, border_radius=10)
+        t_civ_head = self.btn_font.render("FONCTIONNEMENT DE LA CIVILISATION INSECTE ALIEN", True, (216, 27, 96))
         canvas.blit(t_civ_head, (civ_box.x + 20, civ_box.y + 12))
+
         curr_y = civ_box.y + 45
-        for line in civ_desc_lines:
+        for line in wrapped_desc_lines:
             t_line = self.font.render(line, True, config.COLOR_UI_TEXT)
             canvas.blit(t_line, (civ_box.x + 20, curr_y))
             curr_y += 24
-        canvas.blit(t_lvl_head, (15, 175))
+
+        canvas.blit(t_lvl_head, (15, ai_head_y))
 
         for lvl in range(1, num_lvls + 1):
             data = AI_DIFFICULTY_LEVELS.get(lvl, {})

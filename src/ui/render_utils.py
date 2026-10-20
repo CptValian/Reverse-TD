@@ -39,6 +39,11 @@ class RenderUtils:
         if entity.selected:
             pygame.draw.circle(surface, config.COLOR_SELECTION, (sx, sy), scaled_radius + 4, 2)
 
+            # Draw attack range circle if building with attack range selected
+            if hasattr(entity, 'building_type') and getattr(entity, 'attack_range', 0) > 0:
+                scaled_atk_range = int(entity.attack_range * camera.zoom)
+                pygame.draw.circle(surface, (255, 100, 100), (sx, sy), scaled_atk_range, 2)
+
             # Draw Rally Point line and marker if building with rally point selected
             if hasattr(entity, 'building_type') and entity.owner_id == 0 and getattr(entity, 'rally_point', None):
                 rx, ry = entity.rally_point
@@ -208,6 +213,18 @@ class RenderUtils:
                 pygame.draw.circle(surface, (255, 215, 0), (sx - 4, sy - 2), 5)
                 pygame.draw.circle(surface, (255, 223, 0), (sx + 4, sy - 2), 6)
                 pygame.draw.circle(surface, (255, 250, 205), (sx, sy - 6), 4)
+
+            elif b_type == "FoodStockpile":
+                # Medieval Windmill / Grain Mill
+                pygame.draw.circle(surface, (120, 110, 95), (sx, sy), radius)
+                pygame.draw.circle(surface, (180, 170, 155), (sx, sy), radius, width=2)
+                # Roof cone
+                pygame.draw.polygon(surface, (160, 60, 50), [(sx, sy - radius - 6), (sx - radius + 4, sy - 2), (sx + radius - 4, sy - 2)])
+                # 4 Mill Blades
+                b_len = radius + 6
+                pygame.draw.line(surface, (230, 230, 220), (sx - b_len, sy - b_len), (sx + b_len, sy + b_len), 3)
+                pygame.draw.line(surface, (230, 230, 220), (sx - b_len, sy + b_len), (sx + b_len, sy - b_len), 3)
+                pygame.draw.circle(surface, (255, 215, 0), (sx, sy), 4)
 
             elif b_type == "House":
                 # Medieval Cottage / House (Timber wall, Thatched Roof, Window & Door)

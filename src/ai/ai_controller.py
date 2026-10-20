@@ -19,6 +19,14 @@ class AIController:
         self.timer_macro = 0.0
         self.spawn_point = None
 
+    def _assign_builder_to_building(self, nb, ai_units, game_state):
+        if not nb or getattr(nb, 'is_constructed', True):
+            return
+        idle_builders = [u for u in ai_units if u.alive and (u.is_worker or u.unit_type == "Swarmer") and u.state == "idle"]
+        if idle_builders:
+            builder = min(idle_builders, key=lambda u: u.distance_to(nb))
+            builder.construct_building(nb, game_state)
+
     def update(self, dt, game_state):
         self.timer_wave += dt
         self.timer_macro += dt
@@ -50,6 +58,7 @@ class AIController:
                 if game_state.deduct_resources(self.owner_id, cost_dict):
                     nb = Building(self.owner_id, self.faction, main_b_type, bx, by, is_constructed=False)
                     game_state.buildings.append(nb)
+                    self._assign_builder_to_building(nb, ai_units, game_state)
 
         # 2. Worker Management & Harvesting
         ai_workers = [u for u in ai_units if u.is_worker]
@@ -88,6 +97,7 @@ class AIController:
                 if game_state.deduct_resources(self.owner_id, cost_dict):
                     nb = Building(self.owner_id, self.faction, prod_type, bx, by, is_constructed=False)
                     game_state.buildings.append(nb)
+                    self._assign_builder_to_building(nb, ai_units, game_state)
 
         # 5. Defensive Turrets / Spine Crawlers (Gated strictly at Level 4+)
         if self.difficulty >= 4 and self.config.get("can_build_defenses", True):
@@ -105,10 +115,11 @@ class AIController:
                     if game_state.deduct_resources(self.owner_id, cost_dict):
                         nb = Building(self.owner_id, self.faction, def_type, dx, dy, is_constructed=False)
                         game_state.buildings.append(nb)
+                        self._assign_builder_to_building(nb, ai_units, game_state)
 
         # 5b. Biomass Generators (Level 10+)
+        bio_gens = [b for b in ai_buildings if b.building_type == "BiomassGenerator"]
         if self.config.get("can_build_biomass_gen") and self.spawn_point:
-            bio_gens = [b for b in ai_buildings if b.building_type == "BiomassGenerator"]
             if len(bio_gens) < 3:
                 gx = self.spawn_point[0] + random.randint(-140, 140)
                 gy = self.spawn_point[1] + random.randint(-140, 140)
@@ -117,11 +128,18 @@ class AIController:
                     if game_state.deduct_resources(self.owner_id, cost_dict):
                         nb = Building(self.owner_id, self.faction, "BiomassGenerator", gx, gy, is_constructed=False)
                         game_state.buildings.append(nb)
+                        self._assign_builder_to_building(nb, ai_units, game_state)
 
-            # Income generation from constructed Biomass Generators
-            active_gens = [b for b in bio_gens if b.is_constructed]
-            if active_gens and hasattr(game_state, 'add_resources'):
-                game_state.add_resources(self.owner_id, "biomass", 5 * len(active_gens) * dt)
+        # Income generation from constructed Biomass Generators
+        active_gens = [b for b in bio_gens if b.is_constructed]
+        if active_gens and hasattr(game_state, 'add_resources'):
+            game_state.add_resources(self.owner_id, "biomass", 5 * len(active_gens) * dt)
+
+        # Ensure all unconstructed AI buildings have an assigned AI builder/swarmer
+        unconstructed_ai_blds = [b for b in ai_buildings if not b.is_constructed]
+        for ub in unconstructed_ai_blds:
+            if not any(u.alive and u.target_entity == ub for u in ai_units):
+                self._assign_builder_to_building(ub, ai_units, game_state)
 
         # Apply AI stat bonuses & Creep Buffs (Level 8+)
         hp_mult = self.config.get("unit_hp_bonus", 0.0)

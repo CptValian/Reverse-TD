@@ -71,7 +71,19 @@ class HUD:
             owner_label = " [ENEMY]" if is_enemy else ""
             info_text = f"Selected: {name}{owner_label} (HP: {int(first.hp)}/{first.max_hp}){status_extra}"
             img_info = self.font.render(info_text, True, (255, 100, 100) if is_enemy else config.COLOR_UI_TEXT)
-            surface.blit(img_info, (panel_rect.x + 20, panel_rect.y + 10))
+            surface.blit(img_info, (panel_rect.x + 20, panel_rect.y + 8))
+
+            # Display stats for player units
+            if not is_enemy and hasattr(first, 'unit_type'):
+                u_type = getattr(first, 'unit_type', 'Unit')
+                atk = getattr(first, 'attack_power', 0)
+                rng = getattr(first, 'attack_range', 0)
+                spd = getattr(first, 'speed', 0)
+                role = "Worker" if getattr(first, 'is_worker', False) else "Combat Unit"
+
+                stats_txt = f"Role: {role} | Attack Power: {atk} | Attack Range: {rng} | Speed: {spd}"
+                t_stats = self.font.render(stats_txt, True, (255, 215, 0))
+                surface.blit(t_stats, (panel_rect.x + 350, panel_rect.y + 8))
 
             # Helper for enemy descriptions & stats
             if is_enemy:
@@ -87,7 +99,8 @@ class HUD:
                         "Wall": "Fortification Wall - Blocks pathing and protects base.",
                         "Farm": "Agriculture - Supplies food for units.",
                         "WoodStockpile": "Resource Drop-off - Stores gathered wood.",
-                        "GoldStockpile": "Resource Drop-off - Stores gathered gold."
+                        "GoldStockpile": "Resource Drop-off - Stores gathered gold.",
+                        "FoodStockpile": "Grain Mill Depot - Stores gathered food."
                     }
                     func_desc = b_funcs.get(b_type, "Enemy structure.")
                     t_func = self.font.render(f"Function: {func_desc}", True, (255, 215, 0))
@@ -148,6 +161,20 @@ class HUD:
                             pygame.draw.rect(surface, config.COLOR_UI_ACCENT, ungarr_btn, 1, border_radius=4)
                             t_ungarr = self.font.render("Eject All", True, config.COLOR_UI_TEXT)
                             surface.blit(t_ungarr, (ungarr_btn.x + 10, ungarr_btn.y + 3))
+
+                elif first.building_type == "Farm":
+                    num_g = len(getattr(first, 'garrisoned_units', []))
+                    food_rate = int(num_g * config.DEFAULT_HARVEST_RATE * 0.5)
+                    garr_info = f"Working Peasants Inside: {num_g}/{first.max_garrison} (+{food_rate} Food/s)"
+                    img_garr = self.font.render(garr_info, True, (255, 215, 0))
+                    surface.blit(img_garr, (panel_rect.x + 20, panel_rect.y + 40))
+
+                    if num_g > 0:
+                        ungarr_btn = pygame.Rect(panel_rect.x + 360, panel_rect.y + 36, 90, 26)
+                        pygame.draw.rect(surface, (120, 50, 50), ungarr_btn, border_radius=4)
+                        pygame.draw.rect(surface, config.COLOR_UI_ACCENT, ungarr_btn, 1, border_radius=4)
+                        t_ungarr = self.font.render("Eject All", True, config.COLOR_UI_TEXT)
+                        surface.blit(t_ungarr, (ungarr_btn.x + 10, ungarr_btn.y + 3))
 
                 # Boutons de recrutement
                 if first.trainable_units and first.is_constructed:
@@ -216,6 +243,8 @@ class HUD:
                         buildings_to_build.append("WoodStockpile")
                     if upgrades.get("gold_stockpile_unlocked"):
                         buildings_to_build.append("GoldStockpile")
+                    if upgrades.get("food_stockpile_unlocked"):
+                        buildings_to_build.append("FoodStockpile")
                     if upgrades.get("house_unlocked"):
                         buildings_to_build.append("House")
                     if upgrades.get("farm_unlocked"):

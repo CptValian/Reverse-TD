@@ -403,6 +403,7 @@ class GameState:
 
                     self.units.append(new_u)
             else:
+                building.ungarrison_all(self)
                 self.buildings.remove(building)
 
         # Nettoyage des gisements épuisés
