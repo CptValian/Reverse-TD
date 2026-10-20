@@ -73,10 +73,11 @@ def main():
                     elif buttons.get("ai_plus") and buttons["ai_plus"].collidepoint(event.pos):
                         game_state.num_ais = min(4, game_state.num_ais + 1)
 
-                    elif buttons.get("difficulty") and buttons["difficulty"].collidepoint(event.pos):
-                        diffs = list(range(1, 11))
-                        curr_idx = diffs.index(game_state.ai_difficulty) if game_state.ai_difficulty in diffs else 0
-                        game_state.ai_difficulty = diffs[(curr_idx + 1) % len(diffs)]
+                    elif (buttons.get("diff_minus") and buttons["diff_minus"].collidepoint(event.pos)) or (buttons.get("difficulty") and buttons["difficulty"].collidepoint(event.pos) and event.pos[0] < buttons["difficulty"].centerx):
+                        game_state.ai_difficulty = max(1, game_state.ai_difficulty - 1)
+
+                    elif (buttons.get("diff_plus") and buttons["diff_plus"].collidepoint(event.pos)) or (buttons.get("difficulty") and buttons["difficulty"].collidepoint(event.pos) and event.pos[0] >= buttons["difficulty"].centerx):
+                        game_state.ai_difficulty = min(12, game_state.ai_difficulty + 1)
 
                     elif buttons.get("map_type") and buttons["map_type"].collidepoint(event.pos):
                         m_types = [1, 2, 3]
@@ -137,10 +138,16 @@ def main():
                             progression_ui.is_dragging = True
                             progression_ui.drag_start_pos = event.pos
 
-                    elif event.button == 4:  # Scroll UP
-                        progression_ui.camera_offset_y += 30
-                    elif event.button == 5:  # Scroll DOWN
-                        progression_ui.camera_offset_y -= 30
+                    elif event.button == 4:  # Scroll UP / Zoom IN
+                        if progression_ui.active_tab == "skill_tree":
+                            progression_ui.zoom_level = min(2.0, progression_ui.zoom_level + 0.1)
+                        else:
+                            progression_ui.camera_offset_y += 30
+                    elif event.button == 5:  # Scroll DOWN / Zoom OUT
+                        if progression_ui.active_tab == "skill_tree":
+                            progression_ui.zoom_level = max(0.4, progression_ui.zoom_level - 0.1)
+                        else:
+                            progression_ui.camera_offset_y -= 30
 
                 elif event.type == pygame.MOUSEBUTTONUP:
                     if event.button in [1, 2, 3]:
@@ -185,6 +192,8 @@ def main():
                             selected_buildings = [b for b in game_state.buildings if b.selected and b.owner_id == 0 and b.trainable_units]
 
                             target_enemy = next((e for e in game_state.units + game_state.buildings if e.alive and e.owner_id != 0 and e.is_point_inside(world_click[0], world_click[1])), None)
+                            target_unconstructed = next((b for b in game_state.buildings if b.alive and not b.is_constructed and b.owner_id == 0 and b.is_point_inside(world_click[0], world_click[1])), None)
+                            target_damaged_bld = next((b for b in game_state.buildings if b.alive and b.is_constructed and b.hp < b.max_hp and b.owner_id == 0 and b.is_point_inside(world_click[0], world_click[1])), None)
                             target_res = next((r for r in game_state.resources if r.alive and r.is_point_inside(world_click[0], world_click[1])), None)
                             target_farm = next((b for b in game_state.buildings if b.alive and getattr(b, 'building_type', None) == "Farm" and b.is_point_inside(world_click[0], world_click[1])), None)
                             target_th = next((b for b in game_state.buildings if b.alive and getattr(b, 'building_type', None) == "TownHall" and b.owner_id == 0 and b.is_point_inside(world_click[0], world_click[1])), None)
@@ -194,6 +203,10 @@ def main():
                                 for unit in selected_units:
                                     if target_enemy:
                                         unit.attack_target(target_enemy)
+                                    elif target_unconstructed and unit.is_worker:
+                                        unit.construct_building(target_unconstructed)
+                                    elif target_damaged_bld and unit.is_worker and upgrades.get("building_repair_unlocked"):
+                                        unit.repair_building(target_damaged_bld)
                                     elif target_res and unit.is_worker:
                                         unit.harvest_node(target_res)
                                     elif target_farm and unit.is_worker:
@@ -242,7 +255,7 @@ def main():
                                     length = math.hypot(dx, dy)
 
                                     if length >= 15:
-                                        seg_spacing = 40.0
+                                        seg_spacing = 38.0
                                         num_segs = max(1, int(round(length / seg_spacing)))
                                         unit_cost_wood = cost.get("wood", 30)
                                         total_wall_cost = {"wood": unit_cost_wood * num_segs}
@@ -265,8 +278,8 @@ def main():
                                                     nb = Building(
                                                         0, config.FACTION_HUMAN, "Wall", cx, cy,
                                                         is_constructed=False,
-                                                        wall_length=seg_len + 6.0,
-                                                        wall_width=18,
+                                                        wall_length=seg_len + 12.0,  # Overlap adjacent sections for continuous line without gaps
+                                                        wall_width=20,
                                                         wall_angle=wall_angle
                                                     )
                                                     game_state.buildings.append(nb)
@@ -279,8 +292,23 @@ def main():
                                 if game_state.can_place_building(placement_building_type, world_click[0], world_click[1]):
                                     if game_state.deduct_resources(0, cost):
                                         range_bonus = 20 if (placement_building_type == "Tower" and upgrades.get("tower_range_unlocked")) else 0
+                                        if placement_building_type == "TownHall" and upgrades.get("forum_atk_range"):
+                                            range_bonus += 22
+                                        if placement_building_type == "Tower" and upgrades.get("watchtower_sight"):
+                                            # Additional vision
+                                            range_bonus += 10
+
                                         nb = Building(0, config.FACTION_HUMAN, placement_building_type, world_click[0], world_click[1], is_constructed=False, range_bonus=range_bonus)
+                                        if placement_building_type == "Tower" and upgrades.get("watchtower_sight"):
+                                            nb.vision_radius = int(nb.vision_radius * 1.20)
+
                                         game_state.buildings.append(nb)
+
+                                        # Automatically send selected worker(s) to construct the new building
+                                        selected_workers = [u for u in game_state.units if u.selected and u.owner_id == 0 and u.is_worker]
+                                        for w in selected_workers:
+                                            w.construct_building(nb)
+
                                         placement_building_type = None
 
                         elif minimap_rect.collidepoint(mouse_pos):
@@ -326,6 +354,8 @@ def main():
                                     trainable = []
                                     for u in first.trainable_units:
                                         if u == "Archer" and not upgrades.get("archer_unlocked"):
+                                            continue
+                                        if u == "Scout" and not upgrades.get("scout_unlocked"):
                                             continue
                                         trainable.append(u)
 
@@ -517,28 +547,47 @@ def main():
         elif game_state.state == "VICTORY":
             screen.fill((20, 60, 20))
             txt = menu.title_font.render("GLORIOUS VICTORY!", True, (100, 255, 100))
-            screen.blit(txt, (config.SCREEN_WIDTH // 2 - txt.get_width() // 2, 300))
+            screen.blit(txt, (config.SCREEN_WIDTH // 2 - txt.get_width() // 2, 280))
 
-            p_res = game_state.resources_gathered_player.get(0, {})
-            res_str = f"Ressources obtenues - Or: {int(p_res.get('gold', 0))} | Bois: {int(p_res.get('wood', 0))} | Nourriture: {int(p_res.get('food', 0))} | Biomasse: {int(p_res.get('biomass', 0))}"
+            from src.progression.rewards import Rewards
+            last_rewards = getattr(game_state, 'last_match_rewards', {})
+            ls_earned = last_rewards.get(config.POINT_TYPE_COMMAND, 0)
+            sb_earned = last_rewards.get(config.POINT_TYPE_FORGE, 0)
+            py_earned = last_rewards.get(config.POINT_TYPE_ARCHITECTURE, 0)
+
+            res_str = f"Ressources permanentes obtenues:  LandShard: +{ls_earned}  |  SwarmerBlood: +{sb_earned}  |  Pykrite: +{py_earned}"
             res_txt = menu.font.render(res_str, True, (255, 215, 0))
-            screen.blit(res_txt, (config.SCREEN_WIDTH // 2 - res_txt.get_width() // 2, 400))
+            screen.blit(res_txt, (config.SCREEN_WIDTH // 2 - res_txt.get_width() // 2, 380))
 
-            sub = menu.font.render("Progression reward points earned. Click to return to Menu.", True, (255, 255, 255))
-            screen.blit(sub, (config.SCREEN_WIDTH // 2 - sub.get_width() // 2, 480))
+            pts = save_manager.get_points()
+            tot_str = f"Total permanent:  LandShard: {pts.get('LandShard', 0)}  |  SwarmerBlood: {pts.get('SwarmerBlood', 0)}  |  Pykrite: {pts.get('Pykrite', 0)}"
+            tot_txt = menu.small_font.render(tot_str, True, (200, 220, 240))
+            screen.blit(tot_txt, (config.SCREEN_WIDTH // 2 - tot_txt.get_width() // 2, 420))
+
+            sub = menu.font.render("Click or press any key to return to Menu.", True, (255, 255, 255))
+            screen.blit(sub, (config.SCREEN_WIDTH // 2 - sub.get_width() // 2, 500))
 
         elif game_state.state == "DEFEAT":
             screen.fill((60, 20, 20))
             txt = menu.title_font.render("DEFEAT...", True, (255, 100, 100))
-            screen.blit(txt, (config.SCREEN_WIDTH // 2 - txt.get_width() // 2, 300))
+            screen.blit(txt, (config.SCREEN_WIDTH // 2 - txt.get_width() // 2, 280))
 
-            p_res = game_state.resources_gathered_player.get(0, {})
-            res_str = f"Ressources obtenues - Or: {int(p_res.get('gold', 0))} | Bois: {int(p_res.get('wood', 0))} | Nourriture: {int(p_res.get('food', 0))} | Biomasse: {int(p_res.get('biomass', 0))}"
+            last_rewards = getattr(game_state, 'last_match_rewards', {})
+            ls_earned = last_rewards.get(config.POINT_TYPE_COMMAND, 0)
+            sb_earned = last_rewards.get(config.POINT_TYPE_FORGE, 0)
+            py_earned = last_rewards.get(config.POINT_TYPE_ARCHITECTURE, 0)
+
+            res_str = f"Ressources permanentes obtenues:  LandShard: +{ls_earned}  |  SwarmerBlood: +{sb_earned}  |  Pykrite: +{py_earned}"
             res_txt = menu.font.render(res_str, True, (255, 215, 0))
-            screen.blit(res_txt, (config.SCREEN_WIDTH // 2 - res_txt.get_width() // 2, 400))
+            screen.blit(res_txt, (config.SCREEN_WIDTH // 2 - res_txt.get_width() // 2, 380))
 
-            sub = menu.font.render("Your defenses have fallen. Click to return to Menu.", True, (255, 255, 255))
-            screen.blit(sub, (config.SCREEN_WIDTH // 2 - sub.get_width() // 2, 480))
+            pts = save_manager.get_points()
+            tot_str = f"Total permanent:  LandShard: {pts.get('LandShard', 0)}  |  SwarmerBlood: {pts.get('SwarmerBlood', 0)}  |  Pykrite: {pts.get('Pykrite', 0)}"
+            tot_txt = menu.small_font.render(tot_str, True, (200, 220, 240))
+            screen.blit(tot_txt, (config.SCREEN_WIDTH // 2 - tot_txt.get_width() // 2, 420))
+
+            sub = menu.font.render("Your defenses have fallen. Click or press any key to return to Menu.", True, (255, 255, 255))
+            screen.blit(sub, (config.SCREEN_WIDTH // 2 - sub.get_width() // 2, 500))
 
         pygame.display.flip()
 

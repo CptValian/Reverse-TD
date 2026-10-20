@@ -3,7 +3,7 @@ import config
 
 BUILDING_TYPES = {
     # Medieval
-    "TownHall": {"cost": {"wood": 250, "gold": 300}, "hp": 1000, "radius": 45, "build_time": 30, "trainable": ["Worker"], "pop_bonus": 10, "attack_power": 0, "range": 220, "vision": 350},
+    "TownHall": {"cost": {"wood": 250, "gold": 300}, "hp": 1000, "radius": 45, "build_time": 30, "trainable": ["Worker", "Scout"], "pop_bonus": 10, "attack_power": 0, "range": 220, "vision": 350},
     "House": {"cost": {"wood": 60}, "hp": 250, "radius": 22, "build_time": 10, "trainable": [], "pop_bonus": 5, "vision": 200},
     "Barracks": {"cost": {"wood": 100, "gold": 50}, "hp": 500, "radius": 35, "build_time": 20, "trainable": ["Infantry", "Archer"], "vision": 250},
     "Tower": {"cost": {"wood": 80, "gold": 40}, "hp": 400, "radius": 25, "build_time": 16, "attack_power": 15, "range": 200, "trainable": [], "vision": 550},
@@ -15,7 +15,8 @@ BUILDING_TYPES = {
     # Alien
     "Hive": {"cost": {"biomass": 400}, "hp": 1000, "radius": 45, "build_time": 30, "trainable": ["Drone"], "pop_bonus": 10},
     "SpawningPool": {"cost": {"biomass": 150}, "hp": 500, "radius": 35, "build_time": 20, "trainable": ["Swarmer", "Spitter"]},
-    "SpineCrawler": {"cost": {"biomass": 100}, "hp": 400, "radius": 25, "build_time": 16, "attack_power": 18, "range": 180, "trainable": []}
+    "SpineCrawler": {"cost": {"biomass": 100}, "hp": 400, "radius": 25, "build_time": 16, "attack_power": 18, "range": 180, "trainable": []},
+    "BiomassGenerator": {"cost": {"biomass": 300}, "hp": 350, "radius": 30, "build_time": 25, "trainable": []}
 }
 
 class Building(BaseEntity):
@@ -34,6 +35,7 @@ class Building(BaseEntity):
         self.wall_length = wall_length
         self.wall_width = wall_width
         self.wall_angle = wall_angle
+        self.is_wall_section = (building_type == "Wall")
         self.cost = data.get("cost", {"wood": 50})
         self.res_type = data.get("res_type", "gold" if faction == config.FACTION_HUMAN else "biomass")
         self.trainable_units = list(data.get("trainable", []))
@@ -81,6 +83,13 @@ class Building(BaseEntity):
                 game_state.units.append(u)
         return released
 
+    def build_progress(self, dt, speed_mult=1.0):
+        if not self.is_constructed:
+            self.build_timer -= dt * speed_mult
+            if self.build_timer <= 0:
+                self.is_constructed = True
+                self.build_timer = 0.0
+
     def take_damage(self, amount):
         effective_damage = max(1, amount - self.armor)
         super().take_damage(effective_damage)
@@ -98,12 +107,8 @@ class Building(BaseEntity):
         if not self.alive:
             return None
 
-        # Gestion de la construction du bâtiment
+        # Gestion de la construction du bâtiment (nécessite des ouvriers, pas de construction automatique)
         if not self.is_constructed:
-            self.build_timer -= dt
-            if self.build_timer <= 0:
-                self.is_constructed = True
-                self.build_timer = 0.0
             return None
 
         # Mettre à jour la file de production
@@ -119,6 +124,9 @@ class Building(BaseEntity):
         effective_attack = self.attack_power
         if self.building_type == "TownHall":
             num_arrows = len(self.garrisoned_units)
+            upgrades = game_state.save_manager.data.get("upgrades", {}) if game_state and hasattr(game_state, 'save_manager') else {}
+            if upgrades.get("forum_passive_arrow"):
+                num_arrows += 1  # Base passive arrow even without workers
             effective_attack = num_arrows * 12
 
         if effective_attack > 0 and game_state:

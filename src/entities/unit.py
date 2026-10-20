@@ -5,6 +5,7 @@ import config
 UNIT_TYPES = {
     # Medieval
     "Worker": {"cost": {"food": 50}, "hp": 60, "speed": 100, "attack": 5, "range": 25, "is_worker": True, "radius": 12, "train_time": 10},
+    "Scout": {"cost": {"food": 35, "gold": 15}, "hp": 70, "speed": 140, "attack": 6, "range": 25, "is_worker": False, "radius": 11, "train_time": 8, "vision": 400},
     "Infantry": {"cost": {"food": 60, "gold": 40}, "hp": 150, "speed": 90, "attack": 18, "range": 30, "is_worker": False, "radius": 15, "train_time": 14},
     "Archer": {"cost": {"food": 50, "wood": 50}, "hp": 90, "speed": 100, "attack": 14, "range": 180, "is_worker": False, "radius": 13, "train_time": 16},
 
@@ -27,7 +28,7 @@ class Unit(BaseEntity):
         self.is_worker = data.get("is_worker", False)
         self.vision_radius = data.get("vision", 220)
 
-        # États : "idle", "move", "harvest", "return_resource", "attack"
+        # États : "idle", "move", "harvest", "return_resource", "attack", "construct", "repair"
         self.state = "idle"
         self.target_pos = None
         self.target_entity = None
@@ -57,6 +58,20 @@ class Unit(BaseEntity):
     def attack_target(self, target):
         self.target_entity = target
         self.state = "attack"
+        self.attack_move_mode = False
+
+    def construct_building(self, building):
+        if not self.is_worker:
+            return
+        self.target_entity = building
+        self.state = "construct"
+        self.attack_move_mode = False
+
+    def repair_building(self, building):
+        if not self.is_worker:
+            return
+        self.target_entity = building
+        self.state = "repair"
         self.attack_move_mode = False
 
     def harvest_node(self, node):
@@ -90,6 +105,12 @@ class Unit(BaseEntity):
 
         elif self.state == "attack":
             self._process_attack(dt, game_state)
+
+        elif self.state == "construct":
+            self._process_construct(dt, game_state)
+
+        elif self.state == "repair":
+            self._process_repair(dt, game_state)
 
         elif self.state == "harvest":
             self._process_harvest(dt, game_state)
@@ -128,6 +149,72 @@ class Unit(BaseEntity):
             self.facing_angle = math.atan2(dir_y, dir_x)
             self.x += dir_x * self.speed * dt
             self.y += dir_y * self.speed * dt
+
+    def _process_construct(self, dt, game_state):
+        if not self.target_entity or not getattr(self.target_entity, 'alive', True):
+            self.target_entity = None
+            self.state = "idle"
+            return
+
+        bld = self.target_entity
+        if getattr(bld, 'is_constructed', True):
+            self.target_entity = None
+            self.state = "idle"
+            return
+
+        dist = self.distance_to(bld)
+        dx = bld.x - self.x
+        dy = bld.y - self.y
+        if dist > 0:
+            self.facing_angle = math.atan2(dy, dx)
+
+        if dist > self.radius + bld.radius + 15:
+            # Move towards unconstructed building
+            dir_x = dx / dist
+            dir_y = dy / dist
+            self.x += dir_x * self.speed * dt
+            self.y += dir_y * self.speed * dt
+        else:
+            # Construct building
+            bld.build_progress(dt, speed_mult=1.0)
+            self.is_harvesting_anim = 0.2
+
+    def _process_repair(self, dt, game_state):
+        if not self.target_entity or not getattr(self.target_entity, 'alive', True):
+            self.target_entity = None
+            self.state = "idle"
+            return
+
+        bld = self.target_entity
+        if bld.hp >= bld.max_hp:
+            self.target_entity = None
+            self.state = "idle"
+            return
+
+        dist = self.distance_to(bld)
+        dx = bld.x - self.x
+        dy = bld.y - self.y
+        if dist > 0:
+            self.facing_angle = math.atan2(dy, dx)
+
+        if dist > self.radius + bld.radius + 15:
+            dir_x = dx / dist
+            dir_y = dy / dist
+            self.x += dir_x * self.speed * dt
+            self.y += dir_y * self.speed * dt
+        else:
+            # Repair cost is cheap fraction of building cost
+            repair_rate = 25.0 * dt  # 25 HP per second
+            cost_factor = repair_rate / max(1.0, bld.max_hp)
+            rep_cost = {}
+            for r_k, r_v in bld.cost.items():
+                rep_cost[r_k] = max(0.1 * dt, r_v * cost_factor * 0.2)
+
+            if game_state.deduct_resources(self.owner_id, rep_cost):
+                bld.hp = min(bld.max_hp, bld.hp + repair_rate)
+                self.is_harvesting_anim = 0.2
+            else:
+                self.state = "idle"
 
     def _process_attack(self, dt, game_state):
         if not self.target_entity or not self.target_entity.alive:

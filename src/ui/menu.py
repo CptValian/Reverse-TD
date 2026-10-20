@@ -99,12 +99,19 @@ class Menu:
         ai_val_txt = self.btn_font.render(str(selected_ai_count), True, (255, 215, 0))
         surface.blit(ai_val_txt, (setup_rect.x + 322, setup_rect.y + 54))
 
-        # Difficulty Selector Cycle Button
+        # Difficulty Selector Buttons (Left < and Right > arrows)
         diff_label = self.font.render("AI Difficulty:", True, config.COLOR_UI_TEXT)
         surface.blit(diff_label, (setup_rect.x + 30, setup_rect.y + 108))
 
-        diff_btn = pygame.Rect(setup_rect.x + 260, setup_rect.y + 100, 260, 38)
-        draw_button(diff_btn, f"Level {selected_difficulty}")
+        diff_minus_btn = pygame.Rect(setup_rect.x + 260, setup_rect.y + 100, 40, 38)
+        diff_plus_btn = pygame.Rect(setup_rect.x + 480, setup_rect.y + 100, 40, 38)
+        diff_btn = pygame.Rect(setup_rect.x + 310, setup_rect.y + 100, 160, 38)
+
+        draw_button(diff_minus_btn, "<")
+        draw_button(diff_plus_btn, ">")
+
+        diff_val_txt = self.btn_font.render(f"Niveau {selected_difficulty}", True, (255, 215, 0))
+        surface.blit(diff_val_txt, (diff_btn.x + diff_btn.width // 2 - diff_val_txt.get_width() // 2, diff_btn.y + 5))
 
         # Map Selector Cycle Button
         map_label = self.font.render("Map Advantage:", True, config.COLOR_UI_TEXT)
@@ -130,6 +137,8 @@ class Menu:
             "ai_minus": ai_minus_btn,
             "ai_plus": ai_plus_btn,
             "difficulty": diff_btn,
+            "diff_minus": diff_minus_btn,
+            "diff_plus": diff_plus_btn,
             "map_type": map_btn
         }
 
@@ -180,29 +189,47 @@ class Menu:
             curr_y += 24
 
         # Subtitle for AI Levels
-        t_lvl_head = self.btn_font.render("DESCRIPTIFS DES NIVEAUX DE DIFFICULTÉ DE L'IA (1 à 10)", True, config.COLOR_UI_ACCENT)
+        t_lvl_head = self.btn_font.render("DESCRIPTIFS DES NIVEAUX DE DIFFICULTÉ DE L'IA (1 à 12)", True, config.COLOR_UI_ACCENT)
         canvas.blit(t_lvl_head, (15, 175))
 
         ai_descriptions = {
-            1: "Niveau 1 (Passif): Revenu x1.0, vagues d'attaque toutes les 120s (max 8 unités). Troupes: Drones & Swarmers.",
-            2: "Niveau 2 (Facile): Revenu x1.2, vagues toutes les 90s (max 12 unités). Débloque les Spitters à distance. +5% HP/Atk.",
-            3: "Niveau 3 (Moyen): Revenu x1.5, vagues toutes les 70s (max 18 unités). Armées combinées Swarmer/Spitter. +10% HP/Atk.",
-            4: "Niveau 4 (Difficile): Revenu x1.8, vagues toutes les 50s (max 25 unités). Construit des Spine Crawlers. +20% HP, +15% Atk.",
-            5: "Niveau 5 (Expert - Brouillard): Revenu x2.2, vagues toutes les 35s (max 35 unités). Brouillard de guerre actif. +35% HP, +25% Atk.",
-            6: "Niveau 6 (Cauchemar - Brouillard): Revenu x2.8, vagues toutes les 25s (max 50 unités). Brouillard actif. +50% HP, +40% Atk.",
-            7: "Niveau 7 (Commando Raids): Revenu x3.2, vagues toutes les 20s (max 60 unités). Priorité harcèlement des ouvriers. +65% HP, +55% Atk.",
-            8: "Niveau 8 (Tactique & Retraite): Revenu x3.8, vagues toutes les 18s (max 75 unités). Replis stratégiques quand l'armée flanche. +80% HP, +70% Atk.",
-            9: "Niveau 9 (Invasion Flanquante): Revenu x4.5, vagues toutes les 15s (max 90 unités). Attaques multi-angles et pilonnages de spores. +100% HP, +85% Atk.",
-            10: "Niveau 10 (Ruche Apocalyptique): Revenu x5.5, vagues continues toutes les 10s (max 120 unités). Swarm Frenzy (+30% Vitesse). +130% HP, +100% Atk."
+            1: "Niveau 1: Revenu x1.0, vagues/120s. Troupes: Drones & Swarmers.",
+            2: "Niveau 2: Revenu x1.1, vagues/100s. +5% HP, +5% Atk.",
+            3: "Niveau 3: Revenu x1.2, vagues/85s. +10% HP, +10% Atk.",
+            4: "Niveau 4: Revenu x1.3, vagues/70s. Débloque Spine Crawler défensifs. +15% HP/Atk.",
+            5: "Niveau 5 (Brouillard): Revenu x1.4, vagues/55s. Brouillard actif. +20% HP/Atk.",
+            6: "Niveau 6 (Spitters): Revenu x1.5, vagues/45s. Débloque Spitters à distance. +25% HP/Atk.",
+            7: "Niveau 7 (Raids Ouvriers): Revenu x1.6, vagues/35s. Raids ciblés sur paysans. +30% HP/Atk.",
+            8: "Niveau 8 (Mucus Creep): Revenu x1.7, vagues/28s. Mucus autour des Ruches (+25% Vit/Atk sur Mucus).",
+            9: "Niveau 9 (Flanquement): Revenu x1.85, vagues/22s. Attaques multi-angles et replis tactiques.",
+            10: "Niveau 10 (Générateurs Biomasse): Revenu x2.0, vagues/18s. Bâtit des Générateurs de Biomasse. +40% HP, +50% Atk.",
+            11: "Niveau 11 (Frenzy): Revenu x2.2, vagues/14s. Swarm Frenzy (+25% Vitesse). +45% HP, +60% Atk.",
+            12: "Niveau 12 (Moisson Suprême): Revenu x2.5, vagues/10s. Tuer un ennemi donne de la Biomasse. +50% HP, +70% Atk."
         }
 
         y = 210
+        card_h = 120
+        content_h = 220 + num_lvls * (card_h + 10) + 40
+        canvas = pygame.Surface((viewport_w, content_h))
+        canvas.fill((15, 18, 26))
+
+        # Redraw top section on resized canvas
+        pygame.draw.rect(canvas, (28, 34, 48), civ_box, border_radius=10)
+        pygame.draw.rect(canvas, (216, 27, 96), civ_box, 2, border_radius=10)
+        canvas.blit(t_civ_head, (civ_box.x + 20, civ_box.y + 12))
+        curr_y = civ_box.y + 45
+        for line in civ_desc_lines:
+            t_line = self.font.render(line, True, config.COLOR_UI_TEXT)
+            canvas.blit(t_line, (civ_box.x + 20, curr_y))
+            curr_y += 24
+        canvas.blit(t_lvl_head, (15, 175))
+
         for lvl in range(1, num_lvls + 1):
             data = AI_DIFFICULTY_LEVELS.get(lvl, {})
-            card_rect = pygame.Rect(10, y, viewport_w - 20, 105)
+            card_rect = pygame.Rect(10, y, viewport_w - 20, card_h)
 
-            is_extreme = lvl >= 7
-            is_fog = lvl > 4
+            is_extreme = lvl >= 8
+            is_fog = lvl >= 5
             bg_col = (40, 24, 32) if is_extreme else config.COLOR_UI_PANEL
             border_col = (255, 60, 60) if is_extreme else (config.COLOR_UI_ACCENT if not is_fog else (255, 140, 0))
 
@@ -211,7 +238,7 @@ class Menu:
 
             header_txt = f"IA NIVEAU {lvl}"
             if is_extreme:
-                header_txt += " [CAPACITÉ AVANCÉE]"
+                header_txt += " [CAPACITÉ SPÉCIALE ACTIVE]"
             elif is_fog:
                 header_txt += " [BROUILLARD DE GUERRE ACTIF]"
 
@@ -227,16 +254,16 @@ class Menu:
             atk_b = int(data.get("unit_atk_bonus", 0.0) * 100)
 
             desc_text = ai_descriptions.get(lvl, "")
-            line1 = f"Tactique: {desc_text}"
+            line1 = f"Description: {desc_text}"
             line2 = f"Revenu: x{mult} | Vagues: {wave_s}s | Max Ouvriers: {m_work} | Armée Max: {m_army} | Techs: [{techs}] | Bonus: HP +{hp_b}%, Atk +{atk_b}%"
 
-            t_l1 = self.font.render(line1, True, (230, 240, 255))
+            t_l1 = self.small_font.render(line1, True, (230, 240, 255))
             t_l2 = self.small_font.render(line2, True, (170, 190, 210))
 
             canvas.blit(t_l1, (card_rect.x + 15, y + 42))
-            canvas.blit(t_l2, (card_rect.x + 15, y + 72))
+            canvas.blit(t_l2, (card_rect.x + 15, y + 74))
 
-            y += 115
+            y += card_h + 10
 
         # Blit scrolled portion onto main screen
         clamp_scroll = max(0, min(scroll_y, content_h - viewport_h))

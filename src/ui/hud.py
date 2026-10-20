@@ -156,6 +156,8 @@ class HUD:
                     for u in first.trainable_units:
                         if u == "Archer" and not upgrades.get("archer_unlocked"):
                             continue
+                        if u == "Scout" and not upgrades.get("scout_unlocked"):
+                            continue
                         trainable.append(u)
 
                     for u_type in trainable:

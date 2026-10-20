@@ -158,14 +158,14 @@ class RenderUtils:
                 pygame.draw.polygon(surface, (180, 40, 40), [(sx, sy - radius - 8), (sx - radius//2, sy - radius//3), (sx + radius//2, sy - radius//3)])
 
             elif b_type == "Wall":
-                # Thin Oriented Palisade Wall Segment
+                # Continuous Solid Palisade Wall Segment without separation gaps
                 import math
                 w_len = getattr(building, 'wall_length', 40)
-                w_wid = getattr(building, 'wall_width', 18)
+                w_wid = getattr(building, 'wall_width', 20)
                 w_ang = getattr(building, 'wall_angle', 0.0)
 
-                scaled_l = max(10, int(w_len * camera.zoom))
-                scaled_w = max(6, int(w_wid * camera.zoom))
+                scaled_l = max(12, int(w_len * camera.zoom))
+                scaled_w = max(8, int(w_wid * camera.zoom))
 
                 cos_a = math.cos(w_ang)
                 sin_a = math.sin(w_ang)
@@ -180,13 +180,13 @@ class RenderUtils:
                     py = sy + lx * sin_a + ly * cos_a
                     screen_pts.append((px, py))
 
-                pygame.draw.polygon(surface, (110, 65, 25), screen_pts)
-                pygame.draw.polygon(surface, (180, 120, 50), screen_pts, width=2)
+                pygame.draw.polygon(surface, (120, 75, 30), screen_pts)
+                pygame.draw.polygon(surface, (195, 135, 60), screen_pts, width=max(1, int(2 * camera.zoom)))
 
-                # Inner log ridge lines
+                # Inner log ridge lines for wooden palisade texture
                 p1_mid = ((screen_pts[0][0] + screen_pts[3][0]) / 2.0, (screen_pts[0][1] + screen_pts[3][1]) / 2.0)
                 p2_mid = ((screen_pts[1][0] + screen_pts[2][0]) / 2.0, (screen_pts[1][1] + screen_pts[2][1]) / 2.0)
-                pygame.draw.line(surface, (70, 40, 15), p1_mid, p2_mid, max(1, int(2 * camera.zoom)))
+                pygame.draw.line(surface, (80, 45, 20), p1_mid, p2_mid, max(1, int(2 * camera.zoom)))
 
             elif b_type == "WoodStockpile":
                 # Lumber Storage Yard
@@ -283,6 +283,13 @@ class RenderUtils:
                 # Glowing Eye/Core
                 pygame.draw.circle(surface, (255, 235, 59), (sx, sy - 2), max(3, radius // 4))
 
+            elif b_type == "BiomassGenerator":
+                # Bio-reactor Organic Generator
+                pygame.draw.circle(surface, (40, 90, 40), (sx, sy), radius)
+                pygame.draw.circle(surface, (76, 175, 80), (sx, sy), radius, width=2)
+                pygame.draw.circle(surface, (0, 230, 118), (sx, sy), int(radius * 0.6))
+                pygame.draw.circle(surface, (255, 255, 255), (sx - radius//3, sy - radius//3), int(radius * 0.2))
+
         # Visual overlay for building under construction
         if not building.is_constructed:
             # Semi-transparent scaffolding grid / outline
@@ -308,103 +315,96 @@ class RenderUtils:
         import math
 
         if faction == config.FACTION_HUMAN:
-            # --- MEDIEVAL HUMANS GRAPHICAL REDESIGN ---
+            # --- MEDIEVAL HUMANS ---
             if u_type == "Worker":
-                # Medieval Peasant Worker (Cloth Tunic, Straw Hat, Farming Hoe/Pick)
-                # Tunic Body
-                pygame.draw.circle(surface, (160, 120, 80), (sx, sy), radius)
-                # Peasant Straw Hat Rim & Dome
-                pygame.draw.circle(surface, (220, 180, 100), (sx, sy), radius - 2)
-                pygame.draw.circle(surface, (180, 130, 60), (sx, sy), radius - 6)
-                # Wooden Handle Hoe
+                # Medieval Peasant Worker (Blue-grey tunic, Straw Hat, Hoe)
+                pygame.draw.circle(surface, (40, 120, 180), (sx, sy), radius)
+                pygame.draw.circle(surface, (240, 200, 110), (sx, sy), radius - 2)
+                pygame.draw.circle(surface, (190, 140, 70), (sx, sy), radius - 6)
                 hx = sx + int(math.cos(facing) * (radius + 4))
                 hy = sy + int(math.sin(facing) * (radius + 4))
-                pygame.draw.line(surface, (101, 67, 33), (sx, sy), (hx, hy), 3)
-                pygame.draw.circle(surface, (180, 180, 190), (hx, hy), 3)
+                pygame.draw.line(surface, (110, 75, 35), (sx, sy), (hx, hy), 3)
+                pygame.draw.circle(surface, (200, 200, 210), (hx, hy), 3)
+
+            elif u_type == "Scout":
+                # Medieval Scout (Bright Cyan/Turquoise Tunic, Feathered Cap)
+                pygame.draw.circle(surface, (0, 220, 220), (sx, sy), radius)
+                pygame.draw.circle(surface, (255, 235, 59), (sx, sy), radius - 4)
+                # Feather Cap & Spyglass
+                pygame.draw.line(surface, (255, 80, 80), (sx, sy), (sx - 4, sy - radius - 3), 2)
+                sg_x = sx + int(math.cos(facing) * (radius + 6))
+                sg_y = sy + int(math.sin(facing) * (radius + 6))
+                pygame.draw.line(surface, (255, 215, 0), (sx, sy), (sg_x, sg_y), 3)
 
             elif u_type == "Infantry":
-                # Medieval Knight Infantry (Steel Helm, Shield, Sword, Blue Tunic)
-                # Blue Knight Tunic
-                pygame.draw.circle(surface, (30, 136, 229), (sx, sy), radius)
-                # Steel Helmet & Visor
-                pygame.draw.circle(surface, (200, 210, 220), (sx, sy), radius - 3)
+                # Medieval Knight Infantry (Bright Royal Blue Tunic, Steel Helmet, Sword)
+                pygame.draw.circle(surface, (20, 100, 230), (sx, sy), radius)
+                pygame.draw.circle(surface, (210, 220, 235), (sx, sy), radius - 3)
                 pygame.draw.line(surface, (40, 40, 50), (sx - radius + 4, sy), (sx + radius - 4, sy), 2)
 
-                # Steel Sword pointing in facing direction
                 sw_x = sx + int(math.cos(facing) * (radius + 8))
                 sw_y = sy + int(math.sin(facing) * (radius + 8))
                 pygame.draw.line(surface, (250, 250, 255), (sx, sy), (sw_x, sw_y), 3)
-                # Crossguard
                 gx = sx + int(math.cos(facing) * radius)
                 gy = sy + int(math.sin(facing) * radius)
                 pygame.draw.circle(surface, (255, 215, 0), (gx, gy), 3)
 
             elif u_type == "Archer":
-                # Medieval Archer (Green Hood, Leather Armor, Longbow)
-                # Archer Green Hood Body
-                pygame.draw.circle(surface, (46, 125, 50), (sx, sy), radius)
-                pygame.draw.circle(surface, (30, 90, 35), (sx, sy), radius - 4)
-                # Feather Cap
-                pygame.draw.line(surface, (220, 50, 50), (sx, sy), (sx - 4, sy - radius - 3), 2)
+                # Medieval Archer (Forest Green Hood, Longbow)
+                pygame.draw.circle(surface, (30, 160, 60), (sx, sy), radius)
+                pygame.draw.circle(surface, (20, 100, 40), (sx, sy), radius - 4)
+                pygame.draw.line(surface, (230, 40, 40), (sx, sy), (sx - 4, sy - radius - 3), 2)
 
-                # Longbow Arc
                 bx = sx + int(math.cos(facing) * radius)
                 by = sy + int(math.sin(facing) * radius)
                 pygame.draw.circle(surface, (139, 69, 19), (bx, by), 5, width=2)
 
         else:
-            # --- ALIEN INSECT FACTION GRAPHICAL REDESIGN ---
+            # --- ALIEN INSECT FACTION ---
             if u_type == "Drone":
-                # Alien Insect Drone Worker (Scuttling legs, Mandibles, Chitin Carapace)
-                # Purple Carapace Body
-                pygame.draw.circle(surface, (123, 31, 162), (sx, sy), radius)
-                pygame.draw.circle(surface, (216, 27, 96), (sx, sy), radius - 3)
+                # Alien Insect Drone Worker (Bright Orange/Yellow Carapace)
+                pygame.draw.circle(surface, (255, 110, 0), (sx, sy), radius)
+                pygame.draw.circle(surface, (200, 70, 0), (sx, sy), radius - 3)
 
-                # Insect Mandibles front
                 mx = sx + int(math.cos(facing) * (radius + 5))
                 my = sy + int(math.sin(facing) * (radius + 5))
-                pygame.draw.line(surface, (255, 235, 59), (sx, sy), (mx, my), 2)
+                pygame.draw.line(surface, (255, 230, 0), (sx, sy), (mx, my), 2)
 
-                # 4 Scuttling Chitin Legs
                 for leg_a in [facing + 1.0, facing - 1.0, facing + 2.2, facing - 2.2]:
                     lx = sx + int(math.cos(leg_a) * (radius + 4))
                     ly = sy + int(math.sin(leg_a) * (radius + 4))
-                    pygame.draw.line(surface, (180, 20, 80), (sx, sy), (lx, ly), 2)
+                    pygame.draw.line(surface, (180, 50, 0), (sx, sy), (lx, ly), 2)
 
             elif u_type == "Swarmer":
-                # Sharp Fast Alien Zergling Swarmer (Diamond chitin, lethal claws)
+                # Crimson Red Swarmer Melee (Blood Red Chitin Diamond & Yellow Claws)
                 cos_f = math.cos(facing)
                 sin_f = math.sin(facing)
 
-                # Pointy Diamond Chitin Body
                 head = (sx + int(cos_f * (radius + 6)), sy + int(sin_f * (radius + 6)))
                 tail = (sx - int(cos_f * (radius + 2)), sy - int(sin_f * (radius + 2)))
                 left_wing = (sx + int(math.cos(facing + 1.8) * (radius + 3)), sy + int(math.sin(facing + 1.8) * (radius + 3)))
                 right_wing = (sx + int(math.cos(facing - 1.8) * (radius + 3)), sy + int(math.sin(facing - 1.8) * (radius + 3)))
 
                 pts = [head, left_wing, tail, right_wing]
-                pygame.draw.polygon(surface, (216, 27, 96), pts)
-                pygame.draw.polygon(surface, (255, 235, 59), pts, width=2)
+                pygame.draw.polygon(surface, (200, 15, 45), pts)
+                pygame.draw.polygon(surface, (255, 220, 0), pts, width=2)
 
-                # Razor Scythe Claws
                 pygame.draw.line(surface, (255, 255, 255), head, (head[0] + int(cos_f * 5), head[1] + int(sin_f * 5)), 2)
 
             elif u_type == "Spitter":
-                # Acid Spitter Insect (Venom Sac, Triangular Carapace, Glowing Spore Eyes)
+                # Toxic Lime Green Spitter Ranged (Bright Acid Green & Purple Sac)
                 cos_f = math.cos(facing)
                 sin_f = math.sin(facing)
 
-                # Venom Sac Tail (Glowing Green)
                 sac_x = sx - int(cos_f * (radius + 2))
                 sac_y = sy - int(sin_f * (radius + 2))
-                pygame.draw.circle(surface, (0, 230, 118), (sac_x, sac_y), max(3, radius - 2))
+                pygame.draw.circle(surface, (180, 30, 200), (sac_x, sac_y), max(3, radius - 2))
 
-                # Triangular Head & Body
                 p1 = (sx + int(cos_f * (radius + 6)), sy + int(sin_f * (radius + 6)))
                 p2 = (sx + int(math.cos(facing + 2.2) * radius), sy + int(math.sin(facing + 2.2) * radius))
                 p3 = (sx + int(math.cos(facing - 2.2) * radius), sy + int(math.sin(facing - 2.2) * radius))
-                pygame.draw.polygon(surface, (76, 175, 80), [p1, p2, p3])
-                pygame.draw.polygon(surface, (216, 27, 96), [p1, p2, p3], width=2)
+                pygame.draw.polygon(surface, (50, 230, 50), [p1, p2, p3])
+                pygame.draw.polygon(surface, (220, 255, 0), [p1, p2, p3], width=2)
 
         # Attack visual animations (Arrow / Spore Stream)
         if unit.is_attacking_anim > 0 and unit.target_entity:
