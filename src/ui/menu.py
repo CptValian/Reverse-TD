@@ -17,10 +17,8 @@ class Menu:
     def draw_main_menu(self, surface, selected_ai_count=1, selected_difficulty=1, selected_map_type=1):
         self.anim_time += 0.016
 
-        # Atmospheric Background Gradient & Art Elements
         surface.fill((15, 18, 26))
 
-        # Medieval vs Insect Alien split ambient glows
         left_glow = pygame.Surface((self.screen_width // 2, self.screen_height), pygame.SRCALPHA)
         right_glow = pygame.Surface((self.screen_width // 2, self.screen_height), pygame.SRCALPHA)
 
@@ -32,25 +30,21 @@ class Menu:
         surface.blit(left_glow, (0, 0))
         surface.blit(right_glow, (self.screen_width // 2, 0))
 
-        # Subtle decorative grid pattern
         for x in range(0, self.screen_width, 80):
             pygame.draw.line(surface, (25, 30, 42), (x, 0), (x, self.screen_height), 1)
         for y in range(0, self.screen_height, 80):
             pygame.draw.line(surface, (25, 30, 42), (0, y), (self.screen_width, y), 1)
 
-        # Title Card Banner
         banner_rect = pygame.Rect(self.screen_width // 2 - 450, 80, 900, 140)
         pygame.draw.rect(surface, (22, 27, 38, 220), banner_rect, border_radius=12)
         pygame.draw.rect(surface, config.COLOR_UI_ACCENT, banner_rect, 2, border_radius=12)
 
-        # Main Title & Subtitle in English
         title = self.title_font.render("MEDIEVAL VS ALIEN INSECT", True, (255, 215, 0))
         surface.blit(title, (self.screen_width // 2 - title.get_width() // 2, 100))
 
         subtitle = self.subtitle_font.render("Real-Time Strategy Warfare", True, (180, 200, 220))
         surface.blit(subtitle, (self.screen_width // 2 - subtitle.get_width() // 2, 168))
 
-        # Main Navigation Buttons
         btn_width = 380
         btn_height = 55
         start_y = 280
@@ -78,7 +72,6 @@ class Menu:
         draw_button(ai_info_btn, "AI TECHS & INFO")
         draw_button(quit_btn, "QUIT")
 
-        # Game Setup Panel (AI, Difficulty, Map Type Selector)
         setup_rect = pygame.Rect(self.screen_width // 2 - 420, 580, 840, 210)
         pygame.draw.rect(surface, (24, 30, 42), setup_rect, border_radius=10)
         pygame.draw.rect(surface, (60, 75, 100), setup_rect, 2, border_radius=10)
@@ -86,7 +79,6 @@ class Menu:
         setup_title = self.btn_font.render("GAME SETUP & MAP CONFIGURATION", True, config.COLOR_UI_ACCENT)
         surface.blit(setup_title, (self.screen_width // 2 - setup_title.get_width() // 2, setup_rect.y + 12))
 
-        # AI Count Selector Buttons
         ai_label = self.font.render("Enemy AI Opponents:", True, config.COLOR_UI_TEXT)
         surface.blit(ai_label, (setup_rect.x + 30, setup_rect.y + 58))
 
@@ -99,7 +91,6 @@ class Menu:
         ai_val_txt = self.btn_font.render(str(selected_ai_count), True, (255, 215, 0))
         surface.blit(ai_val_txt, (setup_rect.x + 322, setup_rect.y + 54))
 
-        # Difficulty Selector Buttons (Left < and Right > arrows)
         diff_label = self.font.render("AI Difficulty:", True, config.COLOR_UI_TEXT)
         surface.blit(diff_label, (setup_rect.x + 30, setup_rect.y + 108))
 
@@ -113,7 +104,6 @@ class Menu:
         diff_val_txt = self.btn_font.render(f"Niveau {selected_difficulty}", True, (255, 215, 0))
         surface.blit(diff_val_txt, (diff_btn.x + diff_btn.width // 2 - diff_val_txt.get_width() // 2, diff_btn.y + 5))
 
-        # Map Selector Cycle Button
         map_label = self.font.render("Map Advantage:", True, config.COLOR_UI_TEXT)
         surface.blit(map_label, (setup_rect.x + 30, setup_rect.y + 158))
 
@@ -125,7 +115,6 @@ class Menu:
         map_btn = pygame.Rect(setup_rect.x + 260, setup_rect.y + 150, 520, 38)
         draw_button(map_btn, f"{map_names.get(selected_map_type, 'Standard')}")
 
-        # Footer info
         footer = self.small_font.render("Resolution: 1920x1080 | Alt+Tab Friendly Borderless Fullscreen Mode", True, (120, 140, 160))
         surface.blit(footer, (self.screen_width // 2 - footer.get_width() // 2, self.screen_height - 35))
 
@@ -146,7 +135,6 @@ class Menu:
         self.ai_info_scroll_y = scroll_y
         surface.fill((15, 18, 26))
 
-        # Title (Fixed Header)
         header_rect = pygame.Rect(0, 0, self.screen_width, 70)
         pygame.draw.rect(surface, (22, 27, 38), header_rect)
         pygame.draw.line(surface, config.COLOR_UI_ACCENT, (0, 70), (self.screen_width, 70), 2)
@@ -154,57 +142,44 @@ class Menu:
         t_title = self.title_font.render("CIVILISATION INSECTE ALIEN & NIVEAUX D'IA", True, (255, 215, 0))
         surface.blit(t_title, (self.screen_width // 2 - t_title.get_width() // 2, 10))
 
-        # Scrollable Viewport Surface
         viewport_y = 75
         viewport_h = self.screen_height - 150
         viewport_w = min(1100, self.screen_width - 40)
         viewport_x = (self.screen_width - viewport_w) // 2
 
-        # Create virtual canvas surface
         from src.ai.ai_tech import AI_DIFFICULTY_LEVELS
 
         num_lvls = len(AI_DIFFICULTY_LEVELS)
-        content_h = 240 + num_lvls * 115 + 40
-        canvas = pygame.Surface((viewport_w, content_h))
-        canvas.fill((15, 18, 26))
 
-        # Section 1: Fonctionnement de la Civilisation Insecte Alien
         civ_box = pygame.Rect(10, 10, viewport_w - 20, 150)
-        pygame.draw.rect(canvas, (28, 34, 48), civ_box, border_radius=10)
-        pygame.draw.rect(canvas, (216, 27, 96), civ_box, 2, border_radius=10)
 
         t_civ_head = self.btn_font.render("FONCTIONNEMENT DE LA CIVILISATION INSECTE ALIEN", True, (216, 27, 96))
-        canvas.blit(t_civ_head, (civ_box.x + 20, civ_box.y + 12))
 
         civ_desc_lines = [
             "• Économie de Biomasse: Les Insectes aliens récoltent de la biomasse organique pour concevoir leurs structures et muter leurs troupes.",
             "• Conscience Collective (Hive Mind): Spawneurs rapides en essaims. Les unités mutent rapidement depuis la Ruche et le Bassin de Ponte.",
-            "• Troupes Alien: Drones (ouvriers polyvalents), Swarmers (combattants au corps-à-corps rapides) et Spitters (tireurs d'acide à distance).",
+            "• Troupes Alien: Drones (ouvriers polyvalents), Swarmers (combattants au corps-à-corps), Spitters (tireurs d'acide) et Reine (unités offensives).",
             "• Bâtiments Alien: Hive (Ruche centrale), Spawning Pool (Bassin de ponte des troupes) et Spine Crawler (Organisme défensif)."
         ]
-        curr_y = civ_box.y + 45
-        for line in civ_desc_lines:
-            t_line = self.font.render(line, True, config.COLOR_UI_TEXT)
-            canvas.blit(t_line, (civ_box.x + 20, curr_y))
-            curr_y += 24
 
-        # Subtitle for AI Levels
-        t_lvl_head = self.btn_font.render("DESCRIPTIFS DES NIVEAUX DE DIFFICULTÉ DE L'IA (1 à 12)", True, config.COLOR_UI_ACCENT)
-        canvas.blit(t_lvl_head, (15, 175))
+        t_lvl_head = self.btn_font.render("DESCRIPTIFS DES NIVEAUX DE DIFFICULTÉ DE L'IA (1 à 15)", True, config.COLOR_UI_ACCENT)
 
         ai_descriptions = {
-            1: "Niveau 1: Revenu x1.0, vagues/120s. Troupes: Drones & Swarmers.",
-            2: "Niveau 2: Revenu x1.1, vagues/100s. +5% HP, +5% Atk.",
-            3: "Niveau 3: Revenu x1.2, vagues/85s. +10% HP, +10% Atk.",
-            4: "Niveau 4: Revenu x1.3, vagues/70s. Débloque Spine Crawler défensifs. +15% HP/Atk.",
-            5: "Niveau 5 (Brouillard): Revenu x1.4, vagues/55s. Brouillard actif. +20% HP/Atk.",
-            6: "Niveau 6 (Spitters): Revenu x1.5, vagues/45s. Débloque Spitters à distance. +25% HP/Atk.",
-            7: "Niveau 7 (Raids Ouvriers): Revenu x1.6, vagues/35s. Raids ciblés sur paysans. +30% HP/Atk.",
-            8: "Niveau 8 (Mucus Creep): Revenu x1.7, vagues/28s. Mucus autour des Ruches (+25% Vit/Atk sur Mucus).",
-            9: "Niveau 9 (Flanquement): Revenu x1.85, vagues/22s. Attaques multi-angles et replis tactiques.",
-            10: "Niveau 10 (Générateurs Biomasse): Revenu x2.0, vagues/18s. Bâtit des Générateurs de Biomasse. +40% HP, +50% Atk.",
-            11: "Niveau 11 (Frenzy): Revenu x2.2, vagues/14s. Swarm Frenzy (+25% Vitesse). +45% HP, +60% Atk.",
-            12: "Niveau 12 (Moisson Suprême): Revenu x2.5, vagues/10s. Tuer un ennemi donne de la Biomasse. +50% HP, +70% Atk."
+            1: "Niveau 1: Revenu x1.1, vagues/80s. Troupes: Drones & Swarmers.",
+            2: "Niveau 2: Revenu x1.2, vagues/70s. +5% HP, +5% Atk.",
+            3: "Niveau 3: Revenu x1.3, vagues/60s. +10% HP, +10% Atk.",
+            4: "Niveau 4: Revenu x1.4, vagues/50s. Débloque Spine Crawler défensifs. +15% HP/Atk.",
+            5: "Niveau 5 (Brouillard): Revenu x1.5, vagues/40s. Brouillard actif. +20% HP/Atk.",
+            6: "Niveau 6 (Spitters): Revenu x1.6, vagues/32s. Débloque Spitters à distance. +25% HP/Atk.",
+            7: "Niveau 7 (Raids Ouvriers): Revenu x1.7, vagues/25s. Raids ciblés sur paysans. +30% HP/Atk.",
+            8: "Niveau 8 (Mucus Creep): Revenu x1.8, vagues/20s. Mucus autour des Ruches (+25% Vit/Atk sur Mucus).",
+            9: "Niveau 9 (Flanquement): Revenu x2.0, vagues/16s. Attaques multi-angles et replis tactiques.",
+            10: "Niveau 10 (Générateurs Biomasse): Revenu x2.2, vagues/13s. Bâtit des Générateurs de Biomasse. +40% HP, +50% Atk.",
+            11: "Niveau 11 (Frenzy): Revenu x2.4, vagues/10s. Swarm Frenzy (+25% Vitesse). +45% HP, +60% Atk.",
+            12: "Niveau 12 (Moisson Suprême): Revenu x2.6, vagues/8s. Tuer un ennemi donne de la Biomasse. +50% HP, +70% Atk.",
+            13: "Niveau 13 (Assaut Ininterrompu): Revenu x2.8, vagues/6s. Agressivité continue massive. +55% HP, +80% Atk.",
+            14: "Niveau 14 (La Reine): Revenu x3.0, vagues/5s. Débloque la Reine (transforme toutes ses victimes en Swarmers).",
+            15: "Niveau 15 (La Ruche Mère): Revenu x3.5, vagues/4s. Construit une 2nde Hive et débute avec +2 Drones supplémentaires."
         }
 
         y = 210
@@ -213,7 +188,6 @@ class Menu:
         canvas = pygame.Surface((viewport_w, content_h))
         canvas.fill((15, 18, 26))
 
-        # Redraw top section on resized canvas
         pygame.draw.rect(canvas, (28, 34, 48), civ_box, border_radius=10)
         pygame.draw.rect(canvas, (216, 27, 96), civ_box, 2, border_radius=10)
         canvas.blit(t_civ_head, (civ_box.x + 20, civ_box.y + 12))
@@ -265,11 +239,9 @@ class Menu:
 
             y += card_h + 10
 
-        # Blit scrolled portion onto main screen
         clamp_scroll = max(0, min(scroll_y, content_h - viewport_h))
         surface.blit(canvas, (viewport_x, viewport_y), pygame.Rect(0, clamp_scroll, viewport_w, viewport_h))
 
-        # Visual Scrollbar Track & Thumb
         if content_h > viewport_h:
             bar_w = 10
             bar_x = viewport_x + viewport_w + 8
@@ -279,7 +251,6 @@ class Menu:
             thumb_y = viewport_y + int((clamp_scroll / (content_h - viewport_h)) * (viewport_h - thumb_h))
             pygame.draw.rect(surface, config.COLOR_UI_ACCENT, (bar_x, thumb_y, bar_w, thumb_h), border_radius=5)
 
-        # Fixed Footer Panel & Back Button
         footer_rect = pygame.Rect(0, self.screen_height - 70, self.screen_width, 70)
         pygame.draw.rect(surface, (22, 27, 38), footer_rect)
         pygame.draw.line(surface, (50, 60, 80), (0, self.screen_height - 70), (self.screen_width, self.screen_height - 70), 1)

@@ -51,6 +51,17 @@ class AIController:
                     nb = Building(self.owner_id, self.faction, main_b_type, bx, by, is_constructed=False)
                     game_state.buildings.append(nb)
 
+        # 1b. Level 15: Second Hive Construction
+        if self.config.get("can_build_second_hive") and self.spawn_point and len(bases) < 2:
+            main_b_type = "Hive" if self.faction == config.FACTION_ALIEN else "TownHall"
+            cost_dict = BUILDING_TYPES.get(main_b_type, {}).get("cost", {res_type: 300})
+            bx = self.spawn_point[0] + random.choice([-200, 200])
+            by = self.spawn_point[1] + random.choice([-200, 200])
+            if game_state.can_place_building(main_b_type, bx, by):
+                if game_state.deduct_resources(self.owner_id, cost_dict):
+                    nb = Building(self.owner_id, self.faction, main_b_type, bx, by, is_constructed=False)
+                    game_state.buildings.append(nb)
+
         # 2. Worker Management & Harvesting
         ai_workers = [u for u in ai_units if u.is_worker]
         idle_workers = [w for w in ai_workers if w.state == "idle"]
@@ -60,6 +71,16 @@ class AIController:
             for w in idle_workers:
                 nearest = min(resources, key=lambda r: w.distance_to(r))
                 w.harvest_node(nearest)
+
+        # 2b. Assign Drones to build unconstructed AI buildings
+        unconstructed_ai_blds = [b for b in ai_buildings if not b.is_constructed and not b.auto_building]
+        if unconstructed_ai_blds and ai_workers:
+            for bld in unconstructed_ai_blds:
+                # Find available Drone (must be Drone for Alien buildings)
+                drones = [w for w in ai_workers if w.unit_type == "Drone" and w.state in ["idle", "harvest"]]
+                if drones:
+                    builder = min(drones, key=lambda d: d.distance_to(bld))
+                    builder.construct_building(bld)
 
         # 3. Macro Economy (Continuous Worker Training)
         max_workers = self.config.get("max_workers", 8)
@@ -73,7 +94,7 @@ class AIController:
 
         # 4. Production Facilities (SpawningPools / Barracks Expansion)
         production_blds = [b for b in ai_buildings if b.building_type in ["SpawningPool", "Barracks"]]
-        target_prod_blds = 3 if self.difficulty >= 4 else (2 if self.difficulty >= 2 else 1)
+        target_prod_blds = 4 if self.difficulty >= 10 else (3 if self.difficulty >= 4 else (2 if self.difficulty >= 2 else 1))
 
         if len(production_blds) < target_prod_blds and self.spawn_point:
             prod_type = "SpawningPool" if self.faction == config.FACTION_ALIEN else "Barracks"
@@ -89,10 +110,10 @@ class AIController:
                     nb = Building(self.owner_id, self.faction, prod_type, bx, by, is_constructed=False)
                     game_state.buildings.append(nb)
 
-        # 5. Defensive Turrets / Spine Crawlers (Gated strictly at Level 4+)
+        # 5. Defensive Turrets / Spine Crawlers
         if self.difficulty >= 4 and self.config.get("can_build_defenses", True):
             defenses = [b for b in ai_buildings if b.building_type in ["SpineCrawler", "Tower"]]
-            target_def = 3 if self.difficulty >= 6 else 2
+            target_def = 4 if self.difficulty >= 10 else (3 if self.difficulty >= 6 else 2)
 
             if len(defenses) < target_def and self.spawn_point:
                 def_type = "SpineCrawler" if self.faction == config.FACTION_ALIEN else "Tower"
@@ -109,7 +130,7 @@ class AIController:
         # 5b. Biomass Generators (Level 10+)
         if self.config.get("can_build_biomass_gen") and self.spawn_point:
             bio_gens = [b for b in ai_buildings if b.building_type == "BiomassGenerator"]
-            if len(bio_gens) < 3:
+            if len(bio_gens) < 4:
                 gx = self.spawn_point[0] + random.randint(-140, 140)
                 gy = self.spawn_point[1] + random.randint(-140, 140)
                 cost_dict = BUILDING_TYPES.get("BiomassGenerator", {}).get("cost", {"biomass": 300})
@@ -118,12 +139,11 @@ class AIController:
                         nb = Building(self.owner_id, self.faction, "BiomassGenerator", gx, gy, is_constructed=False)
                         game_state.buildings.append(nb)
 
-            # Income generation from constructed Biomass Generators
             active_gens = [b for b in bio_gens if b.is_constructed]
             if active_gens and hasattr(game_state, 'add_resources'):
                 game_state.add_resources(self.owner_id, "biomass", 5 * len(active_gens) * dt)
 
-        # Apply AI stat bonuses & Creep Buffs (Level 8+)
+        # Apply AI stat bonuses & Creep Buffs
         hp_mult = self.config.get("unit_hp_bonus", 0.0)
         atk_mult = self.config.get("unit_atk_bonus", 0.0)
         speed_frenzy = 25 if self.config.get("swarm_frenzy") else 0
@@ -138,7 +158,6 @@ class AIController:
                 u.speed += speed_frenzy
                 u._ai_buffed = True
 
-            # Creep spread speed & attack buff (+25% when near Hive/Base, Level 8+)
             if self.config.get("creep_spread") and bases:
                 near_base = any(math.hypot(u.x - b.x, u.y - b.y) <= 300 for b in bases)
                 if near_base and not getattr(u, '_on_creep', False):
@@ -150,10 +169,10 @@ class AIController:
                     u.attack_power = int(u.attack_power / 1.25)
                     u._on_creep = False
 
-        # 6. Army Unit Queueing (Spitter strictly at Level 6+)
+        # 6. Army Unit Queueing (Level 14+ trains Queens)
         army_units = [u for u in ai_units if not u.is_worker]
         for prod in production_blds:
-            if prod.is_constructed and len(prod.production_queue) < 4:
+            if prod.is_constructed and len(prod.production_queue) < 5:
                 available_troops = ["Swarmer"] if self.faction == config.FACTION_ALIEN else ["Infantry"]
                 if self.difficulty >= 6 and self.config.get("can_tech_ranged", True):
                     if self.faction == config.FACTION_ALIEN:
@@ -161,12 +180,15 @@ class AIController:
                     else:
                         available_troops.append("Archer")
 
+                if self.config.get("can_train_queen") and self.faction == config.FACTION_ALIEN:
+                    available_troops.append("Queen")
+
                 chosen_unit = random.choice(available_troops)
                 cost_dict = UNIT_TYPES.get(chosen_unit, {}).get("cost", {res_type: 60})
                 if game_state.deduct_resources(self.owner_id, cost_dict):
                     prod.queue_unit(chosen_unit)
 
-        # 7. Defense Response & Tactical Retreat (Level 8+)
+        # 7. Defense Response & Tactical Retreat
         player_units = [u for u in game_state.units if u.alive and u.owner_id != self.owner_id]
         if self.spawn_point and player_units:
             nearby_threats = [u for u in player_units if math.hypot(u.x - self.spawn_point[0], u.y - self.spawn_point[1]) < 450]
@@ -176,15 +198,14 @@ class AIController:
                     if u.state in ["idle", "move"]:
                         u.attack_target(closest_threat)
 
-        # Tactical Retreat: retreat damaged AI units back to base if outnumbered (Level 8+)
         if self.config.get("tactical_retreat") and self.spawn_point:
             for u in army_units:
                 if u.hp < u.max_hp * 0.30 and u.state == "attack":
                     u.move_to(self.spawn_point[0] + random.randint(-40, 40), self.spawn_point[1] + random.randint(-40, 40))
 
-        # 8. Continuous Strategic Wave Attacks & Flanking (Level 9+)
+        # 8. Continuous Strategic Wave Attacks & Flanking
         wave_interval = self.config.get("attack_wave_interval", 45)
-        min_wave_size = 2 if self.difficulty == 1 else 4
+        min_wave_size = 2 if self.difficulty == 1 else 3
 
         if self.timer_wave >= wave_interval or len(army_units) >= self.config.get("max_army_size", 15):
             if len(army_units) >= min_wave_size:
@@ -196,7 +217,6 @@ class AIController:
                     p_townhalls = [e for e in player_targets if getattr(e, 'building_type', None) in ["TownHall", "Hive"]]
                     p_buildings = [e for e in player_targets if hasattr(e, 'building_type')]
 
-                    # Worker Raid Priority for Level 7+
                     if p_workers and (self.config.get("worker_raid_priority") or random.random() < 0.4):
                         target = random.choice(p_workers)
                     elif p_townhalls and random.random() < 0.5:
@@ -206,7 +226,6 @@ class AIController:
                     else:
                         target = random.choice(player_targets)
 
-                    # Flanking Attack: Split army into 2 groups (Level 9+)
                     if self.config.get("flanking_attacks") and len(army_units) >= 6:
                         mid = len(army_units) // 2
                         group1 = army_units[:mid]

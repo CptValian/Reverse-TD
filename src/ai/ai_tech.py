@@ -1,11 +1,11 @@
-# Échelle de difficulté et bonus technologiques des IA (Niveaux 1 à 12)
+# Échelle de difficulté et bonus technologiques des IA (Niveaux 1 à 15)
 
 # Difficulty Scaling & AI Technology Unlocks
 
 AI_DIFFICULTY_LEVELS = {
     1: {
-        "resource_multiplier": 1.0,
-        "attack_wave_interval": 120,
+        "resource_multiplier": 1.1,
+        "attack_wave_interval": 80,
         "max_army_size": 8,
         "max_workers": 5,
         "unlocked_techs": ["Drone", "Swarmer"],
@@ -15,8 +15,8 @@ AI_DIFFICULTY_LEVELS = {
         "can_tech_ranged": False
     },
     2: {
-        "resource_multiplier": 1.1,
-        "attack_wave_interval": 100,
+        "resource_multiplier": 1.2,
+        "attack_wave_interval": 70,
         "max_army_size": 10,
         "max_workers": 6,
         "unlocked_techs": ["Drone", "Swarmer"],
@@ -26,8 +26,8 @@ AI_DIFFICULTY_LEVELS = {
         "can_tech_ranged": False
     },
     3: {
-        "resource_multiplier": 1.2,
-        "attack_wave_interval": 85,
+        "resource_multiplier": 1.3,
+        "attack_wave_interval": 60,
         "max_army_size": 14,
         "max_workers": 8,
         "unlocked_techs": ["Drone", "Swarmer"],
@@ -37,8 +37,8 @@ AI_DIFFICULTY_LEVELS = {
         "can_tech_ranged": False
     },
     4: {
-        "resource_multiplier": 1.3,
-        "attack_wave_interval": 70,
+        "resource_multiplier": 1.4,
+        "attack_wave_interval": 50,
         "max_army_size": 18,
         "max_workers": 10,
         "unlocked_techs": ["Drone", "Swarmer", "SpineCrawler"],
@@ -48,8 +48,8 @@ AI_DIFFICULTY_LEVELS = {
         "can_tech_ranged": False
     },
     5: {
-        "resource_multiplier": 1.4,
-        "attack_wave_interval": 55,
+        "resource_multiplier": 1.5,
+        "attack_wave_interval": 40,
         "max_army_size": 22,
         "max_workers": 12,
         "unlocked_techs": ["Drone", "Swarmer", "SpineCrawler"],
@@ -59,8 +59,8 @@ AI_DIFFICULTY_LEVELS = {
         "can_tech_ranged": False
     },
     6: {
-        "resource_multiplier": 1.5,
-        "attack_wave_interval": 45,
+        "resource_multiplier": 1.6,
+        "attack_wave_interval": 32,
         "max_army_size": 28,
         "max_workers": 14,
         "unlocked_techs": ["Drone", "Swarmer", "Spitter", "SpineCrawler"],
@@ -70,8 +70,8 @@ AI_DIFFICULTY_LEVELS = {
         "can_tech_ranged": True
     },
     7: {
-        "resource_multiplier": 1.6,
-        "attack_wave_interval": 35,
+        "resource_multiplier": 1.7,
+        "attack_wave_interval": 25,
         "max_army_size": 35,
         "max_workers": 16,
         "unlocked_techs": ["Drone", "Swarmer", "Spitter", "SpineCrawler"],
@@ -82,8 +82,8 @@ AI_DIFFICULTY_LEVELS = {
         "worker_raid_priority": True
     },
     8: {
-        "resource_multiplier": 1.7,
-        "attack_wave_interval": 28,
+        "resource_multiplier": 1.8,
+        "attack_wave_interval": 20,
         "max_army_size": 45,
         "max_workers": 18,
         "unlocked_techs": ["Drone", "Swarmer", "Spitter", "SpineCrawler"],
@@ -96,8 +96,8 @@ AI_DIFFICULTY_LEVELS = {
         "creep_spread": True
     },
     9: {
-        "resource_multiplier": 1.85,
-        "attack_wave_interval": 22,
+        "resource_multiplier": 2.0,
+        "attack_wave_interval": 16,
         "max_army_size": 55,
         "max_workers": 20,
         "unlocked_techs": ["Drone", "Swarmer", "Spitter", "SpineCrawler"],
@@ -111,8 +111,8 @@ AI_DIFFICULTY_LEVELS = {
         "flanking_attacks": True
     },
     10: {
-        "resource_multiplier": 2.0,
-        "attack_wave_interval": 18,
+        "resource_multiplier": 2.2,
+        "attack_wave_interval": 13,
         "max_army_size": 70,
         "max_workers": 22,
         "unlocked_techs": ["Drone", "Swarmer", "Spitter", "SpineCrawler", "BiomassGenerator"],
@@ -127,8 +127,8 @@ AI_DIFFICULTY_LEVELS = {
         "can_build_biomass_gen": True
     },
     11: {
-        "resource_multiplier": 2.2,
-        "attack_wave_interval": 14,
+        "resource_multiplier": 2.4,
+        "attack_wave_interval": 10,
         "max_army_size": 85,
         "max_workers": 25,
         "unlocked_techs": ["Drone", "Swarmer", "Spitter", "SpineCrawler", "BiomassGenerator"],
@@ -144,8 +144,8 @@ AI_DIFFICULTY_LEVELS = {
         "swarm_frenzy": True
     },
     12: {
-        "resource_multiplier": 2.5,
-        "attack_wave_interval": 10,
+        "resource_multiplier": 2.6,
+        "attack_wave_interval": 8,
         "max_army_size": 100,
         "max_workers": 28,
         "unlocked_techs": ["Drone", "Swarmer", "Spitter", "SpineCrawler", "BiomassGenerator"],
@@ -160,5 +160,63 @@ AI_DIFFICULTY_LEVELS = {
         "can_build_biomass_gen": True,
         "swarm_frenzy": True,
         "biomass_on_kill": True
+    },
+    13: {
+        "resource_multiplier": 2.8,
+        "attack_wave_interval": 6,
+        "max_army_size": 115,
+        "max_workers": 30,
+        "unlocked_techs": ["Drone", "Swarmer", "Spitter", "SpineCrawler", "BiomassGenerator"],
+        "unit_hp_bonus": 0.55,
+        "unit_atk_bonus": 0.80,
+        "can_build_defenses": True,
+        "can_tech_ranged": True,
+        "worker_raid_priority": True,
+        "tactical_retreat": True,
+        "creep_spread": True,
+        "flanking_attacks": True,
+        "can_build_biomass_gen": True,
+        "swarm_frenzy": True,
+        "biomass_on_kill": True
+    },
+    14: {
+        "resource_multiplier": 3.0,
+        "attack_wave_interval": 5,
+        "max_army_size": 130,
+        "max_workers": 32,
+        "unlocked_techs": ["Drone", "Swarmer", "Spitter", "Queen", "SpineCrawler", "BiomassGenerator"],
+        "unit_hp_bonus": 0.60,
+        "unit_atk_bonus": 0.90,
+        "can_build_defenses": True,
+        "can_tech_ranged": True,
+        "worker_raid_priority": True,
+        "tactical_retreat": True,
+        "creep_spread": True,
+        "flanking_attacks": True,
+        "can_build_biomass_gen": True,
+        "swarm_frenzy": True,
+        "biomass_on_kill": True,
+        "can_train_queen": True
+    },
+    15: {
+        "resource_multiplier": 3.5,
+        "attack_wave_interval": 4,
+        "max_army_size": 150,
+        "max_workers": 35,
+        "unlocked_techs": ["Drone", "Swarmer", "Spitter", "Queen", "SpineCrawler", "BiomassGenerator"],
+        "unit_hp_bonus": 0.70,
+        "unit_atk_bonus": 1.00,
+        "can_build_defenses": True,
+        "can_tech_ranged": True,
+        "worker_raid_priority": True,
+        "tactical_retreat": True,
+        "creep_spread": True,
+        "flanking_attacks": True,
+        "can_build_biomass_gen": True,
+        "swarm_frenzy": True,
+        "biomass_on_kill": True,
+        "can_train_queen": True,
+        "can_build_second_hive": True,
+        "extra_starting_drones": 2
     }
 }

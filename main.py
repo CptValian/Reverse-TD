@@ -77,7 +77,7 @@ def main():
                         game_state.ai_difficulty = max(1, game_state.ai_difficulty - 1)
 
                     elif (buttons.get("diff_plus") and buttons["diff_plus"].collidepoint(event.pos)) or (buttons.get("difficulty") and buttons["difficulty"].collidepoint(event.pos) and event.pos[0] >= buttons["difficulty"].centerx):
-                        game_state.ai_difficulty = min(12, game_state.ai_difficulty + 1)
+                        game_state.ai_difficulty = min(15, game_state.ai_difficulty + 1)
 
                     elif buttons.get("map_type") and buttons["map_type"].collidepoint(event.pos):
                         m_types = [1, 2, 3]
@@ -168,7 +168,6 @@ def main():
             elif game_state.state == "PLAYING":
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_a:
-                        # Activer le mode attente "A + Click"
                         is_attack_move_pending = True
                     elif event.key == pygame.K_ESCAPE:
                         placement_building_type = None
@@ -218,7 +217,6 @@ def main():
                                         unit.move_to(world_click[0], world_click[1])
 
                             elif selected_buildings:
-                                # Définir le point de ralliement (Rally Point) pour les bâtiments de production
                                 target_obj = target_res or target_farm or target_enemy
                                 for bld in selected_buildings:
                                     bld.rally_point = (world_click[0], world_click[1])
@@ -236,7 +234,6 @@ def main():
                             upgrades = game_state.save_manager.data.get("upgrades", {})
 
                             if placement_building_type == "Wall":
-                                # Snap check to existing wall building
                                 snap_node = None
                                 for b in game_state.buildings:
                                     if b.alive and b.building_type == "Wall":
@@ -247,7 +244,6 @@ def main():
                                 if wall_start_node is None:
                                     wall_start_node = snap_node if snap_node else world_click
                                 else:
-                                    # P2 point selected
                                     p1 = wall_start_node
                                     p2 = snap_node if snap_node else world_click
                                     dx = p2[0] - p1[0]
@@ -262,6 +258,8 @@ def main():
                                         wall_angle = math.atan2(dy, dx)
 
                                         if game_state.deduct_resources(0, total_wall_cost):
+                                            selected_workers = [u for u in game_state.units if u.selected and u.owner_id == 0 and u.is_worker]
+
                                             for step_i in range(num_segs):
                                                 r1 = step_i / float(num_segs)
                                                 r2 = (step_i + 1) / float(num_segs)
@@ -278,24 +276,26 @@ def main():
                                                     nb = Building(
                                                         0, config.FACTION_HUMAN, "Wall", cx, cy,
                                                         is_constructed=False,
-                                                        wall_length=seg_len + 12.0,  # Overlap adjacent sections for continuous line without gaps
+                                                        wall_length=seg_len + 12.0,
                                                         wall_width=20,
                                                         wall_angle=wall_angle
                                                     )
                                                     game_state.buildings.append(nb)
 
+                                                    # Automatically queue wall segment for selected worker(s) in series
+                                                    for w in selected_workers:
+                                                        w.construct_building(nb, append=True)
+
                                     placement_building_type = None
                                     wall_start_node = None
 
                             else:
-                                # Regular building placement
                                 if game_state.can_place_building(placement_building_type, world_click[0], world_click[1]):
                                     if game_state.deduct_resources(0, cost):
-                                        range_bonus = 20 if (placement_building_type == "Tower" and upgrades.get("tower_range_unlocked")) else 0
-                                        if placement_building_type == "TownHall" and upgrades.get("forum_atk_range"):
+                                        range_bonus = 20 if (placement_building_type in ["Tower", "ArrowTower"] and upgrades.get("tower_range_unlocked")) else 0
+                                        if placement_building_type == "TownHall" and (upgrades.get("forum_atk_range") or upgrades.get("forum_boost")):
                                             range_bonus += 22
                                         if placement_building_type == "Tower" and upgrades.get("watchtower_sight"):
-                                            # Additional vision
                                             range_bonus += 10
 
                                         nb = Building(0, config.FACTION_HUMAN, placement_building_type, world_click[0], world_click[1], is_constructed=False, range_bonus=range_bonus)
@@ -304,7 +304,6 @@ def main():
 
                                         game_state.buildings.append(nb)
 
-                                        # Automatically send selected worker(s) to construct the new building
                                         selected_workers = [u for u in game_state.units if u.selected and u.owner_id == 0 and u.is_worker]
                                         for w in selected_workers:
                                             w.construct_building(nb)
@@ -312,7 +311,6 @@ def main():
                                         placement_building_type = None
 
                         elif minimap_rect.collidepoint(mouse_pos):
-                            # Clic sur la mini-carte : Déplacer la vision de la caméra
                             rel_x = (mouse_pos[0] - minimap_rect.x) / minimap_size
                             rel_y = (mouse_pos[1] - minimap_rect.y) / minimap_size
                             world_x = rel_x * config.MAP_WIDTH
@@ -322,9 +320,7 @@ def main():
                             camera.y = world_y - (config.SCREEN_HEIGHT / (2 * camera.zoom))
                             camera.clamp()
 
-                        # Vérifier clic sur l'UI (Zone HUD)
                         elif mouse_pos[1] > config.SCREEN_HEIGHT - 150:
-                            # Clic dans le panneau HUD pour lancer un entraînement/construction/age up
                             selected_entities = [e for e in game_state.units + game_state.buildings if e.selected and e.owner_id == 0]
                             if selected_entities:
                                 first = selected_entities[0]
@@ -365,12 +361,19 @@ def main():
                                     for u_type in trainable:
                                         btn_rect = pygame.Rect(btn_x, config.SCREEN_HEIGHT - 100, 160, 42)
                                         if btn_rect.collidepoint(event.pos):
-                                            # Check pop limit
                                             if game_state.get_queued_and_current_pop(0) < game_state.get_pop_max(0):
                                                 u_data = UNIT_TYPES.get(u_type, {})
                                                 cost = u_data.get("cost", {"gold": 50})
                                                 if game_state.deduct_resources(0, cost):
-                                                    first.queue_unit(u_type, train_time=u_data.get("train_time", 5))
+                                                    t_time = u_data.get("train_time", 5)
+                                                    if u_data.get("is_worker") and upgrades.get("worker_spawn_speed"):
+                                                        t_time *= 0.90
+                                                    elif u_type == "Infantry" and upgrades.get("melee_spawn_speed"):
+                                                        t_time *= 0.90
+                                                    elif u_type == "Archer" and upgrades.get("archer_spawn_speed"):
+                                                        t_time *= 0.90
+
+                                                    first.queue_unit(u_type, train_time=t_time)
                                         btn_x += 170
 
                                 elif getattr(first, 'is_worker', False):
@@ -382,6 +385,8 @@ def main():
                                             buildings_to_build.append("Wall")
                                         if upgrades.get("tower_unlocked"):
                                             buildings_to_build.append("Tower")
+                                        if upgrades.get("arrow_tower_unlocked"):
+                                            buildings_to_build.append("ArrowTower")
                                         if upgrades.get("wood_stockpile_unlocked"):
                                             buildings_to_build.append("WoodStockpile")
                                         if upgrades.get("gold_stockpile_unlocked"):
@@ -390,6 +395,10 @@ def main():
                                             buildings_to_build.append("House")
                                         if upgrades.get("farm_unlocked"):
                                             buildings_to_build.append("Farm")
+                                        if upgrades.get("bank_unlocked"):
+                                            buildings_to_build.append("Bank")
+                                        if upgrades.get("healing_shrine_unlocked"):
+                                            buildings_to_build.append("HealingShrine")
                                         if upgrades.get("townhall_unlocked") and getattr(game_state, 'player_age', 1) >= 2:
                                             buildings_to_build.append("TownHall")
                                     else:
@@ -404,7 +413,6 @@ def main():
                                         btn_x += btn_width + 8
 
                         else:
-                            # Clic dans la zone de jeu
                             world_click = camera.screen_to_world(mouse_pos)
 
                             if is_attack_move_pending:
@@ -420,24 +428,20 @@ def main():
                     is_selecting_box = False
                     box_end_pos = mouse_pos
 
-                    # Réaliser la sélection (rectangle ou simple clic)
                     x1, y1 = camera.screen_to_world(box_start_pos)
                     x2, y2 = camera.screen_to_world(box_end_pos)
 
                     rect_w = abs(x2 - x1)
                     rect_h = abs(y2 - y1)
 
-                    # Désélectionner toutes les entités
                     for e in game_state.units + game_state.buildings:
                         e.selected = False
 
                     if rect_w < 10 and rect_h < 10:
-                        # Simple clic (Allows clicking player or enemy entities)
                         clicked_entity = next((e for e in game_state.units + game_state.buildings if e.alive and e.is_point_inside(x2, y2)), None)
                         if clicked_entity:
                             clicked_entity.selected = True
                     else:
-                        # Sélection par cadre (Box select selects player units only)
                         rx = min(x1, x2)
                         ry = min(y1, y2)
                         for u in game_state.units:
@@ -457,17 +461,13 @@ def main():
             progression_ui.draw(screen)
 
         elif game_state.state == "PLAYING":
-            # Déplacement caméra
             keys = pygame.key.get_pressed()
             camera.update(dt, keys, mouse_pos)
 
-            # Mise à jour du monde
             game_state.update(dt)
 
-            # Rendu du terrain
             screen.fill(config.COLOR_BG)
 
-            # Dessiner le fond de carte (Grille simple)
             visible_rect = camera.get_visible_rect()
             grid_size = 200
             start_x = int((visible_rect.x // grid_size) * grid_size)
@@ -480,23 +480,21 @@ def main():
                     sp = camera.world_to_screen((gx, gy))
                     pygame.draw.rect(screen, (40, 48, 58), (sp[0], sp[1], grid_size * camera.zoom, grid_size * camera.zoom), 1)
 
-            # Attacher temporairement game_state à camera pour les vérifications de visibilité Fog of War
             camera.game_state = game_state
 
-            # Dessiner les ressources, bâtiments et unités
             for res in game_state.resources:
                 RenderUtils.draw_entity(screen, camera, res)
             for building in game_state.buildings:
                 RenderUtils.draw_entity(screen, camera, building)
             for unit in game_state.units:
                 RenderUtils.draw_entity(screen, camera, unit)
+            for proj in game_state.projectiles:
+                RenderUtils.draw_projectile(screen, camera, proj)
 
-            # Dessiner le calque de brouillard de guerre si actif
             if game_state.is_fog_of_war_enabled():
                 fog_surface = pygame.Surface((config.SCREEN_WIDTH, config.SCREEN_HEIGHT), pygame.SRCALPHA)
-                fog_surface.fill((10, 12, 18, 180))  # Voile sombre semi-transparent
+                fog_surface.fill((10, 12, 18, 180))
 
-                # Découper des cercles de vision autour des entités du joueur
                 player_entities = [e for e in game_state.units + game_state.buildings if e.alive and e.owner_id == 0]
                 for pe in player_entities:
                     sp = camera.world_to_screen((pe.x, pe.y))
@@ -505,7 +503,6 @@ def main():
 
                 screen.blit(fog_surface, (0, 0))
 
-            # Preview placement ghost cursor
             if placement_building_type:
                 world_cur = camera.screen_to_world(mouse_pos)
                 if placement_building_type == "Wall":
@@ -516,7 +513,6 @@ def main():
                         pygame.draw.circle(screen, (0, 255, 255), sp1, 8, 2)
                         pygame.draw.circle(screen, (0, 255, 255), sp2, 8, 2)
                     else:
-                        # Draw snap node highlight if hovering near existing wall
                         snap_node = None
                         for b in game_state.buildings:
                             if b.alive and b.building_type == "Wall":
@@ -535,13 +531,11 @@ def main():
                     bradius = int(BUILDING_TYPES.get(placement_building_type, {}).get("radius", 30) * camera.zoom)
                     pygame.draw.circle(screen, color, mouse_pos, bradius, 2)
 
-            # Dessiner le cadre de sélection en cours
             if is_selecting_box:
                 x1, y1 = box_start_pos
                 x2, y2 = mouse_pos
                 pygame.draw.rect(screen, config.COLOR_SELECTION, (min(x1, x2), min(y1, y2), abs(x2 - x1), abs(y2 - y1)), 1)
 
-            # HUD
             hud.draw(screen, game_state, camera)
 
         elif game_state.state == "VICTORY":

@@ -83,6 +83,7 @@ class ProgressionUI:
 
     def _draw_skill_tree_tab(self, surface, buttons, upg_data, points_available):
         nodes = [
+            # TIER 1 (y = 200)
             {
                 "key": "starting_res_1",
                 "name": "Starting Cache I",
@@ -97,7 +98,7 @@ class ProgressionUI:
                 "desc": "Drop-off for Wood Workers",
                 "cost": 20,
                 "parents": [],
-                "pos": (750, 200)
+                "pos": (700, 200)
             },
             {
                 "key": "gold_stockpile_unlocked",
@@ -105,7 +106,7 @@ class ProgressionUI:
                 "desc": "Drop-off for Gold Workers",
                 "cost": 20,
                 "parents": [],
-                "pos": (1150, 200)
+                "pos": (1100, 200)
             },
             {
                 "key": "house_unlocked",
@@ -113,15 +114,17 @@ class ProgressionUI:
                 "desc": "Build Houses for +5 Pop Max",
                 "cost": 20,
                 "parents": [],
-                "pos": (1550, 200)
+                "pos": (1500, 200)
             },
+
+            # TIER 2 (y = 420)
             {
                 "key": "extra_worker_start",
                 "name": "Extra Worker",
                 "desc": "Start with +1 Worker",
                 "cost": 25,
                 "parents": ["starting_res_1"],
-                "pos": (150, 380)
+                "pos": (150, 420)
             },
             {
                 "key": "extra_melee_start",
@@ -129,7 +132,7 @@ class ProgressionUI:
                 "desc": "Start with +1 Melee Unit",
                 "cost": 25,
                 "parents": ["starting_res_1"],
-                "pos": (450, 380)
+                "pos": (480, 420)
             },
             {
                 "key": "archer_unlocked",
@@ -137,7 +140,7 @@ class ProgressionUI:
                 "desc": "Train Archers in Barracks",
                 "cost": 30,
                 "parents": ["starting_res_1"],
-                "pos": (750, 380)
+                "pos": (810, 420)
             },
             {
                 "key": "wall_unlocked",
@@ -145,7 +148,7 @@ class ProgressionUI:
                 "desc": "Build Defensive Wooden Walls",
                 "cost": 25,
                 "parents": ["wood_stockpile_unlocked"],
-                "pos": (1050, 380)
+                "pos": (1140, 420)
             },
             {
                 "key": "farm_unlocked",
@@ -153,7 +156,7 @@ class ProgressionUI:
                 "desc": "Harvest Food for Troops",
                 "cost": 25,
                 "parents": ["wood_stockpile_unlocked"],
-                "pos": (1350, 380)
+                "pos": (1470, 420)
             },
             {
                 "key": "garrison_unlocked",
@@ -161,47 +164,57 @@ class ProgressionUI:
                 "desc": "Garrison Peasants into Town Hall",
                 "cost": 30,
                 "parents": ["house_unlocked"],
-                "pos": (1650, 380)
+                "pos": (1800, 420)
             },
             {
-                "key": "ageing_up_2",
-                "name": "Ageing Up II (Feudal)",
-                "desc": "Advance Age (Boost Bld HP & unlocks)",
-                "cost": 50,
-                "parents": ["archer_unlocked", "wall_unlocked", "farm_unlocked"],
-                "pos": (900, 560)
-            },
-            {
-                "key": "tower_unlocked",
-                "name": "Watchtower",
-                "desc": "Build Defending Watchtowers",
+                "key": "bank_unlocked",
+                "name": "Gold Bank",
+                "desc": "Unlocks Bank (passive gold generation)",
                 "cost": 35,
-                "parents": ["ageing_up_2"],
-                "pos": (600, 740)
+                "parents": ["gold_stockpile_unlocked"],
+                "pos": (2130, 420)
             },
+
+            # TIER 3 (y = 640)
             {
-                "key": "looting_unlocked",
-                "name": "Looting",
-                "desc": "+5 Food per troop kill",
-                "cost": 30,
-                "parents": ["ageing_up_2"],
-                "pos": (900, 740)
-            },
-            {
-                "key": "townhall_unlocked",
-                "name": "Secondary Keep",
-                "desc": "Build Additional Town Halls",
-                "cost": 40,
-                "parents": ["ageing_up_2"],
-                "pos": (1200, 740)
-            },
-            {
-                "key": "tower_range_unlocked",
-                "name": "Arrow Tower Range",
-                "desc": "Arrow tower +10% range",
+                "key": "scout_unlocked",
+                "name": "Scout Unit",
+                "desc": "Start with 1 Scout & train Scouts",
                 "cost": 25,
-                "parents": ["tower_unlocked"],
-                "pos": (600, 920)
+                "parents": ["extra_worker_start"],
+                "pos": (150, 640)
+            },
+            {
+                "key": "worker_spawn_speed",
+                "name": "Worker Hatching",
+                "desc": "-10% Worker train time",
+                "cost": 15,
+                "parents": ["extra_worker_start"],
+                "pos": (480, 640)
+            },
+            {
+                "key": "melee_spawn_speed",
+                "name": "Melee Drills",
+                "desc": "-10% Melee unit train time",
+                "cost": 15,
+                "parents": ["extra_melee_start"],
+                "pos": (810, 640)
+            },
+            {
+                "key": "archer_spawn_speed",
+                "name": "Bowyer Crafting",
+                "desc": "-10% Archer train time",
+                "cost": 15,
+                "parents": ["archer_unlocked"],
+                "pos": (1140, 640)
+            },
+            {
+                "key": "healing_shrine_unlocked",
+                "name": "Healing Sanctuary",
+                "desc": "Unlocks Sanctuary (heals nearby troops 8 HP/s)",
+                "cost": 35,
+                "parents": ["farm_unlocked"],
+                "pos": (1470, 640)
             },
             {
                 "key": "forum_atk_range",
@@ -209,47 +222,109 @@ class ProgressionUI:
                 "desc": "Forum Attack Range +10%",
                 "cost": 30,
                 "parents": ["garrison_unlocked"],
-                "pos": (1500, 560)
+                "pos": (1800, 640)
             },
+            {
+                "key": "building_repair_unlocked",
+                "name": "Building Repair",
+                "desc": "Workers repair damaged structures",
+                "cost": 30,
+                "parents": ["house_unlocked"],
+                "pos": (2130, 640)
+            },
+
+            # TIER 4 (y = 860)
+            {
+                "key": "starting_res_2",
+                "name": "Starting Cache II",
+                "desc": "+200 Starting Resources",
+                "cost": 30,
+                "parents": ["scout_unlocked"],
+                "pos": (150, 860)
+            },
+            {
+                "key": "ageing_up_2",
+                "name": "Ageing Up II (Feudal)",
+                "desc": "Advance Age (Boost Bld HP & unlocks)",
+                "cost": 50,
+                "parents": ["archer_unlocked", "wall_unlocked", "farm_unlocked"],
+                "pos": (990, 860)
+            },
+            {
+                "key": "forum_boost",
+                "name": "Forum Bastion",
+                "desc": "+25% Forum Atk Range & +25% Sight",
+                "cost": 30,
+                "parents": ["forum_atk_range"],
+                "pos": (1800, 860)
+            },
+
+            # TIER 5 (y = 1080)
+            {
+                "key": "tower_unlocked",
+                "name": "Watchtower",
+                "desc": "Far vision in Fog of War (no arrow)",
+                "cost": 35,
+                "parents": ["ageing_up_2"],
+                "pos": (480, 1080)
+            },
+            {
+                "key": "arrow_tower_unlocked",
+                "name": "Arrow Tower",
+                "desc": "Build offensive Arrow Towers",
+                "cost": 35,
+                "parents": ["ageing_up_2"],
+                "pos": (810, 1080)
+            },
+            {
+                "key": "looting_unlocked",
+                "name": "Looting",
+                "desc": "+5 Food per troop kill",
+                "cost": 30,
+                "parents": ["ageing_up_2"],
+                "pos": (1140, 1080)
+            },
+            {
+                "key": "townhall_unlocked",
+                "name": "Secondary Keep",
+                "desc": "Build Additional Town Halls",
+                "cost": 40,
+                "parents": ["ageing_up_2"],
+                "pos": (1470, 1080)
+            },
+            {
+                "key": "forum_passive_arrow",
+                "name": "Sentry Guard Bow",
+                "desc": "Forum fires 1 arrow automatically",
+                "cost": 35,
+                "parents": ["forum_boost"],
+                "pos": (1800, 1080)
+            },
+
+            # TIER 6 (y = 1300)
             {
                 "key": "watchtower_sight",
                 "name": "Tower Optics",
                 "desc": "Watchtower Sight +20%",
                 "cost": 25,
                 "parents": ["tower_unlocked"],
-                "pos": (400, 920)
+                "pos": (480, 1300)
             },
             {
-                "key": "scout_unlocked",
-                "name": "Unlock Scout",
-                "desc": "Fast reconnaissance unit with high vision",
+                "key": "tower_range_unlocked",
+                "name": "Arrow Tower Range",
+                "desc": "Arrow tower +10% range",
                 "cost": 25,
-                "parents": ["extra_worker_start"],
-                "pos": (150, 560)
-            },
-            {
-                "key": "building_repair_unlocked",
-                "name": "Building Repair",
-                "desc": "Order Workers to repair damaged structures",
-                "cost": 30,
-                "parents": ["house_unlocked"],
-                "pos": (1800, 560)
+                "parents": ["arrow_tower_unlocked"],
+                "pos": (810, 1300)
             },
             {
                 "key": "double_base_res_cap",
                 "name": "Rich Deposit Caches",
                 "desc": "Double resource node capacity around Forum",
                 "cost": 35,
-                "parents": ["gold_stockpile_unlocked"],
-                "pos": (1150, 380)
-            },
-            {
-                "key": "forum_passive_arrow",
-                "name": "Sentry Guard Bow",
-                "desc": "Forum fires 1 arrow automatically (+1 arrow)",
-                "cost": 35,
-                "parents": ["garrison_unlocked"],
-                "pos": (1700, 740)
+                "parents": ["bank_unlocked"],
+                "pos": (2130, 860)
             }
         ]
 
@@ -259,7 +334,6 @@ class ProgressionUI:
         oy = self.camera_offset_y
         zoom = self.zoom_level
 
-        # Helper to scale relative to center of view
         def transform_pos(pos):
             cx = (pos[0] - self.screen_width // 2) * zoom + self.screen_width // 2 + ox
             cy = (pos[1] - self.screen_height // 2) * zoom + self.screen_height // 2 + oy
@@ -268,8 +342,9 @@ class ProgressionUI:
         # 1. Draw connecting lines between parents and children
         for n in nodes:
             cx, cy = transform_pos(n["pos"])
-            cx, cy = transform_pos(n["pos"])
             for parent_key in n["parents"]:
+                if parent_key not in node_map:
+                    continue
                 parent = node_map[parent_key]
                 px, py = transform_pos(parent["pos"])
                 is_parent_unlocked = upg_data.get(parent_key, 0) >= 1
@@ -282,14 +357,14 @@ class ProgressionUI:
                 else:
                     line_color = (80, 80, 80)
 
-                pygame.draw.line(surface, line_color, (px, py + int(40 * zoom)), (cx, cy - int(40 * zoom)), max(1, int(3 * zoom)))
+                pygame.draw.line(surface, line_color, (px, py + int(45 * zoom)), (cx, cy - int(45 * zoom)), max(1, int(3 * zoom)))
 
         # 2. Draw node cards
         for n in nodes:
             key = n["key"]
             cx, cy = transform_pos(n["pos"])
-            card_w = int(220 * zoom)
-            card_h = int(82 * zoom)
+            card_w = int(270 * zoom)
+            card_h = int(90 * zoom)
             card_rect = pygame.Rect(cx - card_w // 2, cy - card_h // 2, card_w, card_h)
 
             is_unlocked = upg_data.get(key, 0) >= 1
@@ -316,7 +391,7 @@ class ProgressionUI:
 
             # Title
             t_title = self.bold_font.render(n["name"], True, config.COLOR_UI_TEXT if parents_unlocked or is_unlocked else (140, 140, 140))
-            surface.blit(t_title, (cx - t_title.get_width() // 2, cy - 32))
+            surface.blit(t_title, (cx - t_title.get_width() // 2, cy - 34))
 
             # Desc
             t_desc = self.small_font.render(n["desc"], True, (180, 180, 180) if parents_unlocked or is_unlocked else (100, 100, 100))
@@ -324,7 +399,7 @@ class ProgressionUI:
 
             # Status / Button label
             t_stat = self.bold_font.render(status_txt, True, status_col)
-            surface.blit(t_stat, (cx - t_stat.get_width() // 2, cy + 12))
+            surface.blit(t_stat, (cx - t_stat.get_width() // 2, cy + 14))
 
             if parents_unlocked and not is_unlocked:
                 buttons[key] = {
@@ -356,11 +431,13 @@ class ProgressionUI:
         ]
 
         if upg_data.get("wall_unlocked"):
-            available_upgrades.append({"key": "wall_hp_lvl", "bld": "Wall", "name": "Wooden Wall Health (+20%)", "cost_base": 10, "stats": "HP: 250 | Width: 20 | Length: 40"})
+            available_upgrades.append({"key": "wall_hp_lvl", "bld": "Wall", "name": "Wooden Wall Health (+20%)", "cost_base": 10, "stats": "HP: 750 | Width: 20 | Length: 40"})
 
         if upg_data.get("tower_unlocked"):
-            available_upgrades.append({"key": "tower_hp_lvl", "bld": "Tower", "name": "Watchtower Health (+15%)", "cost_base": 15, "stats": "HP: 400 | Atk: 15 | Range: 200 | Vis: 550"})
-            available_upgrades.append({"key": "tower_attack_lvl", "bld": "Tower", "name": "Watchtower Arrow Damage (+10%)", "cost_base": 20, "stats": "HP: 400 | Atk: 15 | Range: 200 | Vis: 550"})
+            available_upgrades.append({"key": "tower_hp_lvl", "bld": "Tower", "name": "Watchtower Health (+15%)", "cost_base": 15, "stats": "HP: 400 | Vis: 700"})
+
+        if upg_data.get("arrow_tower_unlocked"):
+            available_upgrades.append({"key": "arrow_tower_hp_lvl", "bld": "ArrowTower", "name": "Arrow Tower Health (+15%)", "cost_base": 15, "stats": "HP: 450 | Atk: 16 | Range: 220 | Vis: 300"})
 
         if upg_data.get("farm_unlocked"):
             available_upgrades.append({"key": "farm_hp_lvl", "bld": "Farm", "name": "Farm Structure HP (+15%)", "cost_base": 10, "stats": "HP: 300 | Food Harvest Source"})

@@ -12,7 +12,8 @@ UNIT_TYPES = {
     # Alien
     "Drone": {"cost": {"biomass": 50}, "hp": 55, "speed": 105, "attack": 6, "range": 25, "is_worker": True, "radius": 12, "train_time": 9},
     "Swarmer": {"cost": {"biomass": 60}, "hp": 100, "speed": 125, "attack": 15, "range": 25, "is_worker": False, "radius": 12, "train_time": 12},
-    "Spitter": {"cost": {"biomass": 130}, "hp": 80, "speed": 95, "attack": 16, "range": 170, "is_worker": False, "radius": 14, "train_time": 18}
+    "Spitter": {"cost": {"biomass": 130}, "hp": 80, "speed": 95, "attack": 16, "range": 170, "is_worker": False, "radius": 14, "train_time": 18},
+    "Queen": {"cost": {"biomass": 250}, "hp": 220, "speed": 110, "attack": 24, "range": 200, "is_worker": False, "radius": 16, "train_time": 25, "vision": 350}
 }
 
 class Unit(BaseEntity):
@@ -32,6 +33,7 @@ class Unit(BaseEntity):
         self.state = "idle"
         self.target_pos = None
         self.target_entity = None
+        self.build_queue = []  # List of queued buildings to construct in series
         self.attack_cooldown = 0
         self.carried_resource = 0
         self.resource_type = None
@@ -46,31 +48,39 @@ class Unit(BaseEntity):
     def move_to(self, target_x, target_y):
         self.target_pos = (target_x, target_y)
         self.target_entity = None
+        self.build_queue.clear()
         self.state = "move"
         self.attack_move_mode = False
 
     def attack_move_to(self, target_x, target_y):
         self.target_pos = (target_x, target_y)
         self.target_entity = None
+        self.build_queue.clear()
         self.state = "move"
         self.attack_move_mode = True
 
     def attack_target(self, target):
         self.target_entity = target
+        self.build_queue.clear()
         self.state = "attack"
         self.attack_move_mode = False
 
-    def construct_building(self, building):
+    def construct_building(self, building, append=False):
         if not self.is_worker:
             return
-        self.target_entity = building
-        self.state = "construct"
-        self.attack_move_mode = False
+        if append and self.target_entity:
+            self.build_queue.append(building)
+        else:
+            self.target_entity = building
+            self.build_queue.clear()
+            self.state = "construct"
+            self.attack_move_mode = False
 
     def repair_building(self, building):
         if not self.is_worker:
             return
         self.target_entity = building
+        self.build_queue.clear()
         self.state = "repair"
         self.attack_move_mode = False
 
@@ -78,6 +88,7 @@ class Unit(BaseEntity):
         if not self.is_worker:
             return
         self.target_entity = node
+        self.build_queue.clear()
         self.state = "harvest"
         self.attack_move_mode = False
 
@@ -152,14 +163,12 @@ class Unit(BaseEntity):
 
     def _process_construct(self, dt, game_state):
         if not self.target_entity or not getattr(self.target_entity, 'alive', True):
-            self.target_entity = None
-            self.state = "idle"
+            self._check_next_build_queue()
             return
 
         bld = self.target_entity
         if getattr(bld, 'is_constructed', True):
-            self.target_entity = None
-            self.state = "idle"
+            self._check_next_build_queue()
             return
 
         dist = self.distance_to(bld)
@@ -175,9 +184,27 @@ class Unit(BaseEntity):
             self.x += dir_x * self.speed * dt
             self.y += dir_y * self.speed * dt
         else:
-            # Construct building
+            # Drone morph/sacrifice mechanic for Alien construction
+            if self.unit_type == "Drone":
+                bld.auto_building = True
+                self.alive = False  # Drone dies/sacrifices into structure
+                return
+
+            # Human Worker construction
             bld.build_progress(dt, speed_mult=1.0)
             self.is_harvesting_anim = 0.2
+            if bld.is_constructed:
+                self._check_next_build_queue()
+
+    def _check_next_build_queue(self):
+        while self.build_queue:
+            next_bld = self.build_queue.pop(0)
+            if next_bld and next_bld.alive and not next_bld.is_constructed:
+                self.target_entity = next_bld
+                self.state = "construct"
+                return
+        self.target_entity = None
+        self.state = "idle"
 
     def _process_repair(self, dt, game_state):
         if not self.target_entity or not getattr(self.target_entity, 'alive', True):
@@ -203,8 +230,7 @@ class Unit(BaseEntity):
             self.x += dir_x * self.speed * dt
             self.y += dir_y * self.speed * dt
         else:
-            # Repair cost is cheap fraction of building cost
-            repair_rate = 25.0 * dt  # 25 HP per second
+            repair_rate = 25.0 * dt
             cost_factor = repair_rate / max(1.0, bld.max_hp)
             rep_cost = {}
             for r_k, r_v in bld.cost.items():
@@ -233,17 +259,25 @@ class Unit(BaseEntity):
             self.facing_angle = math.atan2(dy, dx)
 
         if dist > self.attack_range + self.radius + self.target_entity.radius:
-            # Se rapprocher du cible
             dir_x = dx / dist
             dir_y = dy / dist
             self.x += dir_x * self.speed * dt
             self.y += dir_y * self.speed * dt
         else:
-            # À portée d'attaque
             if self.attack_cooldown <= 0:
-                self.target_entity.take_damage(self.attack_power)
-                self.attack_cooldown = 1.0  # Temps de recharge
-                self.is_attacking_anim = 0.3  # Animation flash/projectile pendant 0.3s
+                if hasattr(game_state, 'spawn_projectile') and self.unit_type in ["Archer", "Spitter", "Queen"]:
+                    proj_type = "arrow" if self.unit_type == "Archer" else ("spitter" if self.unit_type == "Spitter" else "queen_bolt")
+                    game_state.spawn_projectile(self, self.target_entity, self.attack_power, proj_type=proj_type)
+                else:
+                    self.target_entity.take_damage(self.attack_power)
+                    # Queen unit passive transformation
+                    if self.unit_type == "Queen" and not self.target_entity.alive:
+                        # Transform killed target into Swarmer
+                        sw = Unit(self.owner_id, self.faction, "Swarmer", self.target_entity.x, self.target_entity.y)
+                        game_state.units.append(sw)
+
+                self.attack_cooldown = 1.0
+                self.is_attacking_anim = 0.3
 
     def _process_harvest(self, dt, game_state):
         if not self.target_entity or not getattr(self.target_entity, 'alive', True):
@@ -258,13 +292,11 @@ class Unit(BaseEntity):
             self.facing_angle = math.atan2(dy, dx)
 
         if dist > self.radius + self.target_entity.radius + 10:
-            # Se rapprocher du gisement
             dir_x = dx / dist
             dir_y = dy / dist
             self.x += dir_x * self.speed * dt
             self.y += dir_y * self.speed * dt
         else:
-            # Récolter
             if hasattr(self.target_entity, 'harvest'):
                 harvested = self.target_entity.harvest(config.DEFAULT_HARVEST_RATE * dt)
                 self.carried_resource += harvested
@@ -290,10 +322,8 @@ class Unit(BaseEntity):
             self.x += dir_x * self.speed * dt
             self.y += dir_y * self.speed * dt
         else:
-            # Déposer les ressources
             game_state.add_resources(self.owner_id, self.resource_type, self.carried_resource)
             self.carried_resource = 0
-            # Repartir récolter
             if self.target_entity and getattr(self.target_entity, 'alive', True):
                 self.state = "harvest"
             else:

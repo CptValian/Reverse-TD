@@ -17,13 +17,13 @@ class TestNewFeatures(unittest.TestCase):
         w1 = Building(0, config.FACTION_HUMAN, "Wall", 100, 100, wall_length=40, wall_width=20, wall_angle=0.0)
         w2 = Building(0, config.FACTION_HUMAN, "Wall", 138, 100, wall_length=40, wall_width=20, wall_angle=0.0)
 
-        # Both wall sections have their own HP
-        self.assertEqual(w1.hp, 250)
-        self.assertEqual(w2.hp, 250)
+        # Both wall sections have 3x HP (750)
+        self.assertEqual(w1.hp, 750)
+        self.assertEqual(w2.hp, 750)
 
         w1.take_damage(50)
-        self.assertEqual(w1.hp, 200)
-        self.assertEqual(w2.hp, 250)
+        self.assertEqual(w1.hp, 700)
+        self.assertEqual(w2.hp, 750)
 
         # GameState allows placing adjacent wall sections
         self.game_state.buildings.append(w1)
@@ -71,12 +71,15 @@ class TestNewFeatures(unittest.TestCase):
 
         # Enable upgrade
         self.save_manager.data["upgrades"]["forum_passive_arrow"] = 1
-        # In update(), effective_attack calculates (0 + 1) * 12 = 12
         enemy = Unit(1, config.FACTION_ALIEN, "Swarmer", 220, 200)
         self.game_state.units.append(enemy)
         self.game_state.buildings.append(forum)
 
         forum.update(1.1, self.game_state)
+        # Update projectiles to impact enemy
+        for p in self.game_state.projectiles:
+            p.update(1.0, self.game_state)
+
         self.assertLess(enemy.hp, enemy.max_hp)
 
     def test_worker_repair(self):

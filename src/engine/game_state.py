@@ -9,6 +9,51 @@ from src.ai.ai_controller import AIController
 from src.progression.save_manager import SaveManager
 from src.progression.rewards import Rewards
 
+class Projectile:
+    def __init__(self, source_x, source_y, target, damage, speed=350.0, proj_type="arrow", owner_id=0, faction="Medieval"):
+        self.x = source_x
+        self.y = source_y
+        self.target = target
+        self.damage = damage
+        self.speed = speed
+        self.proj_type = proj_type  # "arrow", "spitter", "ballista", "spine", "queen_bolt"
+        self.owner_id = owner_id
+        self.faction = faction
+        self.alive = True
+        self.target_x = target.x
+        self.target_y = target.y
+
+    def update(self, dt, game_state):
+        if not self.alive:
+            return
+
+        # Track moving target if alive
+        if self.target and getattr(self.target, 'alive', False):
+            self.target_x = self.target.x
+            self.target_y = self.target.y
+
+        dx = self.target_x - self.x
+        dy = self.target_y - self.y
+        dist = math.hypot(dx, dy)
+
+        move_dist = self.speed * dt
+        if dist <= move_dist or dist < 5.0:
+            self.x = self.target_x
+            self.y = self.target_y
+            self.alive = False
+
+            # Impact target
+            if self.target and getattr(self.target, 'alive', False):
+                self.target.take_damage(self.damage)
+                # Queen projectile kill transform into Swarmer
+                if self.proj_type == "queen_bolt" and not self.target.alive:
+                    sw = Unit(self.owner_id, self.faction, "Swarmer", self.target.x, self.target.y)
+                    game_state.units.append(sw)
+        else:
+            self.x += (dx / dist) * move_dist
+            self.y += (dy / dist) * move_dist
+
+
 class GameState:
     def __init__(self, save_manager, num_ais=1, ai_difficulty=1, map_type=1):
         self.save_manager = save_manager
@@ -24,15 +69,21 @@ class GameState:
         self.units = []
         self.buildings = []
         self.resources = []
+        self.projectiles = []
         self.ai_controllers = []
 
         # Statistiques des joueurs (owner_id 0 = Humain, owner_id 1..N = IA)
         self.resources_player = {}
         self.resources_gathered_player = {}
 
-        self.selection_box = None  # Tuple (start_x, start_y, current_x, current_y)
+        self.selection_box = None
         self.game_time = 0.0
         self.player_age = 1
+
+    def spawn_projectile(self, source, target, damage, proj_type="arrow"):
+        sp_speed = 420.0 if proj_type in ["arrow", "spitter"] else (550.0 if proj_type == "ballista" else 380.0)
+        p = Projectile(source.x, source.y, target, damage, speed=sp_speed, proj_type=proj_type, owner_id=source.owner_id, faction=source.faction)
+        self.projectiles.append(p)
 
     def is_fog_of_war_enabled(self):
         return self.ai_difficulty > 4
@@ -41,14 +92,12 @@ class GameState:
         if not self.is_fog_of_war_enabled():
             return True
 
-        # Player units vision
         for u in self.units:
             if u.alive and u.owner_id == owner_id:
                 dist = math.hypot(u.x - x, u.y - y)
                 if dist <= getattr(u, 'vision_radius', 220):
                     return True
 
-        # Player buildings vision
         for b in self.buildings:
             if b.alive and b.owner_id == owner_id:
                 dist = math.hypot(b.x - x, b.y - y)
@@ -60,7 +109,6 @@ class GameState:
     def age_up(self, owner_id=0):
         if owner_id == 0:
             self.player_age += 1
-            # Strengthen all buildings HP by * 1.2
             for b in self.buildings:
                 if b.alive and b.owner_id == owner_id:
                     hp_ratio = b.hp / max(1.0, b.max_hp)
@@ -72,10 +120,10 @@ class GameState:
         self.units.clear()
         self.buildings.clear()
         self.resources.clear()
+        self.projectiles.clear()
         self.ai_controllers.clear()
         self.resources_player.clear()
 
-        # Application des améliorations de méta-progression
         upgrades = self.save_manager.data.get("upgrades", {})
         extra_res = upgrades.get("starting_resources_lvl", 0) * 100
         hp_bonus_units = upgrades.get("unit_hp_lvl", 0) * 0.10
@@ -83,8 +131,10 @@ class GameState:
         hp_bonus_bld = upgrades.get("building_hp_lvl", 0) * 0.15
         armor_bonus_bld = upgrades.get("building_armor_lvl", 0) * 1.0
 
-        # Initialisation des ressources des joueurs
         extra_res_bonus = 100 if upgrades.get("starting_res_1") else 0
+        if upgrades.get("starting_res_2"):
+            extra_res_bonus += 200
+
         self.resources_player[0] = {
             "gold": 200 + extra_res_bonus,
             "wood": 200 + extra_res_bonus,
@@ -111,35 +161,31 @@ class GameState:
                 "biomass": 300
             }
 
-        # Génération de la carte selon map_type
         map_gen = MapGenerator(config.MAP_WIDTH, config.MAP_HEIGHT)
         map_data = map_gen.generate_map(num_players=self.num_ais + 1, map_type=self.map_type)
 
-        # Création des ressources sur la carte
         for res_data in map_data["resources"]:
             self.resources.append(ResourceNode(res_data.type, res_data.x, res_data.y, res_data.amount))
 
-        # Spawns des joueurs
         for spawn in map_data["spawns"]:
             owner_id = spawn["id"]
             faction = spawn["faction"]
             sx, sy = spawn["x"], spawn["y"]
 
             if faction == config.FACTION_HUMAN:
-                # Base humaine
-                range_bonus = 22 if upgrades.get("forum_atk_range") else 0
+                range_bonus = 22 if (upgrades.get("forum_atk_range") or upgrades.get("forum_boost")) else 0
                 base = Building(owner_id, faction, "TownHall", sx, sy,
                                 hp_bonus=int(1000 * hp_bonus_bld), armor_bonus=armor_bonus_bld, range_bonus=range_bonus)
+                if upgrades.get("forum_boost"):
+                    base.vision_radius = int(base.vision_radius * 1.25)
                 self.buildings.append(base)
 
-                # Doubler la capacité des gisements autour du forum de départ si l'amélioration est active
                 if upgrades.get("double_base_res_cap"):
                     for r in self.resources:
                         if math.hypot(r.x - sx, r.y - sy) < 400:
                             r.amount *= 2
                             r.max_amount *= 2
 
-                # Ouvriers de départ (3 de base + 1 si extra_worker_start)
                 num_workers = 3 + (1 if upgrades.get("extra_worker_start") else 0)
                 worker_offsets = [(-30, 40), (0, 50), (30, 40), (-45, 50), (45, 50)]
                 for i in range(num_workers):
@@ -148,22 +194,26 @@ class GameState:
                              hp_bonus=int(60 * hp_bonus_units), attack_bonus=int(5 * atk_bonus_units))
                     self.units.append(u)
 
-                # Unité de mêlée de départ si extra_melee_start
                 if upgrades.get("extra_melee_start"):
                     u_inf = Unit(owner_id, faction, "Infantry", sx, sy + 60,
                                  hp_bonus=int(150 * hp_bonus_units), attack_bonus=int(18 * atk_bonus_units))
                     self.units.append(u_inf)
+
+                if upgrades.get("scout_unlocked"):
+                    u_scout = Unit(owner_id, faction, "Scout", sx + 50, sy + 60)
+                    self.units.append(u_scout)
             else:
-                # Base Alien IA
                 base = Building(owner_id, faction, "Hive", sx, sy)
                 self.buildings.append(base)
 
-                # 3 Drones de départ
-                for offset in [(-30, 40), (0, 50), (30, 40)]:
+                # Alien starting drones: 5 Drones for AI Level 15, otherwise 3
+                num_drones = 5 if self.ai_difficulty >= 15 else 3
+                drone_offsets = [(-30, 40), (0, 50), (30, 40), (-45, 50), (45, 50)]
+                for i in range(num_drones):
+                    offset = drone_offsets[i % len(drone_offsets)]
                     u = Unit(owner_id, faction, "Drone", sx + offset[0], sy + offset[1])
                     self.units.append(u)
 
-                # Contrôleur d'IA
                 ai_ctrl = AIController(owner_id=owner_id, faction=faction, difficulty=self.ai_difficulty)
                 self.ai_controllers.append(ai_ctrl)
 
@@ -228,20 +278,17 @@ class GameState:
         from src.entities.building import BUILDING_TYPES
         radius = BUILDING_TYPES.get(building_type, {}).get("radius", 35)
 
-        # Vérifier hors limites carte
         if x - radius < 0 or x + radius > config.MAP_WIDTH or y - radius < 0 or y + radius > config.MAP_HEIGHT:
             return False
 
-        # Collision avec d'autres bâtiments
         for b in self.buildings:
             if b.alive:
                 if building_type == "Wall" and b.building_type == "Wall":
-                    continue  # Wall sections can connect seamlessly adjacent to each other
+                    continue
                 min_req = b.radius + radius + 10
                 if (b.x - x)**2 + (b.y - y)**2 < min_req * min_req:
                     return False
 
-        # Collision avec ressources
         for r in self.resources:
             if r.alive:
                 min_req = r.radius + radius + 10
@@ -270,7 +317,6 @@ class GameState:
                     nx = dx / dist
                     ny = dy / dist
 
-                    # Repousser les deux unités à parts égales
                     push_x = nx * (overlap / 2.0)
                     push_y = ny * (overlap / 2.0)
 
@@ -279,14 +325,12 @@ class GameState:
                     u2.x += push_x
                     u2.y += push_y
 
-        # Résoudre également la collision unités / bâtiments (AABB / OBB pour Murs, Cercles pour autres bâtiments)
         for u in units_list:
             for b in self.buildings:
                 if not b.alive:
                     continue
 
                 if b.building_type == "Wall":
-                    # Exact Oriented Bounding Box (OBB) vs Unit Circle collision
                     w_len = getattr(b, 'wall_length', 40)
                     w_wid = getattr(b, 'wall_width', 18)
                     w_ang = getattr(b, 'wall_angle', 0.0)
@@ -317,7 +361,6 @@ class GameState:
                             nx = lx / dist
                             ny = ly / dist
                         else:
-                            # Center is inside rectangle - push along closest edge
                             d_pos_x = hl - local_x
                             d_neg_x = local_x + hl
                             d_pos_y = hw - local_y
@@ -360,10 +403,8 @@ class GameState:
 
         self.game_time += dt
 
-        # Résolution des collisions d'unités (Empêcher l'overlap)
         self.resolve_unit_collisions()
 
-        # Mise à jour des unités
         upgrades = self.save_manager.data.get("upgrades", {})
         has_looting = upgrades.get("looting_unlocked", 0) >= 1
 
@@ -374,7 +415,6 @@ class GameState:
                 if has_looting and unit.owner_id != 0:
                     self.add_resources(0, "food", 5)
 
-                # AI Level 12 Biomass Reward on enemy kill
                 if unit.owner_id == 0:
                     for ai in self.ai_controllers:
                         if ai.config.get("biomass_on_kill"):
@@ -382,15 +422,12 @@ class GameState:
 
                 self.units.remove(unit)
 
-        # Mise à jour des bâtiments et production
         for building in list(self.buildings):
             if building.alive:
                 produced_unit = building.update(dt, self)
                 if produced_unit:
-                    # Spawner l'unité produite au pied du bâtiment
                     new_u = Unit(building.owner_id, building.faction, produced_unit, building.x, building.y + building.radius + 15)
 
-                    # Appliquer le point de ralliement (Rally Point) si défini
                     if building.rally_point:
                         rx, ry = building.rally_point
                         rt = building.rally_target
@@ -405,14 +442,18 @@ class GameState:
             else:
                 self.buildings.remove(building)
 
-        # Nettoyage des gisements épuisés
+        # Update flying projectiles
+        for proj in list(self.projectiles):
+            if proj.alive:
+                proj.update(dt, self)
+            else:
+                self.projectiles.remove(proj)
+
         self.resources = [r for r in self.resources if r.alive]
 
-        # Mise à jour des IA
         for ai in self.ai_controllers:
             ai.update(dt, self)
 
-        # Vérification des conditions de victoire/défaite (destruction totale)
         player_buildings = [b for b in self.buildings if b.owner_id == 0]
         player_units = [u for u in self.units if u.owner_id == 0]
 
