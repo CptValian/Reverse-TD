@@ -110,7 +110,7 @@ class AlienAIController(BaseAIController):
         }
 
     def _assign_builder_to_building(self, nb, ai_units, game_state):
-        if not nb or getattr(nb, 'is_constructed', True):
+        if not nb or getattr(nb, 'is_constructed', True) or getattr(nb, 'is_being_built', False):
             return
         idle_builders = [u for u in ai_units if u.alive and u.is_worker and u.state == "idle"]
         if idle_builders:
@@ -298,7 +298,7 @@ class AlienAIController(BaseAIController):
                         self._assign_builder_to_building(nb, ai_units, game_state)
 
         # Ensure all unconstructed Alien buildings have an assigned Alien Drone builder
-        unconstructed_ai_blds = [b for b in ai_buildings if not b.is_constructed]
+        unconstructed_ai_blds = [b for b in ai_buildings if not b.is_constructed and not getattr(b, 'is_being_built', False)]
         for ub in unconstructed_ai_blds:
             if not any(u.alive and u.target_entity == ub for u in ai_units):
                 self._assign_builder_to_building(ub, ai_units, game_state)
