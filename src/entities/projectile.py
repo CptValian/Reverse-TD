@@ -1,7 +1,7 @@
 import math
 
 class Projectile:
-    def __init__(self, x, y, target_entity, damage, speed=450, owner_id=0, projectile_type="arrow", on_hit_callback=None, delay=0.0):
+    def __init__(self, x, y, target_entity, damage, speed=450, owner_id=0, projectile_type="arrow", on_hit_callback=None, delay=0.0, attacker_entity=None):
         self.x = x
         self.y = y
         self.target_entity = target_entity
@@ -12,6 +12,7 @@ class Projectile:
         self.projectile_type = projectile_type
         self.on_hit_callback = on_hit_callback
         self.delay = delay
+        self.attacker_entity = attacker_entity
         self.radius = 4
         self.alive = True
         self.selected = False
@@ -48,7 +49,7 @@ class Projectile:
             # Apply damage to target if alive
             if self.target_entity and getattr(self.target_entity, 'alive', True):
                 prev_hp = self.target_entity.hp
-                self.target_entity.take_damage(self.damage)
+                self.target_entity.take_damage(self.damage, attacker=self.attacker_entity, game_state=game_state)
                 if self.on_hit_callback:
                     self.on_hit_callback(self.target_entity, prev_hp, game_state)
         else:

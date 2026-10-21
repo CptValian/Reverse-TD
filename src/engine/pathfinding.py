@@ -2,7 +2,7 @@ import math
 import heapq
 import config
 
-GRID_SIZE = 40
+GRID_SIZE = 25
 
 class PathfindingGrid:
     def __init__(self, width=config.MAP_WIDTH, height=config.MAP_HEIGHT, grid_size=GRID_SIZE):
@@ -31,7 +31,7 @@ class PathfindingGrid:
                 continue
 
             # Inflate radius slightly for clearance
-            rad = b.radius + 10
+            rad = b.radius + 8
             min_c, min_r = self.pos_to_grid(b.x - rad, b.y - rad)
             max_c, max_r = self.pos_to_grid(b.x + rad, b.y + rad)
 
@@ -46,7 +46,7 @@ class PathfindingGrid:
             if not res.alive or res == ignore_entity:
                 continue
 
-            rad = res.radius + 10
+            rad = res.radius + 8
             min_c, min_r = self.pos_to_grid(res.x - rad, res.y - rad)
             max_c, max_r = self.pos_to_grid(res.x + rad, res.y + rad)
 
@@ -90,7 +90,7 @@ class PathfindingGrid:
         # If goal is blocked, find nearest unblocked grid cell around goal
         if obstacle_grid[goal_col][goal_row]:
             found_alt = False
-            for r in range(1, 6):
+            for r in range(1, 8):
                 for dc in range(-r, r + 1):
                     for dr in range(-r, r + 1):
                         nc, nr = goal_col + dc, goal_row + dr
@@ -102,7 +102,7 @@ class PathfindingGrid:
                     if found_alt:
                         break
                 if found_alt:
-                        break
+                    break
 
         # A* Search
         open_set = []
@@ -129,13 +129,21 @@ class PathfindingGrid:
                     if obstacle_grid[nc][nr]:
                         continue
 
-                    cost = 1.414 if (dc != 0 and dr != 0) else 1.0
+                    # Prevent cutting diagonal corners if orthogonal cells are blocked
+                    if dc != 0 and dr != 0:
+                        if obstacle_grid[curr_c + dc][curr_r] or obstacle_grid[curr_c][curr_r + dr]:
+                            continue
+                        cost = 1.414
+                    else:
+                        cost = 1.0
+
                     tentative_g = g_score[(curr_c, curr_r)] + cost
 
                     if (nc, nr) not in g_score or tentative_g < g_score[(nc, nr)]:
                         came_from[(nc, nr)] = (curr_c, curr_r)
                         g_score[(nc, nr)] = tentative_g
-                        f_score = tentative_g + heuristic(nc, nr)
+                        # Tie-breaking heuristic multiplier for faster search
+                        f_score = tentative_g + heuristic(nc, nr) * 1.001
                         heapq.heappush(open_set, (f_score, nc, nr))
 
         if not found:

@@ -52,6 +52,11 @@ class Unit(BaseEntity):
         self.hero_level = 1
         self.hero_kills = 0
 
+        # Anti-stuck and crowding timers
+        self.stuck_timer = 0.0
+        self.stuck_check_timer = 0.0
+        self.last_pos = (float(x), float(y))
+
     def calculate_path(self, target_x, target_y, game_state):
         if game_state:
             from src.engine.pathfinding import PathfindingGrid
@@ -148,6 +153,38 @@ class Unit(BaseEntity):
             if enemy:
                 self.target_entity = enemy
                 self.state = "attack"
+
+        # Anti-stuck check for active movement/harvesting
+        if self.state in ["move", "harvest", "return_resource", "construct", "repair"]:
+            effective_dt = min(dt, 0.2)
+            self.stuck_check_timer += effective_dt
+            if self.stuck_check_timer >= 0.8:
+                dist_moved = math.hypot(self.x - self.last_pos[0], self.y - self.last_pos[1])
+                if dist_moved < 3.0:
+                    self.stuck_timer += self.stuck_check_timer
+                else:
+                    self.stuck_timer = max(0.0, self.stuck_timer - 0.5)
+
+                self.last_pos = (self.x, self.y)
+                self.stuck_check_timer = 0.0
+
+            if self.stuck_timer >= 1.5:
+                # Apply lateral nudge vector to break unit congestion
+                nudge_angle = self.facing_angle + math.pi / 2.0
+                if (id(self) % 2) == 0:
+                    nudge_angle -= math.pi
+                self.x += math.cos(nudge_angle) * 4.0
+                self.y += math.sin(nudge_angle) * 4.0
+
+            if self.stuck_timer >= 3.0:
+                self.stuck_timer = 0.0
+                if self.is_worker and self.state in ["harvest", "return_resource", "construct"]:
+                    self.state = "idle"
+                    self.target_pos = None
+                    self.path_waypoints.clear()
+                elif self.state in ["move", "attack"]:
+                    if self.target_pos:
+                        self.calculate_path(self.target_pos[0], self.target_pos[1], game_state)
 
         if self.state == "move":
             self._process_movement(dt)
@@ -338,6 +375,13 @@ class Unit(BaseEntity):
             else:
                 self.state = "idle"
 
+    def take_damage(self, amount, attacker=None, game_state=None):
+        super().take_damage(amount, attacker=attacker, game_state=game_state)
+        # If unit is attacked and currently idle, defend itself against the attacker
+        if self.alive and self.state == "idle" and attacker and getattr(attacker, 'alive', True):
+            if not self.is_worker or getattr(attacker, 'is_worker', False):
+                self.attack_target(attacker, game_state)
+
     def _process_attack(self, dt, game_state):
         if not self.target_entity or not self.target_entity.alive:
             self.target_entity = None
@@ -384,16 +428,16 @@ class Unit(BaseEntity):
                     elif self.unit_type == "Queen":
                         p_type = "queen_spore"
 
-                    proj = Projectile(self.x, self.y, self.target_entity, self.attack_power, speed=500, owner_id=self.owner_id, projectile_type=p_type, on_hit_callback=on_hit)
+                    proj = Projectile(self.x, self.y, self.target_entity, self.attack_power, speed=500, owner_id=self.owner_id, projectile_type=p_type, on_hit_callback=on_hit, attacker_entity=self)
                     if hasattr(game_state, 'projectiles'):
                         game_state.projectiles.append(proj)
                     else:
                         # Fallback if projectiles list not initialized
-                        self.target_entity.take_damage(self.attack_power)
+                        self.target_entity.take_damage(self.attack_power, attacker=self, game_state=game_state)
                         if not self.target_entity.alive and self.is_hero:
                             self.add_hero_kill()
                 else:
-                    self.target_entity.take_damage(self.attack_power)
+                    self.target_entity.take_damage(self.attack_power, attacker=self, game_state=game_state)
                     if not self.target_entity.alive and self.is_hero:
                         self.add_hero_kill()
 
