@@ -135,7 +135,7 @@ class Building(BaseEntity):
 
         # Gestion de la construction du bâtiment
         if not self.is_constructed:
-            if self.owner_id != 0 or getattr(self, 'is_being_built', False):
+            if getattr(self, 'is_being_built', False):
                 self.build_progress(dt, speed_mult=1.0)
             return None
 

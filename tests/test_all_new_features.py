@@ -147,10 +147,44 @@ class TestNewFeatures(unittest.TestCase):
         self.save_manager.set_setting("disable_fog_of_war", False)
 
     def test_ai_autobuilding_structures(self):
+        # Alien building requires Drone to arrive and morph (is_being_built = True)
         ai_bld = Building(1, config.FACTION_ALIEN, "SpawningPool", 400, 400, is_constructed=False)
         self.assertFalse(ai_bld.is_constructed)
+        self.assertFalse(getattr(ai_bld, 'is_being_built', False))
+
+        # Without drone morphing, update does not construct
+        ai_bld.update(10.0, self.game_state)
+        self.assertFalse(ai_bld.is_constructed)
+
+        # Drone morphs
+        drone = Unit(1, config.FACTION_ALIEN, "Drone", 400, 400)
+        drone.construct_building(ai_bld)
+        drone.update(0.1, self.game_state)
+        self.assertFalse(drone.alive)
+        self.assertTrue(getattr(ai_bld, 'is_being_built', False))
+
+        # Now building progresses automatically
         ai_bld.update(ai_bld.total_build_time + 1.0, self.game_state)
         self.assertTrue(ai_bld.is_constructed)
+
+    def test_multiple_workers_construction_speed(self):
+        bld1 = Building(0, config.FACTION_HUMAN, "Barracks", 500, 500, is_constructed=False)
+        w1 = Unit(0, config.FACTION_HUMAN, "Worker", 500, 500)
+        w1.construct_building(bld1)
+        w1.update(2.0, self.game_state)
+        timer_with_one = bld1.build_timer
+
+        bld2 = Building(0, config.FACTION_HUMAN, "Barracks", 500, 500, is_constructed=False)
+        w2_a = Unit(0, config.FACTION_HUMAN, "Worker", 500, 500)
+        w2_b = Unit(0, config.FACTION_HUMAN, "Worker", 500, 500)
+        w2_a.construct_building(bld2)
+        w2_b.construct_building(bld2)
+        w2_a.update(2.0, self.game_state)
+        w2_b.update(2.0, self.game_state)
+        timer_with_two = bld2.build_timer
+
+        # 2 workers advance build timer twice as fast (lower timer remaining)
+        self.assertLess(timer_with_two, timer_with_one)
 
 if __name__ == '__main__':
     unittest.main()
