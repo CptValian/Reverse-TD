@@ -2,6 +2,9 @@ import json
 import os
 
 DEFAULT_SAVE_DATA = {
+    "settings": {
+        "disable_fog_of_war": False
+    },
     "points": {
         "LandShard": 0,
         "SwarmerBlood": 0,
@@ -85,6 +88,9 @@ class SaveManager:
                 else:
                     data["upgrades"] = dict(DEFAULT_SAVE_DATA["upgrades"])
 
+                if "settings" not in data:
+                    data["settings"] = dict(DEFAULT_SAVE_DATA["settings"])
+
                 return data
         except Exception:
             import copy
@@ -101,6 +107,15 @@ class SaveManager:
         self.data["points"]["LandShard"] += command + landshard
         self.data["points"]["SwarmerBlood"] += forge + swarmerblood
         self.data["points"]["Pykrite"] += architecture + pykrite
+        self.save()
+
+    def get_setting(self, key, default=False):
+        return self.data.get("settings", {}).get(key, default)
+
+    def set_setting(self, key, value):
+        if "settings" not in self.data:
+            self.data["settings"] = {}
+        self.data["settings"][key] = value
         self.save()
 
     def get_points(self):

@@ -52,14 +52,15 @@ class Menu:
 
         # Main Navigation Buttons
         btn_width = 380
-        btn_height = 55
-        start_y = 280
-        gap = 20
+        btn_height = 48
+        start_y = 265
+        gap = 14
 
         start_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y, btn_width, btn_height)
         skill_tree_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y + btn_height + gap, btn_width, btn_height)
         ai_info_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y + (btn_height + gap) * 2, btn_width, btn_height)
-        quit_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y + (btn_height + gap) * 3, btn_width, btn_height)
+        options_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y + (btn_height + gap) * 3, btn_width, btn_height)
+        quit_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y + (btn_height + gap) * 4, btn_width, btn_height)
 
         def draw_button(rect, text, is_primary=False):
             mouse_p = pygame.mouse.get_pos()
@@ -76,6 +77,7 @@ class Menu:
         draw_button(start_btn, "LAUNCH GAME", is_primary=True)
         draw_button(skill_tree_btn, "SKILL TREE & UPGRADES")
         draw_button(ai_info_btn, "AI TECHS & INFO")
+        draw_button(options_btn, "OPTIONS")
         draw_button(quit_btn, "QUIT")
 
         # Game Setup Panel (AI, Difficulty, Map Type Selector)
@@ -133,6 +135,7 @@ class Menu:
             "start": start_btn,
             "skill_tree": skill_tree_btn,
             "ai_info": ai_info_btn,
+            "options": options_btn,
             "quit": quit_btn,
             "ai_minus": ai_minus_btn,
             "ai_plus": ai_plus_btn,
@@ -140,6 +143,57 @@ class Menu:
             "diff_minus": diff_minus_btn,
             "diff_plus": diff_plus_btn,
             "map_type": map_btn
+        }
+
+    def draw_options_menu(self, surface, save_manager):
+        surface.fill((15, 18, 26))
+
+        # Header Title
+        header_rect = pygame.Rect(0, 0, self.screen_width, 80)
+        pygame.draw.rect(surface, (22, 27, 38), header_rect)
+        pygame.draw.line(surface, config.COLOR_UI_ACCENT, (0, 80), (self.screen_width, 80), 2)
+
+        t_title = self.title_font.render("OPTIONS DU JEU", True, (255, 215, 0))
+        surface.blit(t_title, (self.screen_width // 2 - t_title.get_width() // 2, 12))
+
+        # Panel Box
+        panel_w, panel_h = 800, 450
+        panel_rect = pygame.Rect((self.screen_width - panel_w) // 2, 180, panel_w, panel_h)
+        pygame.draw.rect(surface, (24, 30, 42), panel_rect, border_radius=12)
+        pygame.draw.rect(surface, (60, 75, 100), panel_rect, 2, border_radius=12)
+
+        # Checkbox for Fog of War Toggle
+        is_fog_disabled = save_manager.get_setting("disable_fog_of_war", False)
+
+        box_size = 32
+        cb_rect = pygame.Rect(panel_rect.x + 50, panel_rect.y + 80, box_size, box_size)
+        pygame.draw.rect(surface, (40, 50, 70), cb_rect, border_radius=6)
+        pygame.draw.rect(surface, (255, 215, 0) if is_fog_disabled else (100, 120, 150), cb_rect, 2, border_radius=6)
+
+        if is_fog_disabled:
+            # Draw Checkmark
+            pts = [(cb_rect.x + 6, cb_rect.y + 16), (cb_rect.x + 13, cb_rect.y + 24), (cb_rect.x + 26, cb_rect.y + 8)]
+            pygame.draw.lines(surface, (0, 255, 128), False, pts, 4)
+
+        t_cb_label = self.btn_font.render("Dissiper le brouillard de guerre pour toutes les parties", True, config.COLOR_UI_TEXT)
+        surface.blit(t_cb_label, (cb_rect.x + box_size + 20, cb_rect.y + 2))
+
+        t_cb_desc = self.font.render("(Dévoile l'intégralité de la carte et supprime la brume sombre sur le champ de bataille)", True, (160, 180, 200))
+        surface.blit(t_cb_desc, (cb_rect.x + box_size + 20, cb_rect.y + 38))
+
+        # Back Button
+        back_btn = pygame.Rect(self.screen_width // 2 - 140, self.screen_height - 120, 280, 50)
+        mouse_p = pygame.mouse.get_pos()
+        hovered = back_btn.collidepoint(mouse_p)
+        pygame.draw.rect(surface, (45, 55, 75) if hovered else config.COLOR_UI_PANEL, back_btn, border_radius=8)
+        pygame.draw.rect(surface, (255, 215, 0) if hovered else config.COLOR_UI_ACCENT, back_btn, 2, border_radius=8)
+
+        back_txt = self.btn_font.render("RETOUR AU MENU", True, config.COLOR_UI_TEXT)
+        surface.blit(back_txt, (back_btn.x + back_btn.width // 2 - back_txt.get_width() // 2, back_btn.y + 10))
+
+        return {
+            "back": back_btn,
+            "fog_checkbox": cb_rect
         }
 
     def draw_ai_info_screen(self, surface, scroll_y=0):
@@ -170,9 +224,9 @@ class Menu:
 
         civ_desc_lines = [
             "• Économie de Biomasse: Les Insectes aliens récoltent de la biomasse organique pour concevoir leurs structures et muter leurs troupes.",
-            "• Conscience Collective (Hive Mind): Spawneurs rapides en essaims. Les unités mutent rapidement depuis la Ruche et le Bassin de Ponte.",
-            "• Troupes Alien: Drones (ouvriers polyvalents), Swarmers (combattants au corps-à-corps rapides) et Spitters (tireurs d'acide à distance).",
-            "• Bâtiments Alien: Hive (Ruche centrale), Spawning Pool (Bassin de ponte des troupes) et Spine Crawler (Organisme défensif)."
+            "• Conscience Collective (Hive Mind): Prise de décision stratégique en temps réel et intelligence adaptative au sommet pour toutes les IA.",
+            "• Troupes Alien: Drones (ouvriers polyvalents), Swarmers (combattants au corps-à-corps rapides), Spitters (tireurs d'acide) et la Reine Alien (tireuse de spores qui transforme ses victimes tuées en Swarmers).",
+            "• Bâtiments & Technologies: Hive (Ruche centrale), Spawning Pool (Bassin de ponte), Spine Crawler (Défense), Biomass Generator (Revenu passive) et Evolution Chamber (Améliorations génétiques)."
         ]
 
         def wrap_text(text, font, max_w):
@@ -199,34 +253,61 @@ class Menu:
         civ_box_h = 50 + len(wrapped_desc_lines) * 24 + 10
         civ_box = pygame.Rect(10, 10, viewport_w - 20, civ_box_h)
 
-        # Subtitle for AI Levels
         ai_head_y = civ_box.y + civ_box_h + 15
-        t_lvl_head = self.btn_font.render("DESCRIPTIFS DES NIVEAUX DE DIFFICULTÉ DE L'IA (1 à 12)", True, config.COLOR_UI_ACCENT)
+        t_lvl_head = self.btn_font.render("DESCRIPTIFS DES NIVEAUX DE DIFFICULTÉ DE L'IA (1 à 18)", True, config.COLOR_UI_ACCENT)
 
         ai_descriptions = {
-            1: "Niveau 1: Revenu x1.0, vagues/120s. Troupes: Drones & Swarmers.",
-            2: "Niveau 2: Revenu x1.1, vagues/100s. Débloque +1 Swarmer au début de la partie.",
-            3: "Niveau 3: Revenu x1.2, vagues/85s. Débloque +1 Drone au début de la partie.",
-            4: "Niveau 4: Revenu x1.3, vagues/70s. Débloque les Spine Crawlers défensifs. +15% HP/Atk.",
-            5: "Niveau 5 (Biomasse Depot): Revenu x1.4, vagues/55s. Bâtit des Stockpiles de biomasse.",
-            6: "Niveau 6 (Spitters): Revenu x1.5, vagues/45s. Débloque les Spitters à distance.",
-            7: "Niveau 7 (Enrage Ruche): Revenu x1.6, vagues/35s. Pouvoir activable Ruche (60s CD): +10% Speed/AtkSpeed pendant 5s.",
-            8: "Niveau 8 (Mucus Creep): Revenu x1.7, vagues/28s. Mucus autour des Ruches (+25% Vit/Atk sur Mucus).",
-            9: "Niveau 9 (Double Swarmer): Revenu x1.85, vagues/22s. La production d'un Swarmer en produit à présent 2.",
-            10: "Niveau 10 (Générateurs Biomasse): Revenu x2.0, vagues/18s. Bâtit des Générateurs de Biomasse.",
-            11: "Niveau 11 (Frenzy): Revenu x2.2, vagues/14s. Swarm Frenzy (+25% Vitesse). +45% HP, +60% Atk.",
-            12: "Niveau 12 (Moisson Suprême): Revenu x2.5, vagues/10s. Tuer un ennemi donne de la Biomasse.",
-            13: "Niveau 13 (Enrage Amélioré): Revenu x2.8, vagues/8s. Améliore le pouvoir de la Ruche de +10% à +20% Speed/AtkSpeed.",
-            14: "Niveau 14 (Reine Alien): Revenu x3.2, vagues/6s. Débloque la Reine (transforme victimes en Swarmers).",
-            15: "Niveau 15 (Seconde Ruche & Drones): Revenu x3.6, vagues/5s. Bâtit une 2nd Ruche & +2 Drones de départ.",
-            16: "Niveau 16 (Gisements Doublés): Revenu x4.0, vagues/5s. Toutes les sources de biomasse possèdent 2x plus de biomasse.",
-            17: "Niveau 17 (Essaim de Drones): Revenu x4.5, vagues/4s. Débloque +2 Drones supplémentaires au début de la partie.",
-            18: "Niveau 18 (Bâtiment d'Évolution): Revenu x5.0, vagues/4s. Bâtiment d'évolution avec 3 améliorations (+10% HP, -10% prix Swarmer, +5% prod biomasse)."
+            1: "Niveau 1: Revenu x1.0. Troupes: Drones & Swarmers. Moteur de réflexion stratégique complet.",
+            2: "Niveau 2: Revenu x1.1. Débloque +1 Swarmer au début de la partie.",
+            3: "Niveau 3: Revenu x1.2. Débloque +1 Drone au début de la partie.",
+            4: "Niveau 4: Revenu x1.3. Débloque les Spine Crawlers défensifs. +15% HP/Atk.",
+            5: "Niveau 5 (Biomasse Depot): Revenu x1.4. Bâtit des Stockpiles de biomasse.",
+            6: "Niveau 6 (Spitters): Revenu x1.5. Débloque les Spitters à distance.",
+            7: "Niveau 7 (Enrage Ruche): Revenu x1.6. Pouvoir activable Ruche (60s CD): +10% Speed/Atk pendant 5s.",
+            8: "Niveau 8 (Mucus Creep): Revenu x1.7. Mucus autour des Ruches (+25% Vitesse/Attaque sur Mucus).",
+            9: "Niveau 9 (Double Swarmer): Revenu x1.85. La production d'un Swarmer en produit 2.",
+            10: "Niveau 10 (Générateurs Biomasse): Revenu x2.0. Bâtit des Générateurs de Biomasse.",
+            11: "Niveau 11 (Frenzy): Revenu x2.2. Swarm Frenzy (+25% Vitesse). +45% HP, +60% Atk.",
+            12: "Niveau 12 (Moisson Suprême): Revenu x2.5. Tuer un ennemi rapporte de la Biomasse.",
+            13: "Niveau 13 (Enrage Amélioré): Revenu x2.8. Améliore le pouvoir de la Ruche à +20% Speed/Atk.",
+            14: "Niveau 14 (Reine Alien): Revenu x3.2. Débloque la Reine (transforme victimes en Swarmers).",
+            15: "Niveau 15 (Seconde Ruche & Drones): Revenu x3.6. Bâtit une 2nde Ruche & +2 Drones de départ.",
+            16: "Niveau 16 (Gisements Doublés): Revenu x4.0. Gisements de biomasse avec 2x plus de biomasse.",
+            17: "Niveau 17 (Essaim de Drones): Revenu x4.5. +4 Drones supplémentaires au début.",
+            18: "Niveau 18 (Bâtiment d'Évolution): Revenu x5.0. Bâtiment d'évolution (+10% HP, -10% prix Swarmer, +5% prod biomasse)."
         }
 
-        y = ai_head_y + 35
-        card_h = 120
-        content_h = y + num_lvls * (card_h + 10) + 40
+        # Calculate card heights and dynamic lines
+        cards_data = []
+        card_w = viewport_w - 20
+        text_max_w = card_w - 30
+
+        for lvl in range(1, num_lvls + 1):
+            data = AI_DIFFICULTY_LEVELS.get(lvl, {})
+            mult = data.get("resource_multiplier", 1.0)
+            m_army = data.get("max_army_size", 10)
+            m_work = data.get("max_workers", 5)
+            techs = ", ".join(data.get("unlocked_techs", []))
+            hp_b = int(data.get("unit_hp_bonus", 0.0) * 100)
+            atk_b = int(data.get("unit_atk_bonus", 0.0) * 100)
+
+            desc_text = ai_descriptions.get(lvl, "")
+            l1_wrapped = wrap_text(f"Description: {desc_text}", self.small_font, text_max_w)
+            l2_wrapped = wrap_text(f"Revenu: x{mult} | Max Ouvriers: {m_work} | Armée Max: {m_army} | Techs: [{techs}] | Bonus: HP +{hp_b}%, Atk +{atk_b}%", self.small_font, text_max_w)
+
+            total_text_lines = len(l1_wrapped) + len(l2_wrapped)
+            c_height = 36 + total_text_lines * 20 + 12
+            cards_data.append({
+                "lvl": lvl,
+                "data": data,
+                "height": c_height,
+                "l1_lines": l1_wrapped,
+                "l2_lines": l2_wrapped
+            })
+
+        total_cards_h = sum([c["height"] + 10 for c in cards_data])
+        content_h = ai_head_y + 35 + total_cards_h + 40
+
         canvas = pygame.Surface((viewport_w, content_h))
         canvas.fill((15, 18, 26))
 
@@ -244,9 +325,12 @@ class Menu:
 
         canvas.blit(t_lvl_head, (15, ai_head_y))
 
-        for lvl in range(1, num_lvls + 1):
-            data = AI_DIFFICULTY_LEVELS.get(lvl, {})
-            card_rect = pygame.Rect(10, y, viewport_w - 20, card_h)
+        card_y = ai_head_y + 35
+        for c in cards_data:
+            lvl = c["lvl"]
+            data = c["data"]
+            card_h = c["height"]
+            card_rect = pygame.Rect(10, card_y, viewport_w - 20, card_h)
 
             is_extreme = lvl >= 8
             is_fog = lvl >= 5
@@ -263,27 +347,20 @@ class Menu:
                 header_txt += " [BROUILLARD DE GUERRE ACTIF]"
 
             t_head = self.btn_font.render(header_txt, True, (255, 215, 0) if not is_extreme else (255, 100, 100))
-            canvas.blit(t_head, (card_rect.x + 15, y + 8))
+            canvas.blit(t_head, (card_rect.x + 15, card_y + 8))
 
-            mult = data.get("resource_multiplier", 1.0)
-            wave_s = data.get("attack_wave_interval", 60)
-            m_army = data.get("max_army_size", 10)
-            m_work = data.get("max_workers", 5)
-            techs = ", ".join(data.get("unlocked_techs", []))
-            hp_b = int(data.get("unit_hp_bonus", 0.0) * 100)
-            atk_b = int(data.get("unit_atk_bonus", 0.0) * 100)
+            text_y = card_y + 36
+            for line in c["l1_lines"]:
+                t_l = self.small_font.render(line, True, (230, 240, 255))
+                canvas.blit(t_l, (card_rect.x + 15, text_y))
+                text_y += 20
 
-            desc_text = ai_descriptions.get(lvl, "")
-            line1 = f"Description: {desc_text}"
-            line2 = f"Revenu: x{mult} | Vagues: {wave_s}s | Max Ouvriers: {m_work} | Armée Max: {m_army} | Techs: [{techs}] | Bonus: HP +{hp_b}%, Atk +{atk_b}%"
+            for line in c["l2_lines"]:
+                t_l = self.small_font.render(line, True, (170, 190, 210))
+                canvas.blit(t_l, (card_rect.x + 15, text_y))
+                text_y += 20
 
-            t_l1 = self.small_font.render(line1, True, (230, 240, 255))
-            t_l2 = self.small_font.render(line2, True, (170, 190, 210))
-
-            canvas.blit(t_l1, (card_rect.x + 15, y + 42))
-            canvas.blit(t_l2, (card_rect.x + 15, y + 74))
-
-            y += card_h + 10
+            card_y += card_h + 10
 
         # Blit scrolled portion onto main screen
         clamp_scroll = max(0, min(scroll_y, content_h - viewport_h))

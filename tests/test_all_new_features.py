@@ -45,9 +45,9 @@ class TestNewFeatures(unittest.TestCase):
         self.assertLess(bld.build_timer, bld.total_build_time)
 
     def test_ai_tech_gating_and_level_features(self):
-        # AI Level 1 (cannot build defenses or spitters)
+        # AI Level 1 (can build defenses & top intelligence)
         ai_l1 = AIController(1, config.FACTION_ALIEN, difficulty=1)
-        self.assertEqual(ai_l1.config["can_build_defenses"], False)
+        self.assertEqual(ai_l1.config["can_build_defenses"], True)
 
         # AI Level 4 (can build Spine Crawler)
         ai_l4 = AIController(1, config.FACTION_ALIEN, difficulty=4)
@@ -134,6 +134,23 @@ class TestNewFeatures(unittest.TestCase):
         grid = PathfindingGrid()
         path = grid.find_path((100, 100), (500, 500), self.game_state)
         self.assertTrue(len(path) >= 1)
+
+    def test_projectile_and_options_fog_setting(self):
+        from src.entities.projectile import Projectile
+        proj = Projectile(100, 100, None, 10)
+        self.assertEqual(proj.selected, False)
+        self.assertEqual(proj.is_point_inside(100, 100), False)
+
+        # Test fog of war setting toggle
+        self.save_manager.set_setting("disable_fog_of_war", True)
+        self.assertFalse(self.game_state.is_fog_of_war_enabled())
+        self.save_manager.set_setting("disable_fog_of_war", False)
+
+    def test_ai_autobuilding_structures(self):
+        ai_bld = Building(1, config.FACTION_ALIEN, "SpawningPool", 400, 400, is_constructed=False)
+        self.assertFalse(ai_bld.is_constructed)
+        ai_bld.update(ai_bld.total_build_time + 1.0, self.game_state)
+        self.assertTrue(ai_bld.is_constructed)
 
 if __name__ == '__main__':
     unittest.main()

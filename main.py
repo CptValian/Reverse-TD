@@ -67,6 +67,9 @@ def main():
                     elif buttons.get("ai_info") and buttons["ai_info"].collidepoint(event.pos):
                         game_state.state = "AI_INFO"
 
+                    elif buttons.get("options") and buttons["options"].collidepoint(event.pos):
+                        game_state.state = "OPTIONS"
+
                     elif buttons.get("ai_minus") and buttons["ai_minus"].collidepoint(event.pos):
                         game_state.num_ais = max(1, game_state.num_ais - 1)
 
@@ -100,6 +103,15 @@ def main():
                         buttons = menu.draw_ai_info_screen(screen, getattr(menu, 'ai_info_scroll_y', 0))
                         max_s = buttons.get("max_scroll", 1000)
                         menu.ai_info_scroll_y = min(max_s, getattr(menu, 'ai_info_scroll_y', 0) + 40)
+
+            elif game_state.state == "OPTIONS":
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    buttons = menu.draw_options_menu(screen, save_manager)
+                    if buttons.get("back") and buttons["back"].collidepoint(event.pos):
+                        game_state.state = "MENU"
+                    elif buttons.get("fog_checkbox") and buttons["fog_checkbox"].collidepoint(event.pos):
+                        curr_val = save_manager.get_setting("disable_fog_of_war", False)
+                        save_manager.set_setting("disable_fog_of_war", not curr_val)
 
             elif game_state.state == "SKILL_TREE":
                 if event.type == pygame.MOUSEBUTTONDOWN:
@@ -505,6 +517,9 @@ def main():
 
         elif game_state.state == "AI_INFO":
             menu.draw_ai_info_screen(screen, menu.ai_info_scroll_y)
+
+        elif game_state.state == "OPTIONS":
+            menu.draw_options_menu(screen, save_manager)
 
         elif game_state.state == "SKILL_TREE":
             progression_ui.draw(screen)
