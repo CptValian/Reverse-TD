@@ -22,7 +22,8 @@ BUILDING_TYPES = {
     "SpawningPool": {"cost": {"biomass": 150}, "hp": 500, "radius": 35, "build_time": 20, "trainable": ["Swarmer", "Spitter", "Queen"]},
     "SpineCrawler": {"cost": {"biomass": 100}, "hp": 400, "radius": 25, "build_time": 16, "attack_power": 18, "range": 234, "trainable": []},
     "BiomassGenerator": {"cost": {"biomass": 300}, "hp": 350, "radius": 30, "build_time": 25, "trainable": []},
-    "BiomassStockpile": {"cost": {"biomass": 80}, "hp": 350, "radius": 25, "build_time": 12, "trainable": []}
+    "BiomassStockpile": {"cost": {"biomass": 80}, "hp": 350, "radius": 25, "build_time": 12, "trainable": []},
+    "EvolutionChamber": {"cost": {"biomass": 200}, "hp": 500, "radius": 32, "build_time": 20, "trainable": []}
 }
 
 class Building(BaseEntity):
@@ -142,13 +143,17 @@ class Building(BaseEntity):
         if self.building_type == "Bank" and game_state:
             game_state.add_resources(self.owner_id, "gold", 3.0 * dt)
 
-        # Sanctuary troop healing (8 HP/sec to 1 nearby damaged friendly unit)
+        # Sanctuary troop healing (Base 8 HP/sec, or 12 HP/sec with sanctuary_boost upgrade, range 150 or 210)
         if self.building_type == "Sanctuary" and game_state:
-            heal_range = 150
+            upgrades = game_state.save_manager.data.get("upgrades", {}) if hasattr(game_state, 'save_manager') else {}
+            has_boost = upgrades.get("sanctuary_boost", 0) >= 1
+            heal_range = 210 if has_boost else 150
+            heal_rate = 12.0 if has_boost else 8.0
+
             for u in game_state.units:
                 if u.alive and u.owner_id == self.owner_id and u.hp < u.max_hp:
                     if self.distance_to(u) <= heal_range:
-                        u.hp = min(u.max_hp, u.hp + 8.0 * dt)
+                        u.hp = min(u.max_hp, u.hp + heal_rate * dt)
                         break
 
         # Mettre à jour la file de production

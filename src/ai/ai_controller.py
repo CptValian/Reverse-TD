@@ -18,6 +18,13 @@ class AIController:
         self.timer_wave = 0.0
         self.timer_macro = 0.0
         self.spawn_point = None
+        self.hive_enrage_cooldown = 0.0
+        self.hive_enrage_active_timer = 0.0
+        self.evo_upgrades = {
+            "troop_hp": 0,       # Level 18 Evolution upgrade 1: +10% HP to all troops
+            "swarmer_discount": 0, # Level 18 Evolution upgrade 2: -10% Swarmer biomass cost
+            "bio_gen_boost": 0   # Level 18 Evolution upgrade 3: +5% biomass generation output
+        }
 
     def _assign_builder_to_building(self, nb, ai_units, game_state):
         if not nb or getattr(nb, 'is_constructed', True):
@@ -31,6 +38,11 @@ class AIController:
         self.timer_wave += dt
         self.timer_macro += dt
 
+        if self.hive_enrage_cooldown > 0:
+            self.hive_enrage_cooldown -= dt
+        if self.hive_enrage_active_timer > 0:
+            self.hive_enrage_active_timer -= dt
+
         # Continuous passive resource influx scaling with difficulty
         res_type = "biomass" if self.faction == config.FACTION_ALIEN else "gold"
         res_boost = 12 * self.config.get("resource_multiplier", 1.0) * dt
@@ -41,6 +53,31 @@ class AIController:
 
         ai_units = [u for u in game_state.units if u.alive and u.owner_id == self.owner_id]
         ai_buildings = [b for b in game_state.buildings if b.alive and b.owner_id == self.owner_id]
+
+        # Hive Enrage Ability Activation (Level 7+ and Level 13+)
+        enrage_lvl = self.config.get("hive_enrage_level", 0)
+        if enrage_lvl > 0 and self.hive_enrage_cooldown <= 0:
+            hives = [b for b in ai_buildings if b.building_type == "Hive" and b.is_constructed]
+            if hives:
+                # Trigger Hive Enrage
+                self.hive_enrage_cooldown = 60.0
+                self.hive_enrage_active_timer = 5.0
+                bonus_pct = 0.10 if enrage_lvl == 1 else 0.20
+                for u in ai_units:
+                    if not u.is_worker:
+                        u.speed = int(u.speed * (1.0 + bonus_pct))
+                        u.attack_power = int(u.attack_power * (1.0 + bonus_pct))
+                        u._enraged = True
+
+        # Revert Hive Enrage effect when timer expires
+        if self.hive_enrage_active_timer <= 0:
+            enrage_lvl = self.config.get("hive_enrage_level", 0)
+            bonus_pct = 0.10 if enrage_lvl == 1 else 0.20
+            for u in ai_units:
+                if getattr(u, '_enraged', False):
+                    u.speed = int(u.speed / (1.0 + bonus_pct))
+                    u.attack_power = int(u.attack_power / (1.0 + bonus_pct))
+                    u._enraged = False
 
         # Determine home base spawn location
         bases = [b for b in ai_buildings if b.building_type in ["Hive", "TownHall"]]
@@ -130,10 +167,42 @@ class AIController:
                         game_state.buildings.append(nb)
                         self._assign_builder_to_building(nb, ai_units, game_state)
 
-        # Income generation from constructed Biomass Generators
+        # Income generation from constructed Biomass Generators (boosted by Level 18 Evolution upgrade)
         active_gens = [b for b in bio_gens if b.is_constructed]
         if active_gens and hasattr(game_state, 'add_resources'):
-            game_state.add_resources(self.owner_id, "biomass", 5 * len(active_gens) * dt)
+            gen_rate = 5 * (1.0 + 0.05 * self.evo_upgrades["bio_gen_boost"])
+            game_state.add_resources(self.owner_id, "biomass", gen_rate * len(active_gens) * dt)
+
+        # 5e. Evolution Chamber (Level 18)
+        evo_chambers = [b for b in ai_buildings if b.building_type == "EvolutionChamber"]
+        if self.config.get("can_build_evolution_chamber") and self.spawn_point and len(evo_chambers) < 1:
+            ex = self.spawn_point[0] + random.randint(-120, 120)
+            ey = self.spawn_point[1] + random.randint(-120, 120)
+            cost_dict = BUILDING_TYPES.get("EvolutionChamber", {}).get("cost", {"biomass": 200})
+            if game_state.can_place_building("EvolutionChamber", ex, ey):
+                if game_state.deduct_resources(self.owner_id, cost_dict):
+                    nb = Building(self.owner_id, self.faction, "EvolutionChamber", ex, ey, is_constructed=False)
+                    game_state.buildings.append(nb)
+                    self._assign_builder_to_building(nb, ai_units, game_state)
+
+        # Progress Level 18 Evolution Chamber Upgrades
+        active_evos = [b for b in evo_chambers if b.is_constructed]
+        if active_evos:
+            # Upgrade 1: +10% troop HP (cost 150 biomass)
+            if self.evo_upgrades["troop_hp"] == 0:
+                if game_state.deduct_resources(self.owner_id, "biomass", 150):
+                    self.evo_upgrades["troop_hp"] = 1
+                    for u in ai_units:
+                        u.max_hp = int(u.max_hp * 1.10)
+                        u.hp = int(u.hp * 1.10)
+            # Upgrade 2: -10% Swarmer biomass cost (cost 150 biomass)
+            elif self.evo_upgrades["swarmer_discount"] == 0:
+                if game_state.deduct_resources(self.owner_id, "biomass", 150):
+                    self.evo_upgrades["swarmer_discount"] = 1
+            # Upgrade 3: +5% biomass generator output (cost 150 biomass)
+            elif self.evo_upgrades["bio_gen_boost"] == 0:
+                if game_state.deduct_resources(self.owner_id, "biomass", 150):
+                    self.evo_upgrades["bio_gen_boost"] = 1
 
         # 5c. Biomass Stockpile (Level 5+)
         stockpiles = [b for b in ai_buildings if b.building_type in ["BiomassStockpile", "WoodStockpile", "GoldStockpile"]]
@@ -220,7 +289,11 @@ class AIController:
                     available_troops.append("Queen")
 
                 chosen_unit = random.choice(available_troops)
-                cost_dict = UNIT_TYPES.get(chosen_unit, {}).get("cost", {res_type: 60})
+                cost_dict = dict(UNIT_TYPES.get(chosen_unit, {}).get("cost", {res_type: 60}))
+                if chosen_unit == "Swarmer" and self.evo_upgrades["swarmer_discount"] > 0:
+                    if "biomass" in cost_dict:
+                        cost_dict["biomass"] = int(cost_dict["biomass"] * 0.90)
+
                 if game_state.deduct_resources(self.owner_id, cost_dict):
                     prod.queue_unit(chosen_unit)
 

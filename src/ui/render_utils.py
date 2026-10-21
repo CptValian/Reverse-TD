@@ -6,12 +6,13 @@ class RenderUtils:
     def draw_entity(surface, camera, entity):
         screen_pos = camera.world_to_screen((entity.x, entity.y))
         sx, sy = int(screen_pos[0]), int(screen_pos[1])
-        scaled_radius = max(3, int(entity.radius * camera.zoom))
+        entity_radius = getattr(entity, 'radius', 4)
+        scaled_radius = max(3, int(entity_radius * camera.zoom))
 
         # Vérifier si l'entité est visible sur l'écran
         rect = camera.get_visible_rect()
-        if not (rect.x - entity.radius <= entity.x <= rect.x + rect.width + entity.radius and
-                rect.y - entity.radius <= entity.y <= rect.y + rect.height + entity.radius):
+        if not (rect.x - entity_radius <= entity.x <= rect.x + rect.width + entity_radius and
+                rect.y - entity_radius <= entity.y <= rect.y + rect.height + entity_radius):
             return
 
         # Verification Brouillard de Guerre pour les entités ennemies et ressources neutres
@@ -353,6 +354,13 @@ class RenderUtils:
                 pygame.draw.circle(surface, (180, 60, 220), (sx, sy), radius, width=2)
                 pygame.draw.circle(surface, (76, 175, 80), (sx, sy), int(radius * 0.5))
 
+            elif b_type == "EvolutionChamber":
+                # Alien Evolution Chamber
+                pygame.draw.circle(surface, (130, 20, 60), (sx, sy), radius)
+                pygame.draw.circle(surface, (255, 110, 0), (sx, sy), radius, width=3)
+                pygame.draw.circle(surface, (255, 235, 59), (sx, sy), int(radius * 0.6))
+                pygame.draw.circle(surface, (216, 27, 96), (sx, sy), int(radius * 0.3))
+
         # Visual overlay for building under construction
         if not building.is_constructed:
             # Semi-transparent scaffolding grid / outline
@@ -421,6 +429,30 @@ class RenderUtils:
                 bx = sx + int(math.cos(facing) * radius)
                 by = sy + int(math.sin(facing) * radius)
                 pygame.draw.circle(surface, (139, 69, 19), (bx, by), 5, width=2)
+
+            elif u_type == "Hero":
+                # Hero Knight / Archer (Purple Cape, Gold Crown, Gold Sword/Bow, Level Badge)
+                pygame.draw.circle(surface, (156, 39, 176), (sx, sy), radius + 2) # Purple Cape Aura
+                pygame.draw.circle(surface, (255, 215, 0), (sx, sy), radius)
+                pygame.draw.circle(surface, (40, 50, 70), (sx, sy), radius - 3)
+
+                # Gold Crown on Head
+                crown_pts = [(sx - 6, sy - radius - 2), (sx - 3, sy - radius - 8), (sx, sy - radius - 3), (sx + 3, sy - radius - 8), (sx + 6, sy - radius - 2)]
+                pygame.draw.polygon(surface, (255, 215, 0), crown_pts)
+
+                if getattr(unit, 'is_hero_archer', False):
+                    bx = sx + int(math.cos(facing) * radius)
+                    by = sy + int(math.sin(facing) * radius)
+                    pygame.draw.circle(surface, (255, 215, 0), (bx, by), 6, width=2)
+                else:
+                    sw_x = sx + int(math.cos(facing) * (radius + 10))
+                    sw_y = sy + int(math.sin(facing) * (radius + 10))
+                    pygame.draw.line(surface, (255, 255, 255), (sx, sy), (sw_x, sw_y), 4)
+
+                # Hero Level Text Badge
+                lvl_font = pygame.font.SysFont("Arial", max(10, int(12 * camera.zoom)), bold=True)
+                lvl_surf = lvl_font.render(f"L{getattr(unit, 'hero_level', 1)}", True, (255, 215, 0))
+                surface.blit(lvl_surf, (sx - lvl_surf.get_width() // 2, sy + radius + 2))
 
         else:
             # --- ALIEN INSECT FACTION ---

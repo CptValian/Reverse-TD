@@ -11,6 +11,7 @@ class Projectile:
         self.owner_id = owner_id
         self.projectile_type = projectile_type
         self.on_hit_callback = on_hit_callback
+        self.radius = 4
         self.alive = True
 
     def update(self, dt, game_state):

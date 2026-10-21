@@ -117,9 +117,17 @@ class GameState:
         map_gen = MapGenerator(config.MAP_WIDTH, config.MAP_HEIGHT)
         map_data = map_gen.generate_map(num_players=self.num_ais + 1, map_type=self.map_type)
 
+        # AI Level 16 check for double biomass on map
+        from src.ai.ai_tech import AI_DIFFICULTY_LEVELS
+        ai_cfg = AI_DIFFICULTY_LEVELS.get(self.ai_difficulty, {})
+        double_biomass = ai_cfg.get("double_map_biomass", False)
+
         # Création des ressources sur la carte
         for res_data in map_data["resources"]:
-            self.resources.append(ResourceNode(res_data.type, res_data.x, res_data.y, res_data.amount))
+            amount = res_data.amount
+            if double_biomass and res_data.type == "biomass":
+                amount *= 2
+            self.resources.append(ResourceNode(res_data.type, res_data.x, res_data.y, amount))
 
         # Spawns des joueurs
         for spawn in map_data["spawns"]:
@@ -163,16 +171,36 @@ class GameState:
                     u_scout = Unit(owner_id, faction, "Scout", sx + 60, sy + 30,
                                    hp_bonus=int(70 * hp_bonus_units), attack_bonus=int(6 * atk_bonus_units))
                     self.units.append(u_scout)
+
+                # Héros de départ si hero_unlocked
+                if upgrades.get("hero_unlocked"):
+                    hero_u = Unit(owner_id, faction, "Hero", sx + 20, sy - 50,
+                                  hp_bonus=int(200 * hp_bonus_units), attack_bonus=int(25 * atk_bonus_units))
+                    if upgrades.get("hero_archer"):
+                        hero_u.is_hero_archer = True
+                        hero_u.attack_range = 180
+                    if upgrades.get("hero_range_boost"):
+                        hero_u.attack_range = int(hero_u.attack_range * 1.25)
+                    self.units.append(hero_u)
             else:
                 # Base Alien IA
                 base = Building(owner_id, faction, "Hive", sx, sy)
                 self.buildings.append(base)
 
-                # Drones de départ (3 de base, +2 si IA Niveau 15)
                 from src.ai.ai_tech import AI_DIFFICULTY_LEVELS
                 ai_cfg = AI_DIFFICULTY_LEVELS.get(self.ai_difficulty, {})
+
+                # Starting Swarmers
+                num_swarmers = ai_cfg.get("extra_starting_swarmers", 0)
+                sw_offsets = [(40, -30), (50, 0), (40, 30), (50, -45)]
+                for i in range(num_swarmers):
+                    offset = sw_offsets[i % len(sw_offsets)]
+                    u_sw = Unit(owner_id, faction, "Swarmer", sx + offset[0], sy + offset[1])
+                    self.units.append(u_sw)
+
+                # Drones de départ (3 de base, + extra_starting_drones)
                 num_drones = 3 + ai_cfg.get("extra_starting_drones", 0)
-                offsets = [(-30, 40), (0, 50), (30, 40), (-45, 50), (45, 50)]
+                offsets = [(-30, 40), (0, 50), (30, 40), (-45, 50), (45, 50), (-60, 40), (60, 40)]
                 for i in range(num_drones):
                     offset = offsets[i % len(offsets)]
                     u = Unit(owner_id, faction, "Drone", sx + offset[0], sy + offset[1])
@@ -228,7 +256,17 @@ class GameState:
 
     def get_pop_max(self, owner_id):
         base_pop = 10
-        bonus_pop = sum(b.pop_bonus for b in self.buildings if b.alive and b.owner_id == owner_id and getattr(b, 'is_constructed', True))
+        upgrades = self.save_manager.data.get("upgrades", {}) if hasattr(self, 'save_manager') else {}
+        house_extra_pop = (1 if upgrades.get("house_pop_1") else 0) + (1 if upgrades.get("house_pop_2") else 0) + (1 if upgrades.get("house_pop_3") else 0)
+
+        bonus_pop = 0
+        for b in self.buildings:
+            if b.alive and b.owner_id == owner_id and getattr(b, 'is_constructed', True):
+                p_bonus = b.pop_bonus
+                if b.building_type == "House" and owner_id == 0:
+                    p_bonus += house_extra_pop
+                bonus_pop += p_bonus
+
         return base_pop + bonus_pop
 
     def get_queued_and_current_pop(self, owner_id):
@@ -402,21 +440,30 @@ class GameState:
             if building.alive:
                 produced_unit = building.update(dt, self)
                 if produced_unit:
-                    # Spawner l'unité produite au pied du bâtiment
-                    new_u = Unit(building.owner_id, building.faction, produced_unit, building.x, building.y + building.radius + 15)
+                    # AI Level 9 double swarmer check
+                    units_to_spawn = [produced_unit]
+                    if building.owner_id != 0 and produced_unit == "Swarmer":
+                        for ai in self.ai_controllers:
+                            if ai.owner_id == building.owner_id and ai.config.get("double_swarmer_production"):
+                                units_to_spawn.append("Swarmer")
+                                break
 
-                    # Appliquer le point de ralliement (Rally Point) si défini
-                    if building.rally_point:
-                        rx, ry = building.rally_point
-                        rt = building.rally_target
-                        if new_u.is_worker and rt and getattr(rt, 'alive', True) and (hasattr(rt, 'harvest') or getattr(rt, 'building_type', None) == "Farm"):
-                            new_u.harvest_node(rt)
-                        elif rt and getattr(rt, 'alive', True) and rt.owner_id != building.owner_id:
-                            new_u.attack_target(rt)
-                        else:
-                            new_u.move_to(rx, ry)
+                    for p_unit in units_to_spawn:
+                        # Spawner l'unité produite au pied du bâtiment
+                        new_u = Unit(building.owner_id, building.faction, p_unit, building.x, building.y + building.radius + 15)
 
-                    self.units.append(new_u)
+                        # Appliquer le point de ralliement (Rally Point) si défini
+                        if building.rally_point:
+                            rx, ry = building.rally_point
+                            rt = building.rally_target
+                            if new_u.is_worker and rt and getattr(rt, 'alive', True) and (hasattr(rt, 'harvest') or getattr(rt, 'building_type', None) == "Farm"):
+                                new_u.harvest_node(rt)
+                            elif rt and getattr(rt, 'alive', True) and rt.owner_id != building.owner_id:
+                                new_u.attack_target(rt)
+                            else:
+                                new_u.move_to(rx, ry)
+
+                        self.units.append(new_u)
             else:
                 building.ungarrison_all(self)
                 self.buildings.remove(building)

@@ -23,7 +23,8 @@ AI_DIFFICULTY_LEVELS = {
         "unit_hp_bonus": 0.05,
         "unit_atk_bonus": 0.05,
         "can_build_defenses": False,
-        "can_tech_ranged": False
+        "can_tech_ranged": False,
+        "extra_starting_swarmers": 1
     },
     3: {
         "resource_multiplier": 1.2,
@@ -34,7 +35,9 @@ AI_DIFFICULTY_LEVELS = {
         "unit_hp_bonus": 0.10,
         "unit_atk_bonus": 0.10,
         "can_build_defenses": False,
-        "can_tech_ranged": False
+        "can_tech_ranged": False,
+        "extra_starting_swarmers": 1,
+        "extra_starting_drones": 1
     },
     4: {
         "resource_multiplier": 1.3,
@@ -45,7 +48,9 @@ AI_DIFFICULTY_LEVELS = {
         "unit_hp_bonus": 0.15,
         "unit_atk_bonus": 0.15,
         "can_build_defenses": True,
-        "can_tech_ranged": False
+        "can_tech_ranged": False,
+        "extra_starting_swarmers": 1,
+        "extra_starting_drones": 1
     },
     5: {
         "resource_multiplier": 1.4,
@@ -57,7 +62,9 @@ AI_DIFFICULTY_LEVELS = {
         "unit_atk_bonus": 0.20,
         "can_build_defenses": True,
         "can_tech_ranged": False,
-        "can_build_biomass_stockpile": True
+        "can_build_biomass_stockpile": True,
+        "extra_starting_swarmers": 1,
+        "extra_starting_drones": 1
     },
     6: {
         "resource_multiplier": 1.5,
@@ -68,7 +75,9 @@ AI_DIFFICULTY_LEVELS = {
         "unit_hp_bonus": 0.25,
         "unit_atk_bonus": 0.25,
         "can_build_defenses": True,
-        "can_tech_ranged": True
+        "can_tech_ranged": True,
+        "extra_starting_swarmers": 1,
+        "extra_starting_drones": 1
     },
     7: {
         "resource_multiplier": 1.6,
@@ -80,7 +89,10 @@ AI_DIFFICULTY_LEVELS = {
         "unit_atk_bonus": 0.30,
         "can_build_defenses": True,
         "can_tech_ranged": True,
-        "worker_raid_priority": True
+        "worker_raid_priority": True,
+        "extra_starting_swarmers": 1,
+        "extra_starting_drones": 1,
+        "hive_enrage_level": 1
     },
     8: {
         "resource_multiplier": 1.7,
@@ -94,7 +106,10 @@ AI_DIFFICULTY_LEVELS = {
         "can_tech_ranged": True,
         "worker_raid_priority": True,
         "tactical_retreat": True,
-        "creep_spread": True
+        "creep_spread": True,
+        "extra_starting_swarmers": 1,
+        "extra_starting_drones": 1,
+        "hive_enrage_level": 1
     },
     9: {
         "resource_multiplier": 1.85,
@@ -109,7 +124,11 @@ AI_DIFFICULTY_LEVELS = {
         "worker_raid_priority": True,
         "tactical_retreat": True,
         "creep_spread": True,
-        "flanking_attacks": True
+        "flanking_attacks": True,
+        "extra_starting_swarmers": 1,
+        "extra_starting_drones": 1,
+        "hive_enrage_level": 1,
+        "double_swarmer_production": True
     },
     10: {
         "resource_multiplier": 2.0,
@@ -125,7 +144,11 @@ AI_DIFFICULTY_LEVELS = {
         "tactical_retreat": True,
         "creep_spread": True,
         "flanking_attacks": True,
-        "can_build_biomass_gen": True
+        "can_build_biomass_gen": True,
+        "extra_starting_swarmers": 1,
+        "extra_starting_drones": 1,
+        "hive_enrage_level": 1,
+        "double_swarmer_production": True
     },
     11: {
         "resource_multiplier": 2.2,
@@ -142,7 +165,11 @@ AI_DIFFICULTY_LEVELS = {
         "creep_spread": True,
         "flanking_attacks": True,
         "can_build_biomass_gen": True,
-        "swarm_frenzy": True
+        "swarm_frenzy": True,
+        "extra_starting_swarmers": 1,
+        "extra_starting_drones": 1,
+        "hive_enrage_level": 1,
+        "double_swarmer_production": True
     },
     12: {
         "resource_multiplier": 2.5,
@@ -161,7 +188,11 @@ AI_DIFFICULTY_LEVELS = {
         "can_build_biomass_gen": True,
         "can_build_biomass_stockpile": True,
         "swarm_frenzy": True,
-        "biomass_on_kill": True
+        "biomass_on_kill": True,
+        "extra_starting_swarmers": 1,
+        "extra_starting_drones": 1,
+        "hive_enrage_level": 1,
+        "double_swarmer_production": True
     },
     13: {
         "resource_multiplier": 2.8,
@@ -180,7 +211,11 @@ AI_DIFFICULTY_LEVELS = {
         "can_build_biomass_gen": True,
         "can_build_biomass_stockpile": True,
         "swarm_frenzy": True,
-        "biomass_on_kill": True
+        "biomass_on_kill": True,
+        "extra_starting_swarmers": 1,
+        "extra_starting_drones": 1,
+        "hive_enrage_level": 2,
+        "double_swarmer_production": True
     },
     14: {
         "resource_multiplier": 3.2,
@@ -201,7 +236,11 @@ AI_DIFFICULTY_LEVELS = {
         "can_train_queen": True,
         "queen_transform_on_kill": True,
         "swarm_frenzy": True,
-        "biomass_on_kill": True
+        "biomass_on_kill": True,
+        "extra_starting_swarmers": 1,
+        "extra_starting_drones": 1,
+        "hive_enrage_level": 2,
+        "double_swarmer_production": True
     },
     15: {
         "resource_multiplier": 3.6,
@@ -222,7 +261,92 @@ AI_DIFFICULTY_LEVELS = {
         "can_train_queen": True,
         "queen_transform_on_kill": True,
         "can_build_second_hive": True,
+        "extra_starting_swarmers": 1,
         "extra_starting_drones": 2,
+        "hive_enrage_level": 2,
+        "double_swarmer_production": True,
+        "swarm_frenzy": True,
+        "biomass_on_kill": True
+    },
+    16: {
+        "resource_multiplier": 4.0,
+        "attack_wave_interval": 5,
+        "max_army_size": 150,
+        "max_workers": 38,
+        "unlocked_techs": ["Drone", "Swarmer", "Spitter", "Queen", "SpineCrawler", "BiomassGenerator", "BiomassStockpile", "Hive"],
+        "unit_hp_bonus": 0.75,
+        "unit_atk_bonus": 1.10,
+        "can_build_defenses": True,
+        "can_tech_ranged": True,
+        "worker_raid_priority": True,
+        "tactical_retreat": True,
+        "creep_spread": True,
+        "flanking_attacks": True,
+        "can_build_biomass_gen": True,
+        "can_build_biomass_stockpile": True,
+        "can_train_queen": True,
+        "queen_transform_on_kill": True,
+        "can_build_second_hive": True,
+        "extra_starting_swarmers": 1,
+        "extra_starting_drones": 2,
+        "hive_enrage_level": 2,
+        "double_swarmer_production": True,
+        "double_map_biomass": True,
+        "swarm_frenzy": True,
+        "biomass_on_kill": True
+    },
+    17: {
+        "resource_multiplier": 4.5,
+        "attack_wave_interval": 4,
+        "max_army_size": 160,
+        "max_workers": 40,
+        "unlocked_techs": ["Drone", "Swarmer", "Spitter", "Queen", "SpineCrawler", "BiomassGenerator", "BiomassStockpile", "Hive"],
+        "unit_hp_bonus": 0.80,
+        "unit_atk_bonus": 1.20,
+        "can_build_defenses": True,
+        "can_tech_ranged": True,
+        "worker_raid_priority": True,
+        "tactical_retreat": True,
+        "creep_spread": True,
+        "flanking_attacks": True,
+        "can_build_biomass_gen": True,
+        "can_build_biomass_stockpile": True,
+        "can_train_queen": True,
+        "queen_transform_on_kill": True,
+        "can_build_second_hive": True,
+        "extra_starting_swarmers": 1,
+        "extra_starting_drones": 4,
+        "hive_enrage_level": 2,
+        "double_swarmer_production": True,
+        "double_map_biomass": True,
+        "swarm_frenzy": True,
+        "biomass_on_kill": True
+    },
+    18: {
+        "resource_multiplier": 5.0,
+        "attack_wave_interval": 4,
+        "max_army_size": 175,
+        "max_workers": 45,
+        "unlocked_techs": ["Drone", "Swarmer", "Spitter", "Queen", "SpineCrawler", "BiomassGenerator", "BiomassStockpile", "EvolutionChamber", "Hive"],
+        "unit_hp_bonus": 0.85,
+        "unit_atk_bonus": 1.30,
+        "can_build_defenses": True,
+        "can_tech_ranged": True,
+        "worker_raid_priority": True,
+        "tactical_retreat": True,
+        "creep_spread": True,
+        "flanking_attacks": True,
+        "can_build_biomass_gen": True,
+        "can_build_biomass_stockpile": True,
+        "can_train_queen": True,
+        "queen_transform_on_kill": True,
+        "can_build_second_hive": True,
+        "can_build_evolution_chamber": True,
+        "extra_starting_swarmers": 1,
+        "extra_starting_drones": 4,
+        "hive_enrage_level": 2,
+        "double_swarmer_production": True,
+        "double_map_biomass": True,
         "swarm_frenzy": True,
         "biomass_on_kill": True
     }
