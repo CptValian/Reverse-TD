@@ -8,6 +8,7 @@ UNIT_TYPES = {
     "Scout": {"cost": {"food": 35, "gold": 15}, "hp": 70, "speed": 140, "attack": 6, "range": 25, "is_worker": False, "radius": 11, "train_time": 8, "vision": 400},
     "Infantry": {"cost": {"food": 60, "gold": 40}, "hp": 150, "speed": 90, "attack": 18, "range": 30, "is_worker": False, "radius": 15, "train_time": 14},
     "Archer": {"cost": {"food": 50, "wood": 50}, "hp": 90, "speed": 100, "attack": 14, "range": 180, "is_worker": False, "radius": 13, "train_time": 16},
+    "Hero": {"cost": {"food": 0}, "hp": 200, "speed": 110, "attack": 25, "range": 30, "is_worker": False, "radius": 16, "train_time": 0},
 
     # Alien
     "Drone": {"cost": {"biomass": 50}, "hp": 55, "speed": 105, "attack": 6, "range": 25, "is_worker": True, "radius": 12, "train_time": 9},
@@ -45,6 +46,11 @@ class Unit(BaseEntity):
         self.is_harvesting_anim = 0.0  # Timer d'animation de récolte
         self.attack_move_mode = False
         self.facing_angle = 0.0
+
+        # Hero attributes
+        self.is_hero = (unit_type == "Hero")
+        self.hero_level = 1
+        self.hero_kills = 0
 
     def calculate_path(self, target_x, target_y, game_state):
         if game_state:
@@ -358,7 +364,19 @@ class Unit(BaseEntity):
         else:
             # À portée d'attaque
             if self.attack_cooldown <= 0:
-                if self.attack_range > 50 or self.unit_type in ["Archer", "Spitter", "Queen"]:
+                def make_on_hit_cb(attacker, target_e):
+                    def on_hit_cb(target, prev_hp, gs):
+                        if not target.alive:
+                            if attacker.unit_type == "Queen":
+                                swarmer = Unit(attacker.owner_id, attacker.faction, "Swarmer", target.x, target.y)
+                                gs.units.append(swarmer)
+                            if attacker.is_hero:
+                                attacker.add_hero_kill()
+                    return on_hit_cb
+
+                on_hit = make_on_hit_cb(self, self.target_entity)
+
+                if self.attack_range > 50 or self.unit_type in ["Archer", "Spitter", "Queen"] or (self.is_hero and getattr(self, 'is_hero_archer', False)):
                     from src.entities.projectile import Projectile
                     p_type = "arrow"
                     if self.unit_type == "Spitter":
@@ -366,25 +384,36 @@ class Unit(BaseEntity):
                     elif self.unit_type == "Queen":
                         p_type = "queen_spore"
 
-                    on_hit = None
-                    if self.unit_type == "Queen":
-                        def on_hit_cb(target, prev_hp, gs):
-                            if not target.alive:
-                                swarmer = Unit(self.owner_id, self.faction, "Swarmer", target.x, target.y)
-                                gs.units.append(swarmer)
-                        on_hit = on_hit_cb
-
                     proj = Projectile(self.x, self.y, self.target_entity, self.attack_power, speed=500, owner_id=self.owner_id, projectile_type=p_type, on_hit_callback=on_hit)
                     if hasattr(game_state, 'projectiles'):
                         game_state.projectiles.append(proj)
                     else:
                         # Fallback if projectiles list not initialized
                         self.target_entity.take_damage(self.attack_power)
+                        if not self.target_entity.alive and self.is_hero:
+                            self.add_hero_kill()
                 else:
                     self.target_entity.take_damage(self.attack_power)
+                    if not self.target_entity.alive and self.is_hero:
+                        self.add_hero_kill()
 
                 self.attack_cooldown = 1.0  # Temps de recharge
                 self.is_attacking_anim = 0.3  # Animation flash/projectile pendant 0.3s
+
+    def add_hero_kill(self):
+        if not self.is_hero:
+            return
+        self.hero_kills += 1
+        # Level up every kill (or 1 kill = 1 level up)
+        new_level = 1 + self.hero_kills
+        if new_level > self.hero_level:
+            levels_gained = new_level - self.hero_level
+            self.hero_level = new_level
+            # Each level above 1 grants: +5% HP, +3% ATK speed, +3% ATK damage
+            hp_ratio = self.hp / max(1.0, self.max_hp)
+            self.max_hp = max(self.max_hp + 1, int(round(self.max_hp * (1.0 + 0.05 * levels_gained))))
+            self.hp = int(self.max_hp * hp_ratio)
+            self.attack_power = max(self.attack_power + 1, int(round(self.attack_power * (1.0 + 0.03 * levels_gained))))
 
     def _process_harvest(self, dt, game_state):
         if not self.target_entity or not getattr(self.target_entity, 'alive', True):

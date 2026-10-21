@@ -205,20 +205,23 @@ class Menu:
 
         ai_descriptions = {
             1: "Niveau 1: Revenu x1.0, vagues/120s. Troupes: Drones & Swarmers.",
-            2: "Niveau 2: Revenu x1.1, vagues/100s. +5% HP, +5% Atk.",
-            3: "Niveau 3: Revenu x1.2, vagues/85s. +10% HP, +10% Atk.",
-            4: "Niveau 4: Revenu x1.3, vagues/70s. Débloque Spine Crawler défensifs. +15% HP/Atk.",
+            2: "Niveau 2: Revenu x1.1, vagues/100s. Débloque +1 Swarmer au début de la partie.",
+            3: "Niveau 3: Revenu x1.2, vagues/85s. Débloque +1 Drone au début de la partie.",
+            4: "Niveau 4: Revenu x1.3, vagues/70s. Débloque les Spine Crawlers défensifs. +15% HP/Atk.",
             5: "Niveau 5 (Biomasse Depot): Revenu x1.4, vagues/55s. Bâtit des Stockpiles de biomasse.",
-            6: "Niveau 6 (Spitters): Revenu x1.5, vagues/45s. Débloque Spitters à distance. +25% HP/Atk.",
-            7: "Niveau 7 (Raids Ouvriers): Revenu x1.6, vagues/35s. Raids ciblés sur paysans. +30% HP/Atk.",
+            6: "Niveau 6 (Spitters): Revenu x1.5, vagues/45s. Débloque les Spitters à distance.",
+            7: "Niveau 7 (Enrage Ruche): Revenu x1.6, vagues/35s. Pouvoir activable Ruche (60s CD): +10% Speed/AtkSpeed pendant 5s.",
             8: "Niveau 8 (Mucus Creep): Revenu x1.7, vagues/28s. Mucus autour des Ruches (+25% Vit/Atk sur Mucus).",
-            9: "Niveau 9 (Flanquement): Revenu x1.85, vagues/22s. Attaques multi-angles et replis tactiques.",
-            10: "Niveau 10 (Générateurs Biomasse): Revenu x2.0, vagues/18s. Bâtit des Générateurs de Biomasse. +40% HP, +50% Atk.",
+            9: "Niveau 9 (Double Swarmer): Revenu x1.85, vagues/22s. La production d'un Swarmer en produit à présent 2.",
+            10: "Niveau 10 (Générateurs Biomasse): Revenu x2.0, vagues/18s. Bâtit des Générateurs de Biomasse.",
             11: "Niveau 11 (Frenzy): Revenu x2.2, vagues/14s. Swarm Frenzy (+25% Vitesse). +45% HP, +60% Atk.",
-            12: "Niveau 12 (Moisson Suprême): Revenu x2.5, vagues/10s. Tuer un ennemi donne de la Biomasse. +50% HP, +70% Atk.",
-            13: "Niveau 13 (Biomasse Stockpile Avancé): Revenu x2.8, vagues/8s. Armée Max: 110.",
+            12: "Niveau 12 (Moisson Suprême): Revenu x2.5, vagues/10s. Tuer un ennemi donne de la Biomasse.",
+            13: "Niveau 13 (Enrage Amélioré): Revenu x2.8, vagues/8s. Améliore le pouvoir de la Ruche de +10% à +20% Speed/AtkSpeed.",
             14: "Niveau 14 (Reine Alien): Revenu x3.2, vagues/6s. Débloque la Reine (transforme victimes en Swarmers).",
-            15: "Niveau 15 (Seconde Ruche & Drones): Revenu x3.6, vagues/5s. Bâtit une 2nd Ruche & +2 Drones de départ."
+            15: "Niveau 15 (Seconde Ruche & Drones): Revenu x3.6, vagues/5s. Bâtit une 2nd Ruche & +2 Drones de départ.",
+            16: "Niveau 16 (Gisements Doublés): Revenu x4.0, vagues/5s. Toutes les sources de biomasse possèdent 2x plus de biomasse.",
+            17: "Niveau 17 (Essaim de Drones): Revenu x4.5, vagues/4s. Débloque +2 Drones supplémentaires au début de la partie.",
+            18: "Niveau 18 (Bâtiment d'Évolution): Revenu x5.0, vagues/4s. Bâtiment d'évolution avec 3 améliorations (+10% HP, -10% prix Swarmer, +5% prod biomasse)."
         }
 
         y = ai_head_y + 35

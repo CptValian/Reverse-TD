@@ -83,13 +83,14 @@ class ProgressionUI:
 
     def _draw_skill_tree_tab(self, surface, buttons, upg_data, points_available):
         nodes = [
+            # --- TIER 1 (Y = 180) ---
             {
                 "key": "starting_res_1",
                 "name": "Starting Cache I",
                 "desc": "+100 Starting Resources",
                 "cost": 20,
                 "parents": [],
-                "pos": (200, 200)
+                "pos": (180, 180)
             },
             {
                 "key": "wood_stockpile_unlocked",
@@ -97,7 +98,7 @@ class ProgressionUI:
                 "desc": "Drop-off for Wood Workers",
                 "cost": 20,
                 "parents": [],
-                "pos": (550, 200)
+                "pos": (480, 180)
             },
             {
                 "key": "gold_stockpile_unlocked",
@@ -105,7 +106,7 @@ class ProgressionUI:
                 "desc": "Drop-off for Gold Workers",
                 "cost": 20,
                 "parents": [],
-                "pos": (900, 200)
+                "pos": (780, 180)
             },
             {
                 "key": "food_stockpile_unlocked",
@@ -113,7 +114,7 @@ class ProgressionUI:
                 "desc": "Drop-off for Food Workers",
                 "cost": 20,
                 "parents": [],
-                "pos": (1250, 200)
+                "pos": (1080, 180)
             },
             {
                 "key": "house_unlocked",
@@ -121,15 +122,25 @@ class ProgressionUI:
                 "desc": "Build Houses for +5 Pop Max",
                 "cost": 20,
                 "parents": [],
-                "pos": (1600, 200)
+                "pos": (1380, 180)
             },
+            {
+                "key": "hero_unlocked",
+                "name": "Paladin Héros",
+                "desc": "Débloque le Héros (Niveau & Kills)",
+                "cost": 35,
+                "parents": [],
+                "pos": (1680, 180)
+            },
+
+            # --- TIER 2 (Y = 320) ---
             {
                 "key": "extra_worker_start",
                 "name": "Extra Worker",
                 "desc": "Start with +1 Worker",
                 "cost": 25,
                 "parents": ["starting_res_1"],
-                "pos": (100, 380)
+                "pos": (180, 320)
             },
             {
                 "key": "extra_melee_start",
@@ -137,7 +148,7 @@ class ProgressionUI:
                 "desc": "Start with +1 Melee Unit",
                 "cost": 25,
                 "parents": ["starting_res_1"],
-                "pos": (380, 380)
+                "pos": (480, 320)
             },
             {
                 "key": "archer_unlocked",
@@ -145,7 +156,7 @@ class ProgressionUI:
                 "desc": "Train Archers in Barracks",
                 "cost": 30,
                 "parents": ["starting_res_1"],
-                "pos": (660, 380)
+                "pos": (780, 320)
             },
             {
                 "key": "wall_unlocked",
@@ -153,167 +164,7 @@ class ProgressionUI:
                 "desc": "Build Defensive Wooden Walls",
                 "cost": 25,
                 "parents": ["wood_stockpile_unlocked"],
-                "pos": (940, 380)
-            },
-            {
-                "key": "farm_unlocked",
-                "name": "Farms & Grain",
-                "desc": "Harvest Food for Troops",
-                "cost": 25,
-                "parents": ["wood_stockpile_unlocked"],
-                "pos": (1500, 380)
-            },
-            {
-                "key": "garrison_unlocked",
-                "name": "Forum Garrison",
-                "desc": "Garrison Peasants into Town Hall",
-                "cost": 30,
-                "parents": ["house_unlocked"],
-                "pos": (1780, 380)
-            },
-            {
-                "key": "ageing_up_2",
-                "name": "Ageing Up II (Feudal)",
-                "desc": "Advance Age (Boost Bld HP & unlocks)",
-                "cost": 50,
-                "parents": ["archer_unlocked", "wall_unlocked", "farm_unlocked"],
-                "pos": (940, 560)
-            },
-            {
-                "key": "tower_unlocked",
-                "name": "Watchtower",
-                "desc": "High sight range watchtower",
-                "cost": 30,
-                "parents": ["ageing_up_2"],
-                "pos": (500, 740)
-            },
-            {
-                "key": "arrow_tower_unlocked",
-                "name": "Arrow Tower",
-                "desc": "Defensive archer shooting tower",
-                "cost": 35,
-                "parents": ["ageing_up_2"],
-                "pos": (780, 740)
-            },
-            {
-                "key": "looting_unlocked",
-                "name": "Looting",
-                "desc": "+5 Food per troop kill",
-                "cost": 30,
-                "parents": ["ageing_up_2"],
-                "pos": (940, 740)
-            },
-            {
-                "key": "townhall_unlocked",
-                "name": "Secondary Keep",
-                "desc": "Build Additional Town Halls",
-                "cost": 40,
-                "parents": ["ageing_up_2"],
-                "pos": (1220, 740)
-            },
-            {
-                "key": "tower_range_unlocked",
-                "name": "Arrow Tower Range",
-                "desc": "Arrow tower +10% range",
-                "cost": 25,
-                "parents": ["arrow_tower_unlocked"],
-                "pos": (780, 920)
-            },
-            {
-                "key": "worker_spawn_speed",
-                "name": "Fast Worker Guild",
-                "desc": "Worker spawn time -10%",
-                "cost": 15,
-                "parents": ["extra_worker_start"],
-                "pos": (100, 740)
-            },
-            {
-                "key": "melee_spawn_speed",
-                "name": "Footman Drill",
-                "desc": "Melee spawn time -10%",
-                "cost": 15,
-                "parents": ["extra_melee_start"],
-                "pos": (380, 740)
-            },
-            {
-                "key": "archer_spawn_speed",
-                "name": "Bowyer Crafting",
-                "desc": "Archer spawn time -10%",
-                "cost": 15,
-                "parents": ["archer_unlocked"],
-                "pos": (660, 560)
-            },
-            {
-                "key": "forum_atk_sight_range",
-                "name": "Forum Citadel",
-                "desc": "Forum Atk & Sight Range +25%",
-                "cost": 25,
-                "parents": ["forum_atk_range"],
-                "pos": (2060, 740)
-            },
-            {
-                "key": "high_starting_res",
-                "name": "Starting Cache II",
-                "desc": "+250 Starting Resources",
-                "cost": 20,
-                "parents": ["starting_res_1"],
-                "pos": (200, 560)
-            },
-            {
-                "key": "start_with_scout",
-                "name": "Frontier Scout",
-                "desc": "Start with 1 Scout unit",
-                "cost": 20,
-                "parents": ["scout_unlocked"],
-                "pos": (100, 920)
-            },
-            {
-                "key": "bank_unlocked",
-                "name": "Royal Bank",
-                "desc": "Passive gold generation building",
-                "cost": 30,
-                "parents": ["gold_stockpile_unlocked"],
-                "pos": (1220, 560)
-            },
-            {
-                "key": "sanctuary_unlocked",
-                "name": "Sanctuary / Healer",
-                "desc": "Heals 1 troop @ 8 HP/sec",
-                "cost": 30,
-                "parents": ["farm_unlocked"],
-                "pos": (1500, 560)
-            },
-            {
-                "key": "forum_atk_range",
-                "name": "Forum Ballista",
-                "desc": "Forum Attack Range +10%",
-                "cost": 30,
-                "parents": ["garrison_unlocked"],
-                "pos": (1780, 560)
-            },
-            {
-                "key": "watchtower_sight",
-                "name": "Tower Optics",
-                "desc": "Watchtower Sight +20%",
-                "cost": 25,
-                "parents": ["tower_unlocked"],
-                "pos": (500, 920)
-            },
-            {
-                "key": "scout_unlocked",
-                "name": "Unlock Scout",
-                "desc": "Fast reconnaissance unit",
-                "cost": 25,
-                "parents": ["extra_worker_start"],
-                "pos": (100, 560)
-            },
-            {
-                "key": "building_repair_unlocked",
-                "name": "Building Repair",
-                "desc": "Workers repair structures",
-                "cost": 30,
-                "parents": ["house_unlocked"],
-                "pos": (2060, 560)
+                "pos": (1080, 320)
             },
             {
                 "key": "double_base_res_cap",
@@ -321,15 +172,231 @@ class ProgressionUI:
                 "desc": "Double resource capacity at Forum",
                 "cost": 35,
                 "parents": ["gold_stockpile_unlocked"],
-                "pos": (1220, 380)
+                "pos": (1380, 320)
+            },
+            {
+                "key": "farm_unlocked",
+                "name": "Farms & Grain",
+                "desc": "Harvest Food for Troops",
+                "cost": 25,
+                "parents": ["food_stockpile_unlocked"],
+                "pos": (1680, 320)
+            },
+            {
+                "key": "garrison_unlocked",
+                "name": "Forum Garrison",
+                "desc": "Garrison Peasants into Town Hall",
+                "cost": 30,
+                "parents": ["house_unlocked"],
+                "pos": (1980, 320)
+            },
+            {
+                "key": "hero_archer",
+                "name": "Héros Archer",
+                "desc": "Le Héros attaque à distance",
+                "cost": 30,
+                "parents": ["hero_unlocked"],
+                "pos": (2280, 320)
+            },
+
+            # --- TIER 3 (Y = 460) ---
+            {
+                "key": "scout_unlocked",
+                "name": "Unlock Scout",
+                "desc": "Fast reconnaissance unit",
+                "cost": 25,
+                "parents": ["extra_worker_start"],
+                "pos": (180, 460)
+            },
+            {
+                "key": "high_starting_res",
+                "name": "Starting Cache II",
+                "desc": "+250 Starting Resources",
+                "cost": 20,
+                "parents": ["extra_melee_start"],
+                "pos": (480, 460)
+            },
+            {
+                "key": "archer_spawn_speed",
+                "name": "Bowyer Crafting",
+                "desc": "Archer spawn time -10%",
+                "cost": 15,
+                "parents": ["archer_unlocked"],
+                "pos": (780, 460)
+            },
+            {
+                "key": "ageing_up_2",
+                "name": "Ageing Up II (Feudal)",
+                "desc": "Advance Age (Boost Bld HP & unlocks)",
+                "cost": 50,
+                "parents": ["archer_unlocked", "wall_unlocked", "farm_unlocked"],
+                "pos": (1080, 460)
+            },
+            {
+                "key": "bank_unlocked",
+                "name": "Royal Bank",
+                "desc": "Passive gold generation building",
+                "cost": 30,
+                "parents": ["double_base_res_cap"],
+                "pos": (1380, 460)
+            },
+            {
+                "key": "sanctuary_unlocked",
+                "name": "Sanctuary / Healer",
+                "desc": "Heals 1 troop @ 8 HP/sec",
+                "cost": 30,
+                "parents": ["farm_unlocked"],
+                "pos": (1680, 460)
+            },
+            {
+                "key": "building_repair_unlocked",
+                "name": "Building Repair",
+                "desc": "Workers repair structures",
+                "cost": 30,
+                "parents": ["garrison_unlocked"],
+                "pos": (1980, 460)
+            },
+            {
+                "key": "hero_range_boost",
+                "name": "Portée Héroïque",
+                "desc": "+25% portée d'attaque au Héros",
+                "cost": 30,
+                "parents": ["hero_archer"],
+                "pos": (2280, 460)
+            },
+
+            # --- TIER 4 (Y = 600) ---
+            {
+                "key": "worker_spawn_speed",
+                "name": "Fast Worker Guild",
+                "desc": "Worker spawn time -10%",
+                "cost": 15,
+                "parents": ["scout_unlocked"],
+                "pos": (180, 600)
+            },
+            {
+                "key": "melee_spawn_speed",
+                "name": "Footman Drill",
+                "desc": "Melee spawn time -10%",
+                "cost": 15,
+                "parents": ["high_starting_res"],
+                "pos": (480, 600)
+            },
+            {
+                "key": "tower_unlocked",
+                "name": "Watchtower",
+                "desc": "High sight range watchtower",
+                "cost": 30,
+                "parents": ["ageing_up_2"],
+                "pos": (780, 600)
+            },
+            {
+                "key": "arrow_tower_unlocked",
+                "name": "Arrow Tower",
+                "desc": "Defensive archer shooting tower",
+                "cost": 35,
+                "parents": ["ageing_up_2"],
+                "pos": (1080, 600)
+            },
+            {
+                "key": "looting_unlocked",
+                "name": "Looting",
+                "desc": "+5 Food per troop kill",
+                "cost": 30,
+                "parents": ["ageing_up_2"],
+                "pos": (1380, 600)
+            },
+            {
+                "key": "townhall_unlocked",
+                "name": "Secondary Keep",
+                "desc": "Build Additional Town Halls",
+                "cost": 40,
+                "parents": ["ageing_up_2"],
+                "pos": (1680, 600)
+            },
+            {
+                "key": "forum_atk_range",
+                "name": "Forum Ballista",
+                "desc": "Forum Attack Range +10%",
+                "cost": 30,
+                "parents": ["building_repair_unlocked"],
+                "pos": (1980, 600)
+            },
+            {
+                "key": "house_pop_1",
+                "name": "Maison Extensibles I",
+                "desc": "+1 population par Maison",
+                "cost": 20,
+                "parents": ["house_unlocked"],
+                "pos": (2280, 600)
+            },
+
+            # --- TIER 5 (Y = 740) ---
+            {
+                "key": "start_with_scout",
+                "name": "Frontier Scout",
+                "desc": "Start with 1 Scout unit",
+                "cost": 20,
+                "parents": ["worker_spawn_speed"],
+                "pos": (180, 740)
+            },
+            {
+                "key": "watchtower_sight",
+                "name": "Tower Optics",
+                "desc": "Watchtower Sight +20%",
+                "cost": 25,
+                "parents": ["tower_unlocked"],
+                "pos": (780, 740)
+            },
+            {
+                "key": "tower_range_unlocked",
+                "name": "Arrow Tower Range",
+                "desc": "Arrow tower +10% range",
+                "cost": 25,
+                "parents": ["arrow_tower_unlocked"],
+                "pos": (1080, 740)
+            },
+            {
+                "key": "sanctuary_boost",
+                "name": "Sanctuaire Avancé",
+                "desc": "Range +40% & Heals +4 HP/s",
+                "cost": 30,
+                "parents": ["sanctuary_unlocked"],
+                "pos": (1680, 740)
             },
             {
                 "key": "forum_passive_arrow",
                 "name": "Sentry Guard Bow",
                 "desc": "Forum fires 1 arrow (+1 arrow)",
                 "cost": 35,
-                "parents": ["garrison_unlocked"],
-                "pos": (1780, 740)
+                "parents": ["forum_atk_range"],
+                "pos": (1980, 740)
+            },
+            {
+                "key": "house_pop_2",
+                "name": "Maison Extensibles II",
+                "desc": "+1 population par Maison",
+                "cost": 25,
+                "parents": ["house_pop_1"],
+                "pos": (2280, 740)
+            },
+
+            # --- TIER 6 (Y = 880) ---
+            {
+                "key": "forum_atk_sight_range",
+                "name": "Forum Citadel",
+                "desc": "Forum Atk & Sight Range +25%",
+                "cost": 25,
+                "parents": ["forum_passive_arrow"],
+                "pos": (1980, 880)
+            },
+            {
+                "key": "house_pop_3",
+                "name": "Maison Extensibles III",
+                "desc": "+1 population par Maison",
+                "cost": 30,
+                "parents": ["house_pop_2"],
+                "pos": (2280, 880)
             }
         ]
 
