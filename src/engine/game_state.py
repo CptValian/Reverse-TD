@@ -17,9 +17,12 @@ class GameState:
             self.ai_difficulty = int(ai_difficulty)
         except (ValueError, TypeError):
             self.ai_difficulty = 1
-        self.map_type = map_type  # 1: Standard, 2: Désavantageuse, 3: Très Désavantageuse
+        self.map_type = map_type  # 1: Standard, 2: Désavantage I, 3: Désavantage II, 4: Avantage I, 5: Avantage II
 
-        self.state = "MENU"  # "MENU", "SKILL_TREE", "PLAYING", "VICTORY", "DEFEAT"
+        self.state = "MENU"  # "MENU", "SKILL_TREE", "PLAYING", "VICTORY", "DEFEAT", "SPECTATOR_END", "IACIA_SETUP"
+        self.is_spectator = False
+        self.teams = {}  # {owner_id: team_id}
+        self.winning_team = None
 
         self.units = []
         self.buildings = []
@@ -27,7 +30,7 @@ class GameState:
         self.projectiles = []
         self.ai_controllers = []
 
-        # Statistiques des joueurs (owner_id 0 = Humain, owner_id 1..N = IA)
+        # Statistiques des joueurs
         self.resources_player = {}
         self.resources_gathered_player = {}
 
@@ -35,14 +38,39 @@ class GameState:
         self.game_time = 0.0
         self.player_age = 1
 
+        # Configuration IAcIA par défaut
+        self.iacia_config = {
+            "preset_name": "3v5",
+            "map_type": 1,
+            "ai_players": [
+                {"id": 1, "team": 1, "difficulty": 5, "faction": config.FACTION_HUMAN},
+                {"id": 2, "team": 1, "difficulty": 5, "faction": config.FACTION_HUMAN},
+                {"id": 3, "team": 1, "difficulty": 5, "faction": config.FACTION_HUMAN},
+                {"id": 4, "team": 2, "difficulty": 5, "faction": config.FACTION_ALIEN},
+                {"id": 5, "team": 2, "difficulty": 5, "faction": config.FACTION_ALIEN},
+                {"id": 6, "team": 2, "difficulty": 5, "faction": config.FACTION_ALIEN},
+                {"id": 7, "team": 2, "difficulty": 5, "faction": config.FACTION_ALIEN},
+                {"id": 8, "team": 2, "difficulty": 5, "faction": config.FACTION_ALIEN},
+            ]
+        }
+
+    def are_enemies(self, owner1, owner2):
+        if owner1 == owner2:
+            return False
+        t1 = self.teams.get(owner1, owner1)
+        t2 = self.teams.get(owner2, owner2)
+        return t1 != t2
+
     def is_fog_of_war_enabled(self):
+        if self.is_spectator:
+            return False
         if hasattr(self, 'save_manager') and self.save_manager:
             if self.save_manager.get_setting("disable_fog_of_war", False):
                 return False
         return self.ai_difficulty > 4
 
     def is_point_visible(self, x, y, owner_id=0):
-        if not self.is_fog_of_war_enabled():
+        if not self.is_fog_of_war_enabled() or self.is_spectator:
             return True
 
         # Player units vision
@@ -71,7 +99,7 @@ class GameState:
                     b.max_hp = int(b.max_hp * 1.2)
                     b.hp = int(b.max_hp * hp_ratio)
 
-    def start_new_game(self):
+    def start_new_game(self, is_iacia=False):
         self.game_time = 0.0
         self.units.clear()
         self.buildings.clear()
@@ -79,16 +107,30 @@ class GameState:
         self.projectiles.clear()
         self.ai_controllers.clear()
         self.resources_player.clear()
+        self.resources_gathered_player.clear()
+        self.teams.clear()
+        self.is_spectator = is_iacia
+        self.winning_team = None
 
-        # Application des améliorations de méta-progression
-        upgrades = self.save_manager.data.get("upgrades", {})
-        extra_res = upgrades.get("starting_resources_lvl", 0) * 100
+        if is_iacia:
+            self._start_iacia_game()
+        else:
+            self._start_standard_game()
+
+        self.state = "PLAYING"
+
+    def _start_standard_game(self):
+        # Human player is owner_id 0 (Team 1)
+        self.teams[0] = 1
+        for ai_id in range(1, self.num_ais + 1):
+            self.teams[ai_id] = 2  # Enemy team
+
+        upgrades = self.save_manager.data.get("upgrades", {}) if hasattr(self, 'save_manager') and self.save_manager else {}
         hp_bonus_units = upgrades.get("unit_hp_lvl", 0) * 0.10
         atk_bonus_units = upgrades.get("unit_attack_lvl", 0) * 0.10
         hp_bonus_bld = upgrades.get("building_hp_lvl", 0) * 0.15
         armor_bonus_bld = upgrades.get("building_armor_lvl", 0) * 1.0
 
-        # Initialisation des ressources des joueurs
         extra_res_bonus = (100 if upgrades.get("starting_res_1") else 0) + (250 if upgrades.get("high_starting_res") else 0)
         self.resources_player[0] = {
             "gold": 200 + extra_res_bonus,
@@ -96,50 +138,31 @@ class GameState:
             "food": 150 + extra_res_bonus,
             "biomass": 0
         }
-        self.resources_gathered_player[0] = {
-            "gold": 200 + extra_res_bonus,
-            "wood": 200 + extra_res_bonus,
-            "food": 150 + extra_res_bonus,
-            "biomass": 0
-        }
-        for ai_id in range(1, self.num_ais + 1):
-            self.resources_player[ai_id] = {
-                "gold": 0,
-                "wood": 0,
-                "food": 0,
-                "biomass": 300
-            }
-            self.resources_gathered_player[ai_id] = {
-                "gold": 0,
-                "wood": 0,
-                "food": 0,
-                "biomass": 300
-            }
+        self.resources_gathered_player[0] = dict(self.resources_player[0])
 
-        # Génération de la carte selon map_type
+        for ai_id in range(1, self.num_ais + 1):
+            self.resources_player[ai_id] = {"gold": 0, "wood": 0, "food": 0, "biomass": 300}
+            self.resources_gathered_player[ai_id] = dict(self.resources_player[ai_id])
+
         map_gen = MapGenerator(config.MAP_WIDTH, config.MAP_HEIGHT)
         map_data = map_gen.generate_map(num_players=self.num_ais + 1, map_type=self.map_type)
 
-        # AI Level 16 check for double biomass on map
         from src.ai.ai_tech import AI_DIFFICULTY_LEVELS
         ai_cfg = AI_DIFFICULTY_LEVELS.get(self.ai_difficulty, {})
         double_biomass = ai_cfg.get("double_map_biomass", False)
 
-        # Création des ressources sur la carte
         for res_data in map_data["resources"]:
             amount = res_data.amount
             if double_biomass and res_data.type == "biomass":
                 amount *= 2
             self.resources.append(ResourceNode(res_data.type, res_data.x, res_data.y, amount))
 
-        # Spawns des joueurs
         for spawn in map_data["spawns"]:
             owner_id = spawn["id"]
             faction = spawn["faction"]
             sx, sy = spawn["x"], spawn["y"]
 
-            if faction == config.FACTION_HUMAN:
-                # Base humaine
+            if owner_id == 0:
                 range_bonus = (22 if upgrades.get("forum_atk_range") else 0) + (55 if upgrades.get("forum_atk_sight_range") else 0)
                 base = Building(owner_id, faction, "TownHall", sx, sy,
                                 hp_bonus=int(1000 * hp_bonus_bld), armor_bonus=armor_bonus_bld, range_bonus=range_bonus)
@@ -147,14 +170,12 @@ class GameState:
                     base.vision_radius = int(base.vision_radius * 1.25)
                 self.buildings.append(base)
 
-                # Doubler la capacité des gisements autour du forum de départ si l'amélioration est active
                 if upgrades.get("double_base_res_cap"):
                     for r in self.resources:
                         if math.hypot(r.x - sx, r.y - sy) < 400:
                             r.amount *= 2
                             r.max_amount *= 2
 
-                # Ouvriers de départ (3 de base + 1 si extra_worker_start)
                 num_workers = 3 + (1 if upgrades.get("extra_worker_start") else 0)
                 worker_offsets = [(-30, 40), (0, 50), (30, 40), (-45, 50), (45, 50)]
                 for i in range(num_workers):
@@ -163,19 +184,16 @@ class GameState:
                              hp_bonus=int(60 * hp_bonus_units), attack_bonus=int(5 * atk_bonus_units))
                     self.units.append(u)
 
-                # Unité de mêlée de départ si extra_melee_start
                 if upgrades.get("extra_melee_start"):
                     u_inf = Unit(owner_id, faction, "Infantry", sx, sy + 60,
                                  hp_bonus=int(150 * hp_bonus_units), attack_bonus=int(18 * atk_bonus_units))
                     self.units.append(u_inf)
 
-                # Scout de départ si start_with_scout
                 if upgrades.get("start_with_scout"):
                     u_scout = Unit(owner_id, faction, "Scout", sx + 60, sy + 30,
                                    hp_bonus=int(70 * hp_bonus_units), attack_bonus=int(6 * atk_bonus_units))
                     self.units.append(u_scout)
 
-                # Héros de départ si hero_unlocked
                 if upgrades.get("hero_unlocked"):
                     hero_u = Unit(owner_id, faction, "Hero", sx + 20, sy - 50,
                                   hp_bonus=int(200 * hp_bonus_units), attack_bonus=int(25 * atk_bonus_units))
@@ -186,40 +204,91 @@ class GameState:
                         hero_u.attack_range = int(hero_u.attack_range * 1.25)
                     self.units.append(hero_u)
             else:
-                # Base Alien IA
-                base = Building(owner_id, faction, "Hive", sx, sy)
+                base_type = "Hive" if faction == config.FACTION_ALIEN else "TownHall"
+                base = Building(owner_id, faction, base_type, sx, sy)
                 self.buildings.append(base)
 
-                from src.ai.ai_tech import AI_DIFFICULTY_LEVELS
-                ai_cfg = AI_DIFFICULTY_LEVELS.get(self.ai_difficulty, {})
-
-                # Starting Swarmers
-                num_swarmers = ai_cfg.get("extra_starting_swarmers", 0)
-                sw_offsets = [(40, -30), (50, 0), (40, 30), (50, -45)]
-                for i in range(num_swarmers):
-                    offset = sw_offsets[i % len(sw_offsets)]
-                    u_sw = Unit(owner_id, faction, "Swarmer", sx + offset[0], sy + offset[1])
+                a_cfg = AI_DIFFICULTY_LEVELS.get(self.ai_difficulty, {})
+                num_sw = a_cfg.get("extra_starting_swarmers", 0)
+                for i in range(num_sw):
+                    u_type = "Swarmer" if faction == config.FACTION_ALIEN else "Infantry"
+                    u_sw = Unit(owner_id, faction, u_type, sx + (i + 1) * 20, sy - 30)
                     self.units.append(u_sw)
 
-                # Drones de départ (3 de base, + extra_starting_drones)
-                num_drones = 3 + ai_cfg.get("extra_starting_drones", 0)
+                num_drones = 3 + a_cfg.get("extra_starting_drones", 0)
+                worker_type = "Drone" if faction == config.FACTION_ALIEN else "Worker"
                 offsets = [(-30, 40), (0, 50), (30, 40), (-45, 50), (45, 50), (-60, 40), (60, 40)]
                 for i in range(num_drones):
                     offset = offsets[i % len(offsets)]
-                    u = Unit(owner_id, faction, "Drone", sx + offset[0], sy + offset[1])
+                    u = Unit(owner_id, faction, worker_type, sx + offset[0], sy + offset[1])
                     self.units.append(u)
 
-                # Contrôleur d'IA
                 ai_ctrl = AIController(owner_id=owner_id, faction=faction, difficulty=self.ai_difficulty)
                 self.ai_controllers.append(ai_ctrl)
 
-        self.state = "PLAYING"
+    def _start_iacia_game(self):
+        ai_players = self.iacia_config.get("ai_players", [])
+        m_type = self.iacia_config.get("map_type", 1)
+        self.map_type = m_type
+
+        # Setup teams
+        for p in ai_players:
+            pid = p["id"]
+            self.teams[pid] = p["team"]
+            f = p.get("faction", config.FACTION_ALIEN)
+            if f == config.FACTION_HUMAN:
+                self.resources_player[pid] = {"gold": 300, "wood": 300, "food": 200, "biomass": 0}
+            else:
+                self.resources_player[pid] = {"gold": 0, "wood": 0, "food": 0, "biomass": 300}
+            self.resources_gathered_player[pid] = dict(self.resources_player[pid])
+
+        map_gen = MapGenerator(config.MAP_WIDTH, config.MAP_HEIGHT)
+        map_data = map_gen.generate_map(num_players=len(ai_players), map_type=m_type)
+
+        for res_data in map_data["resources"]:
+            self.resources.append(ResourceNode(res_data.type, res_data.x, res_data.y, res_data.amount))
+
+        from src.ai.ai_tech import AI_DIFFICULTY_LEVELS
+        for idx, spawn in enumerate(map_data["spawns"]):
+            if idx >= len(ai_players):
+                break
+            p_data = ai_players[idx]
+            owner_id = p_data["id"]
+            faction = p_data.get("faction", spawn["faction"])
+            diff = p_data.get("difficulty", 5)
+            sx, sy = spawn["x"], spawn["y"]
+
+            b_type = "Hive" if faction == config.FACTION_ALIEN else "TownHall"
+            base = Building(owner_id, faction, b_type, sx, sy)
+            self.buildings.append(base)
+
+            a_cfg = AI_DIFFICULTY_LEVELS.get(diff, {})
+            w_type = "Drone" if faction == config.FACTION_ALIEN else "Worker"
+            num_workers = 3 + a_cfg.get("extra_starting_drones", 0)
+            offsets = [(-30, 40), (0, 50), (30, 40), (-45, 50), (45, 50), (-60, 40), (60, 40)]
+            for i in range(num_workers):
+                offset = offsets[i % len(offsets)]
+                u = Unit(owner_id, faction, w_type, sx + offset[0], sy + offset[1])
+                self.units.append(u)
+
+            num_sw = a_cfg.get("extra_starting_swarmers", 0)
+            sw_type = "Swarmer" if faction == config.FACTION_ALIEN else "Infantry"
+            for i in range(num_sw):
+                u_sw = Unit(owner_id, faction, sw_type, sx + (i + 1) * 20, sy - 30)
+                self.units.append(u_sw)
+
+            ai_ctrl = AIController(owner_id=owner_id, faction=faction, difficulty=diff)
+            self.ai_controllers.append(ai_ctrl)
 
     def get_map_resource_factor(self):
         if self.map_type == 2:
             return 0.75
         elif self.map_type == 3:
             return 0.50
+        elif self.map_type == 4:
+            return 1.25
+        elif self.map_type == 5:
+            return 1.50
         return 1.0
 
     def add_resources(self, owner_id, res_type, amount):
@@ -485,29 +554,42 @@ class GameState:
         for ai in self.ai_controllers:
             ai.update(dt, self)
 
-        # Vérification des conditions de victoire/défaite (destruction totale)
-        player_buildings = [b for b in self.buildings if b.owner_id == 0]
-        player_units = [u for u in self.units if u.owner_id == 0]
+        # Vérification des conditions de victoire/défaite/spectateur
+        if self.is_spectator:
+            active_teams = set()
+            for entity in self.units + self.buildings:
+                if entity.alive:
+                    t = self.teams.get(entity.owner_id, entity.owner_id)
+                    active_teams.add(t)
 
-        ai_buildings = [b for b in self.buildings if b.owner_id != 0]
-        ai_units = [u for u in self.units if u.owner_id != 0]
+            if len(active_teams) <= 1:
+                self.state = "SPECTATOR_END"
+                self.winning_team = list(active_teams)[0] if active_teams else None
+        else:
+            player_buildings = [b for b in self.buildings if b.owner_id == 0]
+            player_units = [u for u in self.units if u.owner_id == 0]
 
-        if not player_buildings and not player_units:
-            self.state = "DEFEAT"
-            rewards = Rewards.calculate_rewards(False, self.num_ais, self.ai_difficulty, survival_time=self.game_time)
-            self.last_match_rewards = rewards
-            self.save_manager.add_points(
-                landshard=rewards[config.POINT_TYPE_COMMAND],
-                swarmerblood=rewards[config.POINT_TYPE_FORGE],
-                pykrite=rewards[config.POINT_TYPE_ARCHITECTURE]
-            )
+            enemy_buildings = [b for b in self.buildings if self.are_enemies(0, b.owner_id)]
+            enemy_units = [u for u in self.units if self.are_enemies(0, u.owner_id)]
 
-        elif not ai_buildings and not ai_units:
-            self.state = "VICTORY"
-            rewards = Rewards.calculate_rewards(True, self.num_ais, self.ai_difficulty, survival_time=self.game_time)
-            self.last_match_rewards = rewards
-            self.save_manager.add_points(
-                landshard=rewards[config.POINT_TYPE_COMMAND],
-                swarmerblood=rewards[config.POINT_TYPE_FORGE],
-                pykrite=rewards[config.POINT_TYPE_ARCHITECTURE]
-            )
+            if not player_buildings and not player_units:
+                self.state = "DEFEAT"
+                rewards = Rewards.calculate_rewards(False, self.num_ais, self.ai_difficulty, survival_time=self.game_time, map_type=self.map_type)
+                self.last_match_rewards = rewards
+                if hasattr(self, 'save_manager') and self.save_manager:
+                    self.save_manager.add_points(
+                        landshard=rewards[config.POINT_TYPE_COMMAND],
+                        swarmerblood=rewards[config.POINT_TYPE_FORGE],
+                        pykrite=rewards[config.POINT_TYPE_ARCHITECTURE]
+                    )
+
+            elif not enemy_buildings and not enemy_units:
+                self.state = "VICTORY"
+                rewards = Rewards.calculate_rewards(True, self.num_ais, self.ai_difficulty, survival_time=self.game_time, map_type=self.map_type)
+                self.last_match_rewards = rewards
+                if hasattr(self, 'save_manager') and self.save_manager:
+                    self.save_manager.add_points(
+                        landshard=rewards[config.POINT_TYPE_COMMAND],
+                        swarmerblood=rewards[config.POINT_TYPE_FORGE],
+                        pykrite=rewards[config.POINT_TYPE_ARCHITECTURE]
+                    )

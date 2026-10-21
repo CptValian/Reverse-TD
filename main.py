@@ -82,13 +82,85 @@ def main():
                     elif (buttons.get("diff_plus") and buttons["diff_plus"].collidepoint(event.pos)) or (buttons.get("difficulty") and buttons["difficulty"].collidepoint(event.pos) and event.pos[0] >= buttons["difficulty"].centerx):
                         game_state.ai_difficulty = min(15, game_state.ai_difficulty + 1)
 
+                    elif buttons.get("iacia") and buttons["iacia"].collidepoint(event.pos):
+                        game_state.state = "IACIA_SETUP"
+
                     elif buttons.get("map_type") and buttons["map_type"].collidepoint(event.pos):
-                        m_types = [1, 2, 3]
+                        m_types = [1, 2, 3, 4, 5]
                         curr_m_idx = m_types.index(game_state.map_type) if game_state.map_type in m_types else 0
                         game_state.map_type = m_types[(curr_m_idx + 1) % len(m_types)]
 
                     elif buttons["quit"].collidepoint(event.pos):
                         running = False
+
+            elif game_state.state == "IACIA_SETUP":
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    buttons = menu.draw_iacia_menu(screen, game_state)
+                    if buttons.get("back") and buttons["back"].collidepoint(event.pos):
+                        game_state.state = "MENU"
+                    elif buttons.get("launch") and buttons["launch"].collidepoint(event.pos):
+                        game_state.start_new_game(is_iacia=True)
+                        camera.x = config.MAP_WIDTH / 2 - config.SCREEN_WIDTH / 2
+                        camera.y = config.MAP_HEIGHT / 2 - config.SCREEN_HEIGHT / 2
+                        camera.clamp()
+                    elif buttons.get("map_type") and buttons["map_type"].collidepoint(event.pos):
+                        curr_m = game_state.iacia_config.get("map_type", 1)
+                        game_state.iacia_config["map_type"] = (curr_m % 5) + 1
+
+                    # Presets
+                    for p_name in ["3v5", "3v2v2", "1v1v1v1v1v1v1v1", "4v4", "2v2v2v2"]:
+                        if buttons.get(f"preset_{p_name}") and buttons[f"preset_{p_name}"].collidepoint(event.pos):
+                            game_state.iacia_config["preset_name"] = p_name
+                            if p_name == "3v5":
+                                game_state.iacia_config["ai_players"] = [
+                                    {"id": 1, "team": 1, "difficulty": 5, "faction": config.FACTION_HUMAN},
+                                    {"id": 2, "team": 1, "difficulty": 5, "faction": config.FACTION_HUMAN},
+                                    {"id": 3, "team": 1, "difficulty": 5, "faction": config.FACTION_HUMAN},
+                                    {"id": 4, "team": 2, "difficulty": 5, "faction": config.FACTION_ALIEN},
+                                    {"id": 5, "team": 2, "difficulty": 5, "faction": config.FACTION_ALIEN},
+                                    {"id": 6, "team": 2, "difficulty": 5, "faction": config.FACTION_ALIEN},
+                                    {"id": 7, "team": 2, "difficulty": 5, "faction": config.FACTION_ALIEN},
+                                    {"id": 8, "team": 2, "difficulty": 5, "faction": config.FACTION_ALIEN},
+                                ]
+                            elif p_name == "3v2v2":
+                                game_state.iacia_config["ai_players"] = [
+                                    {"id": 1, "team": 1, "difficulty": 5, "faction": config.FACTION_HUMAN},
+                                    {"id": 2, "team": 1, "difficulty": 5, "faction": config.FACTION_HUMAN},
+                                    {"id": 3, "team": 1, "difficulty": 5, "faction": config.FACTION_HUMAN},
+                                    {"id": 4, "team": 2, "difficulty": 5, "faction": config.FACTION_ALIEN},
+                                    {"id": 5, "team": 2, "difficulty": 5, "faction": config.FACTION_ALIEN},
+                                    {"id": 6, "team": 3, "difficulty": 5, "faction": config.FACTION_ALIEN},
+                                    {"id": 7, "team": 3, "difficulty": 5, "faction": config.FACTION_ALIEN},
+                                ]
+                            elif p_name == "1v1v1v1v1v1v1v1":
+                                game_state.iacia_config["ai_players"] = [
+                                    {"id": i + 1, "team": i + 1, "difficulty": 5, "faction": config.FACTION_HUMAN if i % 2 == 0 else config.FACTION_ALIEN}
+                                    for i in range(8)
+                                ]
+                            elif p_name == "4v4":
+                                game_state.iacia_config["ai_players"] = [
+                                    {"id": i + 1, "team": 1 if i < 4 else 2, "difficulty": 5, "faction": config.FACTION_HUMAN if i < 4 else config.FACTION_ALIEN}
+                                    for i in range(8)
+                                ]
+                            elif p_name == "2v2v2v2":
+                                game_state.iacia_config["ai_players"] = [
+                                    {"id": i + 1, "team": (i // 2) + 1, "difficulty": 5, "faction": config.FACTION_HUMAN if (i // 2) % 2 == 0 else config.FACTION_ALIEN}
+                                    for i in range(8)
+                                ]
+
+                    # Row controls
+                    for p in game_state.iacia_config.get("ai_players", []):
+                        pid = p["id"]
+                        if buttons.get(f"team_minus_{pid}") and buttons[f"team_minus_{pid}"].collidepoint(event.pos):
+                            p["team"] = max(1, p["team"] - 1)
+                        elif buttons.get(f"team_plus_{pid}") and buttons[f"team_plus_{pid}"].collidepoint(event.pos):
+                            p["team"] = min(8, p["team"] + 1)
+                        elif buttons.get(f"diff_minus_{pid}") and buttons[f"diff_minus_{pid}"].collidepoint(event.pos):
+                            p["difficulty"] = max(1, p["difficulty"] - 1)
+                        elif buttons.get(f"diff_plus_{pid}") and buttons[f"diff_plus_{pid}"].collidepoint(event.pos):
+                            p["difficulty"] = min(18, p["difficulty"] + 1)
+                        elif buttons.get(f"faction_{pid}") and buttons[f"faction_{pid}"].collidepoint(event.pos):
+                            p["faction"] = config.FACTION_ALIEN if p.get("faction") == config.FACTION_HUMAN else config.FACTION_HUMAN
 
             elif game_state.state == "AI_INFO":
                 if event.type == pygame.MOUSEBUTTONDOWN:
@@ -173,7 +245,7 @@ def main():
                         progression_ui.camera_offset_y += dy
                         progression_ui.drag_start_pos = event.pos
 
-            elif game_state.state in ["VICTORY", "DEFEAT"]:
+            elif game_state.state in ["VICTORY", "DEFEAT", "SPECTATOR_END"]:
                 if event.type == pygame.MOUSEBUTTONDOWN or event.type == pygame.KEYDOWN:
                     game_state.state = "MENU"
 
@@ -515,6 +587,9 @@ def main():
         if game_state.state == "MENU":
             menu.draw_main_menu(screen, game_state.num_ais, game_state.ai_difficulty, game_state.map_type)
 
+        elif game_state.state == "IACIA_SETUP":
+            menu.draw_iacia_menu(screen, game_state)
+
         elif game_state.state == "AI_INFO":
             menu.draw_ai_info_screen(screen, menu.ai_info_scroll_y)
 
@@ -636,6 +711,19 @@ def main():
 
             sub = menu.font.render("Click or press any key to return to Menu.", True, (255, 255, 255))
             screen.blit(sub, (config.SCREEN_WIDTH // 2 - sub.get_width() // 2, 500))
+
+        elif game_state.state == "SPECTATOR_END":
+            screen.fill((25, 30, 45))
+            win_t = getattr(game_state, 'winning_team', None)
+            res_str = f"VICTOIRE DE L'ÉQUIPE {win_t} !" if win_t else "ÉGALITÉ PARFAITE !"
+            txt = menu.title_font.render("FIN DU MATCH IA c IA", True, (255, 215, 0))
+            screen.blit(txt, (config.SCREEN_WIDTH // 2 - txt.get_width() // 2, 280))
+
+            res_txt = menu.subtitle_font.render(res_str, True, (100, 255, 180))
+            screen.blit(res_txt, (config.SCREEN_WIDTH // 2 - res_txt.get_width() // 2, 380))
+
+            sub = menu.font.render("Cliquez ou appuyez sur une touche pour revenir au Menu.", True, (255, 255, 255))
+            screen.blit(sub, (config.SCREEN_WIDTH // 2 - sub.get_width() // 2, 480))
 
         elif game_state.state == "DEFEAT":
             screen.fill((60, 20, 20))

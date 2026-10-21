@@ -298,12 +298,17 @@ class AIController:
                     prod.queue_unit(chosen_unit)
 
         # 7. Strategic Reflection & Dynamic Decision Engine (Equalized top intelligence for all AI)
-        player_units = [u for u in game_state.units if u.alive and u.owner_id != self.owner_id]
-        player_targets = [e for e in game_state.buildings + game_state.units if e.alive and e.owner_id != self.owner_id]
+        def check_enemy(owner1, owner2):
+            if hasattr(game_state, 'are_enemies'):
+                return game_state.are_enemies(owner1, owner2)
+            return owner1 != owner2
+
+        enemy_units = [u for u in game_state.units if u.alive and check_enemy(self.owner_id, u.owner_id)]
+        enemy_targets = [e for e in game_state.buildings + game_state.units if e.alive and check_enemy(self.owner_id, e.owner_id)]
 
         # 7a. Defense Response: Immediate base defense call against encroaching enemies
-        if self.spawn_point and player_units:
-            nearby_threats = [u for u in player_units if math.hypot(u.x - self.spawn_point[0], u.y - self.spawn_point[1]) < 550]
+        if self.spawn_point and enemy_units:
+            nearby_threats = [u for u in enemy_units if math.hypot(u.x - self.spawn_point[0], u.y - self.spawn_point[1]) < 550]
             if nearby_threats:
                 closest_threat = min(nearby_threats, key=lambda u: math.hypot(u.x - self.spawn_point[0], u.y - self.spawn_point[1]))
                 for u in army_units:
@@ -319,7 +324,7 @@ class AIController:
         # 7c. Real Strategic Planning & Attack Logic (No fixed timers/intervals!)
         # The AI continuously evaluates force power ratio, expansion opportunities, and target vulnerabilities.
         total_ai_power = sum([u.attack_power + u.hp * 0.1 for u in army_units])
-        total_player_power = sum([u.attack_power + u.hp * 0.1 for u in player_units]) + 1.0
+        total_player_power = sum([u.attack_power + u.hp * 0.1 for u in enemy_units]) + 1.0
 
         force_ratio = total_ai_power / total_player_power
 
@@ -327,18 +332,18 @@ class AIController:
         # - It has sufficient force advantage (force_ratio >= 1.1)
         # - OR army size is reaching max capacity limit
         # - OR player has undefended expansion/workers
-        p_workers = [e for e in player_targets if getattr(e, 'is_worker', False)]
-        p_townhalls = [e for e in player_targets if getattr(e, 'building_type', None) in ["TownHall", "Hive"]]
-        p_defenses = [e for e in player_targets if getattr(e, 'building_type', None) in ["WatchTower", "ArrowTower", "Tower", "SpineCrawler"]]
-        p_buildings = [e for e in player_targets if hasattr(e, 'building_type')]
+        p_workers = [e for e in enemy_targets if getattr(e, 'is_worker', False)]
+        p_townhalls = [e for e in enemy_targets if getattr(e, 'building_type', None) in ["TownHall", "Hive"]]
+        p_defenses = [e for e in enemy_targets if getattr(e, 'building_type', None) in ["WatchTower", "ArrowTower", "Tower", "SpineCrawler"]]
+        p_buildings = [e for e in enemy_targets if hasattr(e, 'building_type')]
 
         should_strike = False
         if len(army_units) >= 3 and (force_ratio >= 1.1 or len(army_units) >= self.config.get("max_army_size", 12) * 0.7):
             should_strike = True
-        elif len(army_units) >= 2 and p_workers and not player_units:
+        elif len(army_units) >= 2 and p_workers and not enemy_units:
             should_strike = True  # Opportunistic raid on exposed workers
 
-        if should_strike and player_targets:
+        if should_strike and enemy_targets:
             # Tactical Target Prioritization:
             # 1. Exposed workers / expansion economy
             # 2. Main base townhall / hive
@@ -356,7 +361,7 @@ class AIController:
                 elif p_buildings:
                     target = min(p_buildings, key=lambda b: min([math.hypot(b.x - u.x, b.y - u.y) for u in idle_or_moving_army] or [9999]))
                 else:
-                    target = random.choice(player_targets)
+                    target = random.choice(enemy_targets)
 
                 # Advanced Flanking Maneuvers when army size allows
                 if len(idle_or_moving_army) >= 6:

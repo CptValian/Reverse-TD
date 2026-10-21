@@ -165,24 +165,51 @@ class Building(BaseEntity):
                 produced_unit = item["unit_type"]
                 self.production_queue.pop(0)
 
-        # Effective attack power (each garrisoned peasant adds 1 arrow / +12 damage)
-        effective_attack = self.attack_power
-        if self.building_type == "TownHall":
-            num_arrows = len(self.garrisoned_units)
-            upgrades = game_state.save_manager.data.get("upgrades", {}) if game_state and hasattr(game_state, 'save_manager') else {}
-            if upgrades.get("forum_passive_arrow"):
-                num_arrows += 1  # Base passive arrow even without workers
-            effective_attack = num_arrows * 12
-
+        # Farm food generation
         if self.building_type == "Farm" and self.garrisoned_units and game_state:
-            harvest_rate = config.DEFAULT_HARVEST_RATE * 0.25  # Reduced farm food harvest yield
+            harvest_rate = config.DEFAULT_HARVEST_RATE * 0.25
             food_collected = len(self.garrisoned_units) * harvest_rate * dt
             game_state.add_resources(self.owner_id, "food", food_collected)
 
-        if effective_attack > 0 and game_state:
+        # Town Hall (Forum) multi-projectile attack logic
+        if self.building_type == "TownHall" and game_state:
+            num_projectiles = len(self.garrisoned_units)
+            upgrades = game_state.save_manager.data.get("upgrades", {}) if hasattr(game_state, 'save_manager') and game_state.save_manager else {}
+            if upgrades.get("forum_passive_arrow"):
+                num_projectiles += 1
+
+            if num_projectiles > 0 and self.attack_range > 0:
+                self.attack_cooldown -= dt
+                if self.attack_cooldown <= 0:
+                    target = self.find_target(game_state)
+                    if target:
+                        from src.entities.projectile import Projectile
+                        r = self.radius * 0.75
+                        # 4 corners offset vectors
+                        corners = [
+                            (-r, -r),  # Top-left corner
+                            (r, -r),   # Top-right corner
+                            (r, r),    # Bottom-right corner
+                            (-r, r)    # Bottom-left corner
+                        ]
+                        base_damage = 12  # Each worker adds 1 projectile with fixed damage 12
+
+                        for i in range(num_projectiles):
+                            corner_offset = corners[i % 4]
+                            spawn_x = self.x + corner_offset[0]
+                            spawn_y = self.y + corner_offset[1]
+                            phase_delay = i * 0.08  # Slight phase offset delay between arrows
+
+                            proj = Projectile(spawn_x, spawn_y, target, base_damage, speed=500, owner_id=self.owner_id, projectile_type="arrow", delay=phase_delay)
+                            if hasattr(game_state, 'projectiles'):
+                                game_state.projectiles.append(proj)
+                            else:
+                                target.take_damage(base_damage)
+                        self.attack_cooldown = 1.0
+
+        elif self.attack_power > 0 and game_state and self.building_type != "TownHall":
             self.attack_cooldown -= dt
             if self.attack_cooldown <= 0:
-                # Trouver un ennemi à portée
                 target = self.find_target(game_state)
                 if target:
                     from src.entities.projectile import Projectile
@@ -190,12 +217,12 @@ class Building(BaseEntity):
                     if self.building_type in ["SpineCrawler", "Hive"]:
                         p_type = "spine"
 
-                    proj = Projectile(self.x, self.y, target, effective_attack, speed=500, owner_id=self.owner_id, projectile_type=p_type)
+                    proj = Projectile(self.x, self.y, target, self.attack_power, speed=500, owner_id=self.owner_id, projectile_type=p_type)
                     if hasattr(game_state, 'projectiles'):
                         game_state.projectiles.append(proj)
                     else:
-                        target.take_damage(effective_attack)
-                    self.attack_cooldown = 1.0  # Attaque chaque seconde
+                        target.take_damage(self.attack_power)
+                    self.attack_cooldown = 1.0
 
         return produced_unit
 
