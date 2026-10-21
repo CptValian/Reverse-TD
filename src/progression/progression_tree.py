@@ -222,8 +222,8 @@ class ProgressionUI:
             # --- TIER 5 (POST AGE II UNLOCKS & HERO REQUIREMENT) ---
             {
                 "key": "hero_unlocked",
-                "name": "Paladin Héros",
-                "desc": "Débloque le Héros (Niveau & Kills)",
+                "name": "Hero Knight",
+                "desc": "Unlocks Hero Knight (Leveling & Kills)",
                 "cost": 35,
                 "parents": ["ageing_up_2"],
                 "pos": (580, 830)
@@ -264,16 +264,16 @@ class ProgressionUI:
             # --- TIER 6 (HERO UPGRADES & ADVANCED BUILDINGS) ---
             {
                 "key": "hero_archer",
-                "name": "Héros Archer",
-                "desc": "Le Héros attaque à distance",
+                "name": "Hero Archer",
+                "desc": "Hero attacks at range with longbow",
                 "cost": 30,
                 "parents": ["hero_unlocked"],
                 "pos": (460, 1010)
             },
             {
                 "key": "hero_range_boost",
-                "name": "Portée Héroïque",
-                "desc": "+25% portée d'attaque au Héros",
+                "name": "Heroic Range",
+                "desc": "+25% attack range for Hero",
                 "cost": 30,
                 "parents": ["hero_archer"],
                 "pos": (460, 1180)
@@ -370,7 +370,7 @@ class ProgressionUI:
             },
             {
                 "key": "sanctuary_boost",
-                "name": "Sanctuaire Avancé",
+                "name": "Advanced Sanctuary",
                 "desc": "Range +40% & Heals +4 HP/s",
                 "cost": 30,
                 "parents": ["sanctuary_unlocked"],
@@ -378,24 +378,24 @@ class ProgressionUI:
             },
             {
                 "key": "house_pop_1",
-                "name": "Maison Extensibles I",
-                "desc": "+1 population par Maison",
+                "name": "Expanded Cottages I",
+                "desc": "+1 population per House",
                 "cost": 20,
                 "parents": ["house_unlocked"],
                 "pos": (2180, 310)
             },
             {
                 "key": "house_pop_2",
-                "name": "Maison Extensibles II",
-                "desc": "+1 population par Maison",
+                "name": "Expanded Cottages II",
+                "desc": "+1 population per House",
                 "cost": 25,
                 "parents": ["house_pop_1"],
                 "pos": (2180, 500)
             },
             {
                 "key": "house_pop_3",
-                "name": "Maison Extensibles III",
-                "desc": "+1 population par Maison",
+                "name": "Expanded Cottages III",
+                "desc": "+1 population per House",
                 "cost": 30,
                 "parents": ["house_pop_2"],
                 "pos": (2180, 690)
@@ -540,7 +540,7 @@ class ProgressionUI:
             pygame.draw.rect(surface, (70, 75, 85), card_rect, 1, border_radius=6)
 
             # Name & Level
-            txt_name = self.bold_font.render(f"{upg['name']}  [Niv. {lvl}]", True, config.COLOR_UI_TEXT)
+            txt_name = self.bold_font.render(f"{upg['name']}  [Lvl {lvl}]", True, config.COLOR_UI_TEXT)
             surface.blit(txt_name, (x_left + 20, y + 8))
 
             # Stats line

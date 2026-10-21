@@ -19,7 +19,7 @@ def main():
         config.SCREEN_HEIGHT = info.current_h
 
     screen = pygame.display.set_mode((config.SCREEN_WIDTH, config.SCREEN_HEIGHT), pygame.DOUBLEBUF)
-    pygame.display.set_caption("RTS: Médiéval vs Alien Insecte")
+    pygame.display.set_caption("RTS: Medieval vs Alien Insect")
     clock = pygame.time.Clock()
 
     save_manager = SaveManager()
@@ -53,13 +53,7 @@ def main():
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     buttons = menu.draw_main_menu(screen, game_state.num_ais, game_state.ai_difficulty, game_state.map_type)
                     if buttons["start"].collidepoint(event.pos):
-                        game_state.start_new_game()
-                        # Positionner la caméra sur le spawn du joueur humanoïde
-                        player_base = next((b for b in game_state.buildings if b.owner_id == 0), None)
-                        if player_base:
-                            camera.x = player_base.x - config.SCREEN_WIDTH / 2
-                            camera.y = player_base.y - config.SCREEN_HEIGHT / 2
-                            camera.clamp()
+                        game_state.state = "GAME_SETUP"
 
                     elif buttons["skill_tree"].collidepoint(event.pos):
                         game_state.state = "SKILL_TREE"
@@ -70,28 +64,43 @@ def main():
                     elif buttons.get("options") and buttons["options"].collidepoint(event.pos):
                         game_state.state = "OPTIONS"
 
+                    elif buttons.get("iacia") and buttons["iacia"].collidepoint(event.pos):
+                        game_state.state = "IACIA_SETUP"
+
+                    elif buttons["quit"].collidepoint(event.pos):
+                        running = False
+
+            elif game_state.state == "GAME_SETUP":
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    buttons = menu.draw_game_setup_menu(screen, game_state.num_ais, game_state.ai_difficulty, game_state.map_type)
+                    if buttons.get("start_match") and buttons["start_match"].collidepoint(event.pos):
+                        game_state.start_new_game()
+                        # Position camera on human player spawn
+                        player_base = next((b for b in game_state.buildings if b.owner_id == 0), None)
+                        if player_base:
+                            camera.x = player_base.x - config.SCREEN_WIDTH / 2
+                            camera.y = player_base.y - config.SCREEN_HEIGHT / 2
+                            camera.clamp()
+
+                    elif buttons.get("back") and buttons["back"].collidepoint(event.pos):
+                        game_state.state = "MENU"
+
                     elif buttons.get("ai_minus") and buttons["ai_minus"].collidepoint(event.pos):
                         game_state.num_ais = max(1, game_state.num_ais - 1)
 
                     elif buttons.get("ai_plus") and buttons["ai_plus"].collidepoint(event.pos):
-                        game_state.num_ais = min(4, game_state.num_ais + 1)
+                        game_state.num_ais = min(7, game_state.num_ais + 1)
 
                     elif (buttons.get("diff_minus") and buttons["diff_minus"].collidepoint(event.pos)) or (buttons.get("difficulty") and buttons["difficulty"].collidepoint(event.pos) and event.pos[0] < buttons["difficulty"].centerx):
                         game_state.ai_difficulty = max(1, game_state.ai_difficulty - 1)
 
                     elif (buttons.get("diff_plus") and buttons["diff_plus"].collidepoint(event.pos)) or (buttons.get("difficulty") and buttons["difficulty"].collidepoint(event.pos) and event.pos[0] >= buttons["difficulty"].centerx):
-                        game_state.ai_difficulty = min(15, game_state.ai_difficulty + 1)
-
-                    elif buttons.get("iacia") and buttons["iacia"].collidepoint(event.pos):
-                        game_state.state = "IACIA_SETUP"
+                        game_state.ai_difficulty = min(18, game_state.ai_difficulty + 1)
 
                     elif buttons.get("map_type") and buttons["map_type"].collidepoint(event.pos):
                         m_types = [1, 2, 3, 4, 5]
                         curr_m_idx = m_types.index(game_state.map_type) if game_state.map_type in m_types else 0
                         game_state.map_type = m_types[(curr_m_idx + 1) % len(m_types)]
-
-                    elif buttons["quit"].collidepoint(event.pos):
-                        running = False
 
             elif game_state.state == "IACIA_SETUP":
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -107,46 +116,18 @@ def main():
                         curr_m = game_state.iacia_config.get("map_type", 1)
                         game_state.iacia_config["map_type"] = (curr_m % 5) + 1
 
-                    # Presets
-                    for p_name in ["3v5", "3v2v2", "1v1v1v1v1v1v1v1", "4v4", "2v2v2v2"]:
-                        if buttons.get(f"preset_{p_name}") and buttons[f"preset_{p_name}"].collidepoint(event.pos):
-                            game_state.iacia_config["preset_name"] = p_name
-                            if p_name == "3v5":
-                                game_state.iacia_config["ai_players"] = [
-                                    {"id": 1, "team": 1, "difficulty": 5, "faction": config.FACTION_HUMAN},
-                                    {"id": 2, "team": 1, "difficulty": 5, "faction": config.FACTION_HUMAN},
-                                    {"id": 3, "team": 1, "difficulty": 5, "faction": config.FACTION_HUMAN},
-                                    {"id": 4, "team": 2, "difficulty": 5, "faction": config.FACTION_ALIEN},
-                                    {"id": 5, "team": 2, "difficulty": 5, "faction": config.FACTION_ALIEN},
-                                    {"id": 6, "team": 2, "difficulty": 5, "faction": config.FACTION_ALIEN},
-                                    {"id": 7, "team": 2, "difficulty": 5, "faction": config.FACTION_ALIEN},
-                                    {"id": 8, "team": 2, "difficulty": 5, "faction": config.FACTION_ALIEN},
-                                ]
-                            elif p_name == "3v2v2":
-                                game_state.iacia_config["ai_players"] = [
-                                    {"id": 1, "team": 1, "difficulty": 5, "faction": config.FACTION_HUMAN},
-                                    {"id": 2, "team": 1, "difficulty": 5, "faction": config.FACTION_HUMAN},
-                                    {"id": 3, "team": 1, "difficulty": 5, "faction": config.FACTION_HUMAN},
-                                    {"id": 4, "team": 2, "difficulty": 5, "faction": config.FACTION_ALIEN},
-                                    {"id": 5, "team": 2, "difficulty": 5, "faction": config.FACTION_ALIEN},
-                                    {"id": 6, "team": 3, "difficulty": 5, "faction": config.FACTION_ALIEN},
-                                    {"id": 7, "team": 3, "difficulty": 5, "faction": config.FACTION_ALIEN},
-                                ]
-                            elif p_name == "1v1v1v1v1v1v1v1":
-                                game_state.iacia_config["ai_players"] = [
-                                    {"id": i + 1, "team": i + 1, "difficulty": 5, "faction": config.FACTION_HUMAN if i % 2 == 0 else config.FACTION_ALIEN}
-                                    for i in range(8)
-                                ]
-                            elif p_name == "4v4":
-                                game_state.iacia_config["ai_players"] = [
-                                    {"id": i + 1, "team": 1 if i < 4 else 2, "difficulty": 5, "faction": config.FACTION_HUMAN if i < 4 else config.FACTION_ALIEN}
-                                    for i in range(8)
-                                ]
-                            elif p_name == "2v2v2v2":
-                                game_state.iacia_config["ai_players"] = [
-                                    {"id": i + 1, "team": (i // 2) + 1, "difficulty": 5, "faction": config.FACTION_HUMAN if (i // 2) % 2 == 0 else config.FACTION_ALIEN}
-                                    for i in range(8)
-                                ]
+                    elif buttons.get("add_ai") and buttons["add_ai"].collidepoint(event.pos):
+                        ai_list = game_state.iacia_config.get("ai_players", [])
+                        if len(ai_list) < 8:
+                            new_id = len(ai_list) + 1
+                            new_team = (len(ai_list) % 4) + 1
+                            new_faction = config.FACTION_HUMAN if new_id % 2 == 1 else config.FACTION_ALIEN
+                            ai_list.append({"id": new_id, "team": new_team, "difficulty": 5, "faction": new_faction})
+
+                    elif buttons.get("remove_ai") and buttons["remove_ai"].collidepoint(event.pos):
+                        ai_list = game_state.iacia_config.get("ai_players", [])
+                        if len(ai_list) > 2:
+                            ai_list.pop()
 
                     # Row controls
                     for p in game_state.iacia_config.get("ai_players", []):
@@ -249,15 +230,30 @@ def main():
                 if event.type == pygame.MOUSEBUTTONDOWN or event.type == pygame.KEYDOWN:
                     game_state.state = "MENU"
 
+            elif game_state.state == "PAUSED":
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    game_state.state = "PLAYING"
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    buttons = menu.draw_pause_menu(screen)
+                    if buttons.get("resume") and buttons["resume"].collidepoint(event.pos):
+                        game_state.state = "PLAYING"
+                    elif buttons.get("main_menu") and buttons["main_menu"].collidepoint(event.pos):
+                        game_state.state = "MENU"
+                    elif buttons.get("quit_desktop") and buttons["quit_desktop"].collidepoint(event.pos):
+                        running = False
+
             elif game_state.state == "PLAYING":
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_a:
                         # Activer le mode attente "A + Click"
                         is_attack_move_pending = True
                     elif event.key == pygame.K_ESCAPE:
-                        placement_building_type = None
-                        wall_start_node = None
-                        is_attack_move_pending = False
+                        if placement_building_type or wall_start_node or is_attack_move_pending:
+                            placement_building_type = None
+                            wall_start_node = None
+                            is_attack_move_pending = False
+                        else:
+                            game_state.state = "PAUSED"
 
                 # Zoom molette
                 elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -587,6 +583,9 @@ def main():
         if game_state.state == "MENU":
             menu.draw_main_menu(screen, game_state.num_ais, game_state.ai_difficulty, game_state.map_type)
 
+        elif game_state.state == "GAME_SETUP":
+            menu.draw_game_setup_menu(screen, game_state.num_ais, game_state.ai_difficulty, game_state.map_type)
+
         elif game_state.state == "IACIA_SETUP":
             menu.draw_iacia_menu(screen, game_state)
 
@@ -598,6 +597,10 @@ def main():
 
         elif game_state.state == "SKILL_TREE":
             progression_ui.draw(screen)
+
+        elif game_state.state == "PAUSED":
+            # Render pause menu overlay over game screen
+            menu.draw_pause_menu(screen)
 
         elif game_state.state == "PLAYING":
             # Déplacement caméra
@@ -700,12 +703,12 @@ def main():
             sb_earned = last_rewards.get(config.POINT_TYPE_FORGE, 0)
             py_earned = last_rewards.get(config.POINT_TYPE_ARCHITECTURE, 0)
 
-            res_str = f"Ressources permanentes obtenues:  LandShard: +{ls_earned}  |  SwarmerBlood: +{sb_earned}  |  Pykrite: +{py_earned}"
+            res_str = f"Permanent Resources Earned:  LandShard: +{ls_earned}  |  SwarmerBlood: +{sb_earned}  |  Pykrite: +{py_earned}"
             res_txt = menu.font.render(res_str, True, (255, 215, 0))
             screen.blit(res_txt, (config.SCREEN_WIDTH // 2 - res_txt.get_width() // 2, 380))
 
             pts = save_manager.get_points()
-            tot_str = f"Total permanent:  LandShard: {pts.get('LandShard', 0)}  |  SwarmerBlood: {pts.get('SwarmerBlood', 0)}  |  Pykrite: {pts.get('Pykrite', 0)}"
+            tot_str = f"Total Permanent:  LandShard: {pts.get('LandShard', 0)}  |  SwarmerBlood: {pts.get('SwarmerBlood', 0)}  |  Pykrite: {pts.get('Pykrite', 0)}"
             tot_txt = menu.small_font.render(tot_str, True, (200, 220, 240))
             screen.blit(tot_txt, (config.SCREEN_WIDTH // 2 - tot_txt.get_width() // 2, 420))
 
@@ -715,14 +718,14 @@ def main():
         elif game_state.state == "SPECTATOR_END":
             screen.fill((25, 30, 45))
             win_t = getattr(game_state, 'winning_team', None)
-            res_str = f"VICTOIRE DE L'ÉQUIPE {win_t} !" if win_t else "ÉGALITÉ PARFAITE !"
-            txt = menu.title_font.render("FIN DU MATCH IA c IA", True, (255, 215, 0))
+            res_str = f"VICTORY FOR TEAM {win_t}!" if win_t else "PERFECT DRAW!"
+            txt = menu.title_font.render("AI VS AI MATCH CONCLUDED", True, (255, 215, 0))
             screen.blit(txt, (config.SCREEN_WIDTH // 2 - txt.get_width() // 2, 280))
 
             res_txt = menu.subtitle_font.render(res_str, True, (100, 255, 180))
             screen.blit(res_txt, (config.SCREEN_WIDTH // 2 - res_txt.get_width() // 2, 380))
 
-            sub = menu.font.render("Cliquez ou appuyez sur une touche pour revenir au Menu.", True, (255, 255, 255))
+            sub = menu.font.render("Click or press any key to return to Menu.", True, (255, 255, 255))
             screen.blit(sub, (config.SCREEN_WIDTH // 2 - sub.get_width() // 2, 480))
 
         elif game_state.state == "DEFEAT":
@@ -735,12 +738,12 @@ def main():
             sb_earned = last_rewards.get(config.POINT_TYPE_FORGE, 0)
             py_earned = last_rewards.get(config.POINT_TYPE_ARCHITECTURE, 0)
 
-            res_str = f"Ressources permanentes obtenues:  LandShard: +{ls_earned}  |  SwarmerBlood: +{sb_earned}  |  Pykrite: +{py_earned}"
+            res_str = f"Permanent Resources Earned:  LandShard: +{ls_earned}  |  SwarmerBlood: +{sb_earned}  |  Pykrite: +{py_earned}"
             res_txt = menu.font.render(res_str, True, (255, 215, 0))
             screen.blit(res_txt, (config.SCREEN_WIDTH // 2 - res_txt.get_width() // 2, 380))
 
             pts = save_manager.get_points()
-            tot_str = f"Total permanent:  LandShard: {pts.get('LandShard', 0)}  |  SwarmerBlood: {pts.get('SwarmerBlood', 0)}  |  Pykrite: {pts.get('Pykrite', 0)}"
+            tot_str = f"Total Permanent:  LandShard: {pts.get('LandShard', 0)}  |  SwarmerBlood: {pts.get('SwarmerBlood', 0)}  |  Pykrite: {pts.get('Pykrite', 0)}"
             tot_txt = menu.small_font.render(tot_str, True, (200, 220, 240))
             screen.blit(tot_txt, (config.SCREEN_WIDTH // 2 - tot_txt.get_width() // 2, 420))
 

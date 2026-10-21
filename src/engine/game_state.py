@@ -144,8 +144,12 @@ class GameState:
             self.resources_player[ai_id] = {"gold": 0, "wood": 0, "food": 0, "biomass": 300}
             self.resources_gathered_player[ai_id] = dict(self.resources_player[ai_id])
 
+        player_factions = {0: config.FACTION_HUMAN}
+        for ai_id in range(1, self.num_ais + 1):
+            player_factions[ai_id] = config.FACTION_ALIEN
+
         map_gen = MapGenerator(config.MAP_WIDTH, config.MAP_HEIGHT)
-        map_data = map_gen.generate_map(num_players=self.num_ais + 1, map_type=self.map_type)
+        map_data = map_gen.generate_map(num_players=self.num_ais + 1, map_type=self.map_type, player_factions=player_factions)
 
         from src.ai.ai_tech import AI_DIFFICULTY_LEVELS
         ai_cfg = AI_DIFFICULTY_LEVELS.get(self.ai_difficulty, {})
@@ -242,8 +246,10 @@ class GameState:
                 self.resources_player[pid] = {"gold": 0, "wood": 0, "food": 0, "biomass": 300}
             self.resources_gathered_player[pid] = dict(self.resources_player[pid])
 
+        player_factions = {idx: p.get("faction", config.FACTION_ALIEN) for idx, p in enumerate(ai_players)}
+
         map_gen = MapGenerator(config.MAP_WIDTH, config.MAP_HEIGHT)
-        map_data = map_gen.generate_map(num_players=len(ai_players), map_type=m_type)
+        map_data = map_gen.generate_map(num_players=len(ai_players), map_type=m_type, player_factions=player_factions)
 
         for res_data in map_data["resources"]:
             self.resources.append(ResourceNode(res_data.type, res_data.x, res_data.y, res_data.amount))

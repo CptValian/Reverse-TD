@@ -13,7 +13,7 @@ class MapGenerator:
         self.width = width
         self.height = height
 
-    def generate_map(self, num_players=2, map_type=1):
+    def generate_map(self, num_players=2, map_type=1, player_factions=None):
         """Génère la carte selon le type de carte sélectionné:
            1: Carte standard (Équilibrée)
            2: Carte désavantageuse I (Ressources raréfiées, plus éloignées)
@@ -27,8 +27,10 @@ class MapGenerator:
 
         margin = 300
         if num_players == 2:
-            spawn_points.append({"id": 0, "faction": config.FACTION_HUMAN, "x": margin, "y": margin})
-            spawn_points.append({"id": 1, "faction": config.FACTION_ALIEN, "x": self.width - margin, "y": self.height - margin})
+            f0 = player_factions.get(0, config.FACTION_HUMAN) if player_factions else config.FACTION_HUMAN
+            f1 = player_factions.get(1, config.FACTION_ALIEN) if player_factions else config.FACTION_ALIEN
+            spawn_points.append({"id": 0, "faction": f0, "x": margin, "y": margin})
+            spawn_points.append({"id": 1, "faction": f1, "x": self.width - margin, "y": self.height - margin})
         else:
             angles = [i * (360 / num_players) for i in range(num_players)]
             center_x, center_y = self.width / 2, self.height / 2
@@ -37,7 +39,10 @@ class MapGenerator:
                 rad = math.radians(angles[i])
                 sx = center_x + radius * math.cos(rad)
                 sy = center_y + radius * math.sin(rad)
-                faction = config.FACTION_HUMAN if i == 0 else config.FACTION_ALIEN
+                if player_factions and i in player_factions:
+                    faction = player_factions[i]
+                else:
+                    faction = config.FACTION_HUMAN if i == 0 else config.FACTION_ALIEN
                 spawn_points.append({"id": i, "faction": faction, "x": sx, "y": sy})
 
         for sp in spawn_points:
