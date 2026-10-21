@@ -31,17 +31,18 @@ class HUD:
         scale_x = minimap_size / config.MAP_WIDTH
         scale_y = minimap_size / config.MAP_HEIGHT
 
+        from src.ui.render_utils import get_team_color
         for entity in game_state.units + game_state.buildings:
             if not entity.alive:
                 continue
             # Hide enemy entities on minimap if fog of war enabled and not visible
-            if entity.owner_id != 0 and game_state.is_fog_of_war_enabled():
+            if game_state.are_enemies(0, entity.owner_id) and game_state.is_fog_of_war_enabled():
                 if not game_state.is_point_visible(entity.x, entity.y, owner_id=0):
                     continue
 
             mx = minimap_rect.x + int(entity.x * scale_x)
             my = minimap_rect.y + int(entity.y * scale_y)
-            color = (0, 255, 0) if entity.owner_id == 0 else (255, 0, 0)
+            color = get_team_color(entity.owner_id, game_state)
             pygame.draw.circle(surface, color, (mx, my), 2)
 
         # Rectangle de vue caméra sur la mini-carte
