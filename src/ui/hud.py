@@ -237,8 +237,14 @@ class HUD:
                     buildings_to_build = ["Barracks"]
                     if upgrades.get("wall_unlocked"):
                         buildings_to_build.append("Wall")
-                    if upgrades.get("tower_unlocked"):
-                        buildings_to_build.append("Tower")
+                    if upgrades.get("watchtower_unlocked"):
+                        buildings_to_build.append("WatchTower")
+                    if upgrades.get("arrow_tower_unlocked") or upgrades.get("tower_unlocked"):
+                        buildings_to_build.append("ArrowTower")
+                    if upgrades.get("bank_unlocked"):
+                        buildings_to_build.append("Bank")
+                    if upgrades.get("sanctuary_unlocked"):
+                        buildings_to_build.append("Sanctuary")
                     if upgrades.get("wood_stockpile_unlocked"):
                         buildings_to_build.append("WoodStockpile")
                     if upgrades.get("gold_stockpile_unlocked"):

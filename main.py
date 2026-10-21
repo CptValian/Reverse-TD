@@ -77,7 +77,7 @@ def main():
                         game_state.ai_difficulty = max(1, game_state.ai_difficulty - 1)
 
                     elif (buttons.get("diff_plus") and buttons["diff_plus"].collidepoint(event.pos)) or (buttons.get("difficulty") and buttons["difficulty"].collidepoint(event.pos) and event.pos[0] >= buttons["difficulty"].centerx):
-                        game_state.ai_difficulty = min(12, game_state.ai_difficulty + 1)
+                        game_state.ai_difficulty = min(15, game_state.ai_difficulty + 1)
 
                     elif buttons.get("map_type") and buttons["map_type"].collidepoint(event.pos):
                         m_types = [1, 2, 3]
@@ -298,6 +298,13 @@ def main():
 
                                             # Automatically queue construction of all wall segments in sequence
                                             selected_workers = [u for u in game_state.units if u.selected and u.owner_id == 0 and u.is_worker]
+                                            if not selected_workers:
+                                                all_workers = [u for u in game_state.units if u.owner_id == 0 and u.is_worker and u.alive]
+                                                if all_workers and created_wall_segs:
+                                                    first_seg = created_wall_segs[0]
+                                                    closest_w = min(all_workers, key=lambda w: w.distance_to(first_seg))
+                                                    selected_workers = [closest_w]
+
                                             is_shift_held = bool(pygame.key.get_mods() & pygame.KMOD_SHIFT)
                                             for w in selected_workers:
                                                 if not is_shift_held:
@@ -418,8 +425,14 @@ def main():
                                         buildings_to_build = ["Barracks"]
                                         if upgrades.get("wall_unlocked"):
                                             buildings_to_build.append("Wall")
-                                        if upgrades.get("tower_unlocked"):
-                                            buildings_to_build.append("Tower")
+                                        if upgrades.get("watchtower_unlocked"):
+                                            buildings_to_build.append("WatchTower")
+                                        if upgrades.get("arrow_tower_unlocked") or upgrades.get("tower_unlocked"):
+                                            buildings_to_build.append("ArrowTower")
+                                        if upgrades.get("bank_unlocked"):
+                                            buildings_to_build.append("Bank")
+                                        if upgrades.get("sanctuary_unlocked"):
+                                            buildings_to_build.append("Sanctuary")
                                         if upgrades.get("wood_stockpile_unlocked"):
                                             buildings_to_build.append("WoodStockpile")
                                         if upgrades.get("gold_stockpile_unlocked"):
@@ -530,6 +543,8 @@ def main():
                 RenderUtils.draw_entity(screen, camera, building)
             for unit in game_state.units:
                 RenderUtils.draw_entity(screen, camera, unit)
+            for proj in game_state.projectiles:
+                RenderUtils.draw_entity(screen, camera, proj)
 
             # Dessiner le calque de brouillard de guerre si actif
             if game_state.is_fog_of_war_enabled():

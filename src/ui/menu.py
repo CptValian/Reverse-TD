@@ -208,14 +208,17 @@ class Menu:
             2: "Niveau 2: Revenu x1.1, vagues/100s. +5% HP, +5% Atk.",
             3: "Niveau 3: Revenu x1.2, vagues/85s. +10% HP, +10% Atk.",
             4: "Niveau 4: Revenu x1.3, vagues/70s. Débloque Spine Crawler défensifs. +15% HP/Atk.",
-            5: "Niveau 5 (Brouillard): Revenu x1.4, vagues/55s. Brouillard actif. +20% HP/Atk.",
+            5: "Niveau 5 (Biomasse Depot): Revenu x1.4, vagues/55s. Bâtit des Stockpiles de biomasse.",
             6: "Niveau 6 (Spitters): Revenu x1.5, vagues/45s. Débloque Spitters à distance. +25% HP/Atk.",
             7: "Niveau 7 (Raids Ouvriers): Revenu x1.6, vagues/35s. Raids ciblés sur paysans. +30% HP/Atk.",
             8: "Niveau 8 (Mucus Creep): Revenu x1.7, vagues/28s. Mucus autour des Ruches (+25% Vit/Atk sur Mucus).",
             9: "Niveau 9 (Flanquement): Revenu x1.85, vagues/22s. Attaques multi-angles et replis tactiques.",
             10: "Niveau 10 (Générateurs Biomasse): Revenu x2.0, vagues/18s. Bâtit des Générateurs de Biomasse. +40% HP, +50% Atk.",
             11: "Niveau 11 (Frenzy): Revenu x2.2, vagues/14s. Swarm Frenzy (+25% Vitesse). +45% HP, +60% Atk.",
-            12: "Niveau 12 (Moisson Suprême): Revenu x2.5, vagues/10s. Tuer un ennemi donne de la Biomasse. +50% HP, +70% Atk."
+            12: "Niveau 12 (Moisson Suprême): Revenu x2.5, vagues/10s. Tuer un ennemi donne de la Biomasse. +50% HP, +70% Atk.",
+            13: "Niveau 13 (Biomasse Stockpile Avancé): Revenu x2.8, vagues/8s. Armée Max: 110.",
+            14: "Niveau 14 (Reine Alien): Revenu x3.2, vagues/6s. Débloque la Reine (transforme victimes en Swarmers).",
+            15: "Niveau 15 (Seconde Ruche & Drones): Revenu x3.6, vagues/5s. Bâtit une 2nd Ruche & +2 Drones de départ."
         }
 
         y = ai_head_y + 35

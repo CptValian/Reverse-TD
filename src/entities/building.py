@@ -3,21 +3,26 @@ import config
 
 BUILDING_TYPES = {
     # Medieval
-    "TownHall": {"cost": {"wood": 250, "gold": 300}, "hp": 1000, "radius": 45, "build_time": 30, "trainable": ["Worker", "Scout"], "pop_bonus": 10, "attack_power": 0, "range": 220, "vision": 350},
+    "TownHall": {"cost": {"wood": 250, "gold": 300}, "hp": 1000, "radius": 45, "build_time": 30, "trainable": ["Worker", "Scout"], "pop_bonus": 10, "attack_power": 0, "range": 286, "vision": 350},
     "House": {"cost": {"wood": 60}, "hp": 250, "radius": 22, "build_time": 10, "trainable": [], "pop_bonus": 5, "vision": 200},
     "Barracks": {"cost": {"wood": 100, "gold": 50}, "hp": 500, "radius": 35, "build_time": 20, "trainable": ["Infantry", "Archer"], "vision": 250},
-    "Tower": {"cost": {"wood": 80, "gold": 40}, "hp": 400, "radius": 25, "build_time": 16, "attack_power": 15, "range": 200, "trainable": [], "vision": 550},
-    "Wall": {"cost": {"wood": 30}, "hp": 250, "radius": 18, "build_time": 8, "trainable": []},
+    "WatchTower": {"cost": {"wood": 60, "gold": 20}, "hp": 350, "radius": 25, "build_time": 12, "attack_power": 0, "range": 0, "trainable": [], "vision": 750},
+    "ArrowTower": {"cost": {"wood": 80, "gold": 40}, "hp": 400, "radius": 25, "build_time": 16, "attack_power": 15, "range": 260, "trainable": [], "vision": 300},
+    "Tower": {"cost": {"wood": 80, "gold": 40}, "hp": 400, "radius": 25, "build_time": 16, "attack_power": 15, "range": 260, "trainable": [], "vision": 300},
+    "Wall": {"cost": {"wood": 30}, "hp": 750, "radius": 18, "build_time": 8, "trainable": []},
     "WoodStockpile": {"cost": {"wood": 80}, "hp": 350, "radius": 25, "build_time": 12, "trainable": []},
     "GoldStockpile": {"cost": {"wood": 80, "gold": 20}, "hp": 350, "radius": 25, "build_time": 12, "trainable": []},
     "FoodStockpile": {"cost": {"wood": 80}, "hp": 350, "radius": 25, "build_time": 12, "trainable": []},
     "Farm": {"cost": {"wood": 100}, "hp": 300, "radius": 30, "build_time": 15, "trainable": []},
+    "Bank": {"cost": {"wood": 200, "gold": 250}, "hp": 450, "radius": 30, "build_time": 25, "trainable": []},
+    "Sanctuary": {"cost": {"wood": 150, "gold": 100}, "hp": 400, "radius": 30, "build_time": 20, "trainable": []},
 
     # Alien
     "Hive": {"cost": {"biomass": 400}, "hp": 1000, "radius": 45, "build_time": 30, "trainable": ["Drone"], "pop_bonus": 10},
-    "SpawningPool": {"cost": {"biomass": 150}, "hp": 500, "radius": 35, "build_time": 20, "trainable": ["Swarmer", "Spitter"]},
-    "SpineCrawler": {"cost": {"biomass": 100}, "hp": 400, "radius": 25, "build_time": 16, "attack_power": 18, "range": 180, "trainable": []},
-    "BiomassGenerator": {"cost": {"biomass": 300}, "hp": 350, "radius": 30, "build_time": 25, "trainable": []}
+    "SpawningPool": {"cost": {"biomass": 150}, "hp": 500, "radius": 35, "build_time": 20, "trainable": ["Swarmer", "Spitter", "Queen"]},
+    "SpineCrawler": {"cost": {"biomass": 100}, "hp": 400, "radius": 25, "build_time": 16, "attack_power": 18, "range": 234, "trainable": []},
+    "BiomassGenerator": {"cost": {"biomass": 300}, "hp": 350, "radius": 30, "build_time": 25, "trainable": []},
+    "BiomassStockpile": {"cost": {"biomass": 80}, "hp": 350, "radius": 25, "build_time": 12, "trainable": []}
 }
 
 class Building(BaseEntity):
@@ -49,6 +54,7 @@ class Building(BaseEntity):
 
         # Construction
         self.is_constructed = is_constructed
+        self.is_being_built = is_constructed
         self.total_build_time = data.get("build_time", 10)
         self.build_timer = 0.0 if is_constructed else self.total_build_time
         if not is_constructed:
@@ -103,12 +109,22 @@ class Building(BaseEntity):
         effective_damage = max(1, amount - self.armor)
         super().take_damage(effective_damage)
 
-    def queue_unit(self, unit_type, train_time=None):
+    def queue_unit(self, unit_type, train_time=None, game_state=None):
         if not self.is_constructed:
             return False
         if train_time is None:
             from src.entities.unit import UNIT_TYPES
             train_time = UNIT_TYPES.get(unit_type, {}).get("train_time", 5)
+
+        if game_state and hasattr(game_state, 'save_manager'):
+            upgrades = game_state.save_manager.data.get("upgrades", {})
+            if unit_type == "Worker" and upgrades.get("worker_spawn_speed"):
+                train_time *= 0.90
+            elif unit_type in ["Infantry", "Swarmer"] and upgrades.get("melee_spawn_speed"):
+                train_time *= 0.90
+            elif unit_type in ["Archer", "Spitter"] and upgrades.get("archer_spawn_speed"):
+                train_time *= 0.90
+
         self.production_queue.append({"unit_type": unit_type, "time_remaining": float(train_time), "total_time": float(train_time)})
         return True
 
@@ -116,9 +132,24 @@ class Building(BaseEntity):
         if not self.alive:
             return None
 
-        # Gestion de la construction du bâtiment (nécessite des ouvriers, pas de construction automatique)
+        # Gestion de la construction du bâtiment
         if not self.is_constructed:
+            if getattr(self, 'is_being_built', False):
+                self.build_progress(dt, speed_mult=1.0)
             return None
+
+        # Bank passive gold generation
+        if self.building_type == "Bank" and game_state:
+            game_state.add_resources(self.owner_id, "gold", 3.0 * dt)
+
+        # Sanctuary troop healing (8 HP/sec to 1 nearby damaged friendly unit)
+        if self.building_type == "Sanctuary" and game_state:
+            heal_range = 150
+            for u in game_state.units:
+                if u.alive and u.owner_id == self.owner_id and u.hp < u.max_hp:
+                    if self.distance_to(u) <= heal_range:
+                        u.hp = min(u.max_hp, u.hp + 8.0 * dt)
+                        break
 
         # Mettre à jour la file de production
         produced_unit = None
@@ -149,7 +180,16 @@ class Building(BaseEntity):
                 # Trouver un ennemi à portée
                 target = self.find_target(game_state)
                 if target:
-                    target.take_damage(effective_attack)
+                    from src.entities.projectile import Projectile
+                    p_type = "arrow"
+                    if self.building_type in ["SpineCrawler", "Hive"]:
+                        p_type = "spine"
+
+                    proj = Projectile(self.x, self.y, target, effective_attack, speed=500, owner_id=self.owner_id, projectile_type=p_type)
+                    if hasattr(game_state, 'projectiles'):
+                        game_state.projectiles.append(proj)
+                    else:
+                        target.take_damage(effective_attack)
                     self.attack_cooldown = 1.0  # Attaque chaque seconde
 
         return produced_unit
