@@ -57,10 +57,11 @@ class Menu:
         gap = 14
 
         start_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y, btn_width, btn_height)
-        skill_tree_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y + btn_height + gap, btn_width, btn_height)
-        ai_info_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y + (btn_height + gap) * 2, btn_width, btn_height)
-        options_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y + (btn_height + gap) * 3, btn_width, btn_height)
-        quit_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y + (btn_height + gap) * 4, btn_width, btn_height)
+        iacia_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y + btn_height + gap, btn_width, btn_height)
+        skill_tree_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y + (btn_height + gap) * 2, btn_width, btn_height)
+        ai_info_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y + (btn_height + gap) * 3, btn_width, btn_height)
+        options_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y + (btn_height + gap) * 4, btn_width, btn_height)
+        quit_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y + (btn_height + gap) * 5, btn_width, btn_height)
 
         def draw_button(rect, text, is_primary=False):
             mouse_p = pygame.mouse.get_pos()
@@ -75,6 +76,7 @@ class Menu:
             surface.blit(t_surf, (rect.x + rect.width // 2 - t_surf.get_width() // 2, rect.y + rect.height // 2 - t_surf.get_height() // 2))
 
         draw_button(start_btn, "LAUNCH GAME", is_primary=True)
+        draw_button(iacia_btn, "MODE SPECTATEUR (IA c IA)")
         draw_button(skill_tree_btn, "SKILL TREE & UPGRADES")
         draw_button(ai_info_btn, "AI TECHS & INFO")
         draw_button(options_btn, "OPTIONS")
@@ -120,9 +122,11 @@ class Menu:
         surface.blit(map_label, (setup_rect.x + 30, setup_rect.y + 158))
 
         map_names = {
-            1: "Standard (Equilibrée)",
-            2: "Désavantageuse (Ressources raréfiées)",
-            3: "Très Désavantageuse (Ressources éloignées)"
+            1: "Standard (Équilibrée)",
+            2: "Désavantage I (Ressources raréfiées)",
+            3: "Désavantage II (Ressources très éloignées)",
+            4: "Avantage I (Ressources abondantes)",
+            5: "Avantage II (Ressources très riches & proches)"
         }
         map_btn = pygame.Rect(setup_rect.x + 260, setup_rect.y + 150, 520, 38)
         draw_button(map_btn, f"{map_names.get(selected_map_type, 'Standard')}")
@@ -133,6 +137,7 @@ class Menu:
 
         return {
             "start": start_btn,
+            "iacia": iacia_btn,
             "skill_tree": skill_tree_btn,
             "ai_info": ai_info_btn,
             "options": options_btn,
@@ -195,6 +200,142 @@ class Menu:
             "back": back_btn,
             "fog_checkbox": cb_rect
         }
+
+    def draw_iacia_menu(self, surface, game_state):
+        surface.fill((15, 18, 26))
+
+        # Header Title
+        header_rect = pygame.Rect(0, 0, self.screen_width, 80)
+        pygame.draw.rect(surface, (22, 27, 38), header_rect)
+        pygame.draw.line(surface, config.COLOR_UI_ACCENT, (0, 80), (self.screen_width, 80), 2)
+
+        t_title = self.title_font.render("CONFIGURATION DU MODE IA CONTRE IA (SPECTATEUR)", True, (255, 215, 0))
+        surface.blit(t_title, (self.screen_width // 2 - t_title.get_width() // 2, 12))
+
+        buttons = {}
+
+        # Presets Buttons Bar
+        preset_y = 100
+        preset_w = 140
+        preset_h = 36
+        presets = ["3v5", "3v2v2", "1v1v1v1v1v1v1v1", "4v4", "2v2v2v2"]
+
+        p_start_x = self.screen_width // 2 - ((preset_w + 10) * len(presets)) // 2
+        for idx, p_name in enumerate(presets):
+            p_rect = pygame.Rect(p_start_x + idx * (preset_w + 10), preset_y, preset_w, preset_h)
+            is_active = (game_state.iacia_config.get("preset_name") == p_name)
+            bg_col = (50, 80, 120) if is_active else (35, 42, 58)
+            border_col = (255, 215, 0) if is_active else (80, 100, 130)
+
+            pygame.draw.rect(surface, bg_col, p_rect, border_radius=6)
+            pygame.draw.rect(surface, border_col, p_rect, 2, border_radius=6)
+
+            t_p = self.small_font.render(p_name, True, (255, 255, 255) if is_active else (180, 190, 200))
+            surface.blit(t_p, (p_rect.x + p_rect.width // 2 - t_p.get_width() // 2, p_rect.y + 8))
+            buttons[f"preset_{p_name}"] = p_rect
+
+        # Map Selection Cycle
+        m_type = game_state.iacia_config.get("map_type", 1)
+        map_names = {
+            1: "Standard (Équilibrée)",
+            2: "Désavantage I (Ressources raréfiées)",
+            3: "Désavantage II (Ressources très éloignées)",
+            4: "Avantage I (Ressources abondantes)",
+            5: "Avantage II (Ressources très riches & proches)"
+        }
+        map_btn = pygame.Rect(self.screen_width // 2 - 250, 150, 500, 38)
+        mouse_p = pygame.mouse.get_pos()
+        hovered = map_btn.collidepoint(mouse_p)
+        pygame.draw.rect(surface, (45, 55, 75) if hovered else (32, 40, 56), map_btn, border_radius=6)
+        pygame.draw.rect(surface, (255, 215, 0) if hovered else config.COLOR_UI_ACCENT, map_btn, 2, border_radius=6)
+        t_m = self.font.render(f"Carte: {map_names.get(m_type, 'Standard')}", True, (255, 255, 255))
+        surface.blit(t_m, (map_btn.x + map_btn.width // 2 - t_m.get_width() // 2, map_btn.y + 6))
+        buttons["map_type"] = map_btn
+
+        # AI Table Container
+        tbl_w = 1100
+        tbl_h = 520
+        tbl_rect = pygame.Rect((self.screen_width - tbl_w) // 2, 200, tbl_w, tbl_h)
+        pygame.draw.rect(surface, (22, 28, 40), tbl_rect, border_radius=10)
+        pygame.draw.rect(surface, (60, 75, 100), tbl_rect, 2, border_radius=10)
+
+        # Header row
+        pygame.draw.rect(surface, (30, 38, 54), (tbl_rect.x, tbl_rect.y, tbl_w, 40), border_top_left_radius=10, border_top_right_radius=10)
+        t_h1 = self.bold_font = pygame.font.SysFont("Segoe UI", 16, bold=True)
+        surface.blit(t_h1.render("Joueur IA", True, config.COLOR_UI_ACCENT), (tbl_rect.x + 30, tbl_rect.y + 10))
+        surface.blit(t_h1.render("Équipe", True, config.COLOR_UI_ACCENT), (tbl_rect.x + 200, tbl_rect.y + 10))
+        surface.blit(t_h1.render("Faction", True, config.COLOR_UI_ACCENT), (tbl_rect.x + 420, tbl_rect.y + 10))
+        surface.blit(t_h1.render("Niveau IA (1 à 18)", True, config.COLOR_UI_ACCENT), (tbl_rect.x + 680, tbl_rect.y + 10))
+
+        ai_list = game_state.iacia_config.get("ai_players", [])
+        row_y = tbl_rect.y + 48
+
+        for idx, p in enumerate(ai_list):
+            pid = p["id"]
+            # Row background
+            r_bg = (28, 35, 50) if idx % 2 == 0 else (24, 30, 42)
+            r_rect = pygame.Rect(tbl_rect.x + 10, row_y, tbl_w - 20, 52)
+            pygame.draw.rect(surface, r_bg, r_rect, border_radius=6)
+
+            # Player ID label
+            t_id = self.font.render(f"IA #{pid}", True, (255, 255, 255))
+            surface.blit(t_id, (r_rect.x + 20, row_y + 12))
+
+            # Team Selector (- and +)
+            tm_minus = pygame.Rect(r_rect.x + 180, row_y + 8, 32, 34)
+            tm_plus = pygame.Rect(r_rect.x + 280, row_y + 8, 32, 34)
+            pygame.draw.rect(surface, (45, 55, 75), tm_minus, border_radius=4)
+            pygame.draw.rect(surface, (45, 55, 75), tm_plus, border_radius=4)
+            surface.blit(self.font.render("-", True, (255, 255, 255)), (tm_minus.x + 10, tm_minus.y + 4))
+            surface.blit(self.font.render("+", True, (255, 255, 255)), (tm_plus.x + 8, tm_plus.y + 4))
+
+            t_tm = self.font.render(f"Équipe {p['team']}", True, (255, 215, 0))
+            surface.blit(t_tm, (r_rect.x + 218, row_y + 12))
+
+            buttons[f"team_minus_{pid}"] = tm_minus
+            buttons[f"team_plus_{pid}"] = tm_plus
+
+            # Faction Toggle Button
+            fac_btn = pygame.Rect(r_rect.x + 400, row_y + 8, 160, 34)
+            f_label = "Médiéval" if p.get("faction") == config.FACTION_HUMAN else "Alien Insecte"
+            f_col = (30, 136, 229) if p.get("faction") == config.FACTION_HUMAN else (216, 27, 96)
+            pygame.draw.rect(surface, f_col, fac_btn, border_radius=4)
+            t_fac = self.small_font.render(f_label, True, (255, 255, 255))
+            surface.blit(t_fac, (fac_btn.x + fac_btn.width // 2 - t_fac.get_width() // 2, fac_btn.y + 8))
+            buttons[f"faction_{pid}"] = fac_btn
+
+            # Difficulty Selector (- and +)
+            diff_minus = pygame.Rect(r_rect.x + 660, row_y + 8, 32, 34)
+            diff_plus = pygame.Rect(r_rect.x + 820, row_y + 8, 32, 34)
+            pygame.draw.rect(surface, (45, 55, 75), diff_minus, border_radius=4)
+            pygame.draw.rect(surface, (45, 55, 75), diff_plus, border_radius=4)
+            surface.blit(self.font.render("-", True, (255, 255, 255)), (diff_minus.x + 10, diff_minus.y + 4))
+            surface.blit(self.font.render("+", True, (255, 255, 255)), (diff_plus.x + 8, diff_plus.y + 4))
+
+            t_df = self.font.render(f"Niveau {p['difficulty']}", True, (255, 215, 0))
+            surface.blit(t_df, (r_rect.x + 705, row_y + 12))
+
+            buttons[f"diff_minus_{pid}"] = diff_minus
+            buttons[f"diff_plus_{pid}"] = diff_plus
+
+            row_y += 58
+
+        # Start Spectate & Back Buttons
+        launch_btn = pygame.Rect(self.screen_width // 2 - 260, self.screen_height - 90, 240, 50)
+        pygame.draw.rect(surface, (40, 120, 60), launch_btn, border_radius=8)
+        pygame.draw.rect(surface, (0, 255, 128), launch_btn, 2, border_radius=8)
+        t_l = self.btn_font.render("LANCER MATCH", True, (255, 255, 255))
+        surface.blit(t_l, (launch_btn.x + launch_btn.width // 2 - t_l.get_width() // 2, launch_btn.y + 10))
+        buttons["launch"] = launch_btn
+
+        back_btn = pygame.Rect(self.screen_width // 2 + 20, self.screen_height - 90, 240, 50)
+        pygame.draw.rect(surface, config.COLOR_UI_PANEL, back_btn, border_radius=8)
+        pygame.draw.rect(surface, config.COLOR_UI_ACCENT, back_btn, 2, border_radius=8)
+        t_b = self.btn_font.render("RETOUR AU MENU", True, config.COLOR_UI_TEXT)
+        surface.blit(t_b, (back_btn.x + back_btn.width // 2 - t_b.get_width() // 2, back_btn.y + 10))
+        buttons["back"] = back_btn
+
+        return buttons
 
     def draw_ai_info_screen(self, surface, scroll_y=0):
         self.ai_info_scroll_y = scroll_y

@@ -388,14 +388,18 @@ class RenderUtils:
         if faction == config.FACTION_HUMAN:
             # --- MEDIEVAL HUMANS ---
             if u_type == "Worker":
-                # Medieval Peasant Worker (Blue-grey tunic, Straw Hat, Hoe)
-                pygame.draw.circle(surface, (40, 120, 180), (sx, sy), radius)
-                pygame.draw.circle(surface, (240, 200, 110), (sx, sy), radius - 2)
-                pygame.draw.circle(surface, (190, 140, 70), (sx, sy), radius - 6)
-                hx = sx + int(math.cos(facing) * (radius + 4))
-                hy = sy + int(math.sin(facing) * (radius + 4))
+                # Medieval Peasant Worker (Human body, Blue tunic, Peasant straw hat, tool)
+                # Tunic Body
+                pygame.draw.circle(surface, (30, 100, 170), (sx, sy), radius)
+                # Peasant Straw Hat (Wide brim and cone top)
+                pygame.draw.circle(surface, (225, 180, 80), (sx, sy), radius - 2)
+                pygame.draw.circle(surface, (245, 205, 110), (sx, sy), max(2, radius - 6))
+
+                # Tool / Hoe in hand
+                hx = sx + int(math.cos(facing) * (radius + 5))
+                hy = sy + int(math.sin(facing) * (radius + 5))
                 pygame.draw.line(surface, (110, 75, 35), (sx, sy), (hx, hy), 3)
-                pygame.draw.circle(surface, (200, 200, 210), (hx, hy), 3)
+                pygame.draw.circle(surface, (180, 185, 195), (hx, hy), 3)
 
             elif u_type == "Scout":
                 # Medieval Scout (Bright Cyan/Turquoise Tunic, Feathered Cap)
@@ -408,27 +412,56 @@ class RenderUtils:
                 pygame.draw.line(surface, (255, 215, 0), (sx, sy), (sg_x, sg_y), 3)
 
             elif u_type == "Infantry":
-                # Medieval Knight Infantry (Bright Royal Blue Tunic, Steel Helmet, Sword)
+                # Medieval Spearman Infantry (Human soldier with helmet, tunic, spear with thrust animation)
                 pygame.draw.circle(surface, (20, 100, 230), (sx, sy), radius)
-                pygame.draw.circle(surface, (210, 220, 235), (sx, sy), radius - 3)
-                pygame.draw.line(surface, (40, 40, 50), (sx - radius + 4, sy), (sx + radius - 4, sy), 2)
+                pygame.draw.circle(surface, (190, 200, 215), (sx, sy), radius - 3)
 
-                sw_x = sx + int(math.cos(facing) * (radius + 8))
-                sw_y = sy + int(math.sin(facing) * (radius + 8))
-                pygame.draw.line(surface, (250, 250, 255), (sx, sy), (sw_x, sw_y), 3)
-                gx = sx + int(math.cos(facing) * radius)
-                gy = sy + int(math.sin(facing) * radius)
-                pygame.draw.circle(surface, (255, 215, 0), (gx, gy), 3)
+                # Dynamic spear thrusting animation offset when attacking
+                thrust = 0
+                if unit.is_attacking_anim > 0:
+                    thrust = math.sin((0.3 - unit.is_attacking_anim) / 0.3 * math.pi) * 12
+
+                spear_len = radius + 12 + thrust
+                sp_x = sx + int(math.cos(facing) * spear_len)
+                sp_y = sy + int(math.sin(facing) * spear_len)
+
+                # Wooden shaft
+                pygame.draw.line(surface, (120, 80, 40), (sx, sy), (sp_x, sp_y), 3)
+                # Sharp iron spearhead tip
+                tip_x = sp_x + int(math.cos(facing) * 5)
+                tip_y = sp_y + int(math.sin(facing) * 5)
+                pygame.draw.line(surface, (240, 245, 255), (sp_x, sp_y), (tip_x, tip_y), 4)
 
             elif u_type == "Archer":
-                # Medieval Archer (Forest Green Hood, Longbow)
+                # Medieval Archer (Human carrying longbow with dynamic draw/release bow string animation)
                 pygame.draw.circle(surface, (30, 160, 60), (sx, sy), radius)
-                pygame.draw.circle(surface, (20, 100, 40), (sx, sy), radius - 4)
-                pygame.draw.line(surface, (230, 40, 40), (sx, sy), (sx - 4, sy - radius - 3), 2)
+                pygame.draw.circle(surface, (230, 190, 140), (sx, sy), radius - 4)
 
-                bx = sx + int(math.cos(facing) * radius)
-                by = sy + int(math.sin(facing) * radius)
-                pygame.draw.circle(surface, (139, 69, 19), (bx, by), 5, width=2)
+                # Bow arc position
+                bow_dist = radius + 3
+                bx = sx + int(math.cos(facing) * bow_dist)
+                by = sy + int(math.sin(facing) * bow_dist)
+
+                # Bow perpendicular arm ends
+                perp_angle = facing + math.pi / 2
+                bow_span = 8
+                p1 = (bx + int(math.cos(perp_angle) * bow_span), by + int(math.sin(perp_angle) * bow_span))
+                p2 = (bx - int(math.cos(perp_angle) * bow_span), by - int(math.sin(perp_angle) * bow_span))
+
+                # Draw wooden bow stave
+                pygame.draw.line(surface, (120, 70, 20), p1, p2, 3)
+
+                # Bowstring animation (draw back when attacking)
+                string_pull = 0
+                if unit.is_attacking_anim > 0:
+                    string_pull = math.sin((0.3 - unit.is_attacking_anim) / 0.3 * math.pi) * 8
+
+                notch_x = bx - int(math.cos(facing) * string_pull)
+                notch_y = by - int(math.sin(facing) * string_pull)
+
+                # String lines from tips to notch
+                pygame.draw.line(surface, (240, 240, 240), p1, (notch_x, notch_y), 1)
+                pygame.draw.line(surface, (240, 240, 240), p2, (notch_x, notch_y), 1)
 
             elif u_type == "Hero":
                 # Hero Knight / Archer (Purple Cape, Gold Crown, Gold Sword/Bow, Level Badge)

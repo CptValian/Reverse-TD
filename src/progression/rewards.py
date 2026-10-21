@@ -15,19 +15,28 @@ class Rewards:
         "Extreme": 3.5
     }
 
+    MAP_MULTIPLIER = {
+        1: 1.00,  # Standard
+        2: 1.40,  # Disadvantage I
+        3: 1.85,  # Disadvantage II
+        4: 0.80,  # Advantage I
+        5: 0.65   # Advantage II
+    }
+
     @staticmethod
-    def calculate_rewards(victory, num_ais, difficulty, survival_time=0.0):
+    def calculate_rewards(victory, num_ais, difficulty, survival_time=0.0, map_type=1):
         try:
             diff_key = int(difficulty)
         except (ValueError, TypeError):
             diff_key = difficulty
 
         mult = Rewards.DIFFICULTY_MULTIPLIER.get(diff_key, 1.0)
+        map_mult = Rewards.MAP_MULTIPLIER.get(map_type, 1.0)
 
         # Base victory calculations
-        victory_command = 20 * num_ais * mult
-        victory_forge = 25 * num_ais * mult
-        victory_architecture = 15 * num_ais * mult
+        victory_command = 20 * num_ais * mult * map_mult
+        victory_forge = 25 * num_ais * mult * map_mult
+        victory_architecture = 15 * num_ais * mult * map_mult
 
         if victory:
             base_command = victory_command

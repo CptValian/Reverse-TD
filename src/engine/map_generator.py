@@ -15,9 +15,11 @@ class MapGenerator:
 
     def generate_map(self, num_players=2, map_type=1):
         """Génère la carte selon le type de carte sélectionné:
-           1: Carte standard
-           2: Carte désavantageuse (Ressources du joueur limitées et éloignées, IA favorisée)
-           3: Carte très désavantageuse (Ressources du joueur très rares et très éloignées, IA surarmée/suréquipée en biomasse)
+           1: Carte standard (Équilibrée)
+           2: Carte désavantageuse I (Ressources raréfiées, plus éloignées)
+           3: Carte très désavantageuse II (Ressources très rares et très éloignées)
+           4: Carte avantageuse I (Ressources très proches et abondantes)
+           5: Carte très avantageuse II (Ressources extrêmement proches, ultra riches & multiples gisements)
         """
         spawn_points = []
         resources = []
@@ -40,9 +42,9 @@ class MapGenerator:
 
         for sp in spawn_points:
             if sp["faction"] == config.FACTION_HUMAN:
+                res_list = ["gold", "wood", "food"]
                 if map_type == 1:
                     # Normal map
-                    res_list = ["gold", "wood", "food"]
                     for idx, r_type in enumerate(res_list):
                         angle = idx * 120 + random.randint(-15, 15)
                         rad = math.radians(angle)
@@ -50,24 +52,37 @@ class MapGenerator:
                         ry = sp["y"] + 220 * math.sin(rad)
                         resources.append(ResourceNodeData(r_type, rx, ry, amount=1500))
                 elif map_type == 2:
-                    # Disadvantaged map: Player resources are farther away and reduced
-                    res_list = ["gold", "wood", "food"]
+                    # Disadvantaged I
                     for idx, r_type in enumerate(res_list):
                         angle = idx * 120 + random.randint(-15, 15)
                         rad = math.radians(angle)
-                        # Farther from base (380px) and lower amount (800)
                         rx = sp["x"] + 380 * math.cos(rad)
                         ry = sp["y"] + 380 * math.sin(rad)
                         resources.append(ResourceNodeData(r_type, rx, ry, amount=800))
-                else:
-                    # Very Disadvantaged map: Player resources are extremely far away (550px) and scarce (500)
-                    res_list = ["gold", "wood", "food"]
+                elif map_type == 3:
+                    # Very Disadvantaged II
                     for idx, r_type in enumerate(res_list):
                         angle = idx * 120 + random.randint(-15, 15)
                         rad = math.radians(angle)
                         rx = sp["x"] + 550 * math.cos(rad)
                         ry = sp["y"] + 550 * math.sin(rad)
                         resources.append(ResourceNodeData(r_type, rx, ry, amount=500))
+                elif map_type == 4:
+                    # Advantage I: Abundant resources close to base (160px, amount 2500)
+                    for idx, r_type in enumerate(res_list):
+                        angle = idx * 120 + random.randint(-10, 10)
+                        rad = math.radians(angle)
+                        rx = sp["x"] + 160 * math.cos(rad)
+                        ry = sp["y"] + 160 * math.sin(rad)
+                        resources.append(ResourceNodeData(r_type, rx, ry, amount=2500))
+                elif map_type == 5:
+                    # Advantage II: Extremely close (120px) double deposits of gold, wood, food (amount 4000)
+                    for idx, r_type in enumerate(res_list * 2):
+                        angle = idx * 60 + random.randint(-10, 10)
+                        rad = math.radians(angle)
+                        rx = sp["x"] + 120 * math.cos(rad)
+                        ry = sp["y"] + 120 * math.sin(rad)
+                        resources.append(ResourceNodeData(r_type, rx, ry, amount=4000))
 
             else:
                 # Alien AI base resource generation
@@ -77,24 +92,33 @@ class MapGenerator:
                         rx = sp["x"] + 200 * math.cos(rad)
                         ry = sp["y"] + 200 * math.sin(rad)
                         resources.append(ResourceNodeData("biomass", rx, ry, amount=1500))
-                elif map_type == 2:
-                    # Advantageous AI: Rich biomass right next to spawn (150px, 2500 amount)
-                    for offset_angle in [0, 72, 144, 216, 288]:
+                elif map_type in [2, 3]:
+                    # Strong AI on player disadvantage maps
+                    num_dep = 5 if map_type == 2 else 6
+                    amt = 2500 if map_type == 2 else 4000
+                    for offset_angle in [i * (360 / num_dep) for i in range(num_dep)]:
                         rad = math.radians(offset_angle + random.randint(-10, 10))
                         rx = sp["x"] + 150 * math.cos(rad)
                         ry = sp["y"] + 150 * math.sin(rad)
-                        resources.append(ResourceNodeData("biomass", rx, ry, amount=2500))
-                else:
-                    # Extremely Advantageous AI: Massive biomass deposits right at spawn (120px, 4000 amount)
-                    for offset_angle in [0, 60, 120, 180, 240, 300]:
-                        rad = math.radians(offset_angle + random.randint(-10, 10))
-                        rx = sp["x"] + 120 * math.cos(rad)
-                        ry = sp["y"] + 120 * math.sin(rad)
-                        resources.append(ResourceNodeData("biomass", rx, ry, amount=4000))
+                        resources.append(ResourceNodeData("biomass", rx, ry, amount=amt))
+                elif map_type == 4:
+                    # Advantage I (Moderate AI biomass)
+                    for offset_angle in [0, 120, 240]:
+                        rad = math.radians(offset_angle + random.randint(-15, 15))
+                        rx = sp["x"] + 220 * math.cos(rad)
+                        ry = sp["y"] + 220 * math.sin(rad)
+                        resources.append(ResourceNodeData("biomass", rx, ry, amount=1200))
+                elif map_type == 5:
+                    # Advantage II (Low AI biomass)
+                    for offset_angle in [0, 180]:
+                        rad = math.radians(offset_angle)
+                        rx = sp["x"] + 280 * math.cos(rad)
+                        ry = sp["y"] + 280 * math.sin(rad)
+                        resources.append(ResourceNodeData("biomass", rx, ry, amount=800))
 
         # Center map neutral nodes
         center_x, center_y = self.width / 2, self.height / 2
-        num_center = 12 if map_type == 1 else (8 if map_type == 2 else 5)
+        num_center = 12 if map_type == 1 else (8 if map_type in [2, 3] else 16)
         for _ in range(num_center):
             rx = center_x + random.randint(-500, 500)
             ry = center_y + random.randint(-500, 500)

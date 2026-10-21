@@ -124,7 +124,7 @@ class ProgressionUI:
                 "desc": "Start with +1 Worker",
                 "cost": 25,
                 "parents": ["starting_res_1"],
-                "pos": (220, 310)
+                "pos": (180, 310)
             },
             {
                 "key": "extra_melee_start",
@@ -132,7 +132,7 @@ class ProgressionUI:
                 "desc": "Start with +1 Melee Unit",
                 "cost": 25,
                 "parents": ["starting_res_1"],
-                "pos": (440, 335)
+                "pos": (450, 335)
             },
             {
                 "key": "food_stockpile_unlocked",
@@ -250,7 +250,7 @@ class ProgressionUI:
                 "desc": "+5 Food per troop kill",
                 "cost": 30,
                 "parents": ["ageing_up_2"],
-                "pos": (1480, 860)
+                "pos": (1440, 860)
             },
             {
                 "key": "bank_unlocked",
@@ -258,7 +258,7 @@ class ProgressionUI:
                 "desc": "Passive gold generation building",
                 "cost": 30,
                 "parents": ["ageing_up_2", "double_base_res_cap"],
-                "pos": (1770, 835)
+                "pos": (1680, 835)
             },
 
             # --- TIER 6 (HERO UPGRADES & ADVANCED BUILDINGS) ---
@@ -358,7 +358,7 @@ class ProgressionUI:
                 "desc": "Watchtower Sight +20%",
                 "cost": 25,
                 "parents": ["tower_unlocked"],
-                "pos": (890, 1030)
+                "pos": (820, 1030)
             },
             {
                 "key": "tower_range_unlocked",
@@ -366,7 +366,7 @@ class ProgressionUI:
                 "desc": "Arrow tower +10% range",
                 "cost": 25,
                 "parents": ["arrow_tower_unlocked"],
-                "pos": (1190, 1010)
+                "pos": (1100, 1010)
             },
             {
                 "key": "sanctuary_boost",
