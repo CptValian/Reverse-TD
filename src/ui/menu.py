@@ -10,6 +10,7 @@ class Menu:
         self.subtitle_font = pygame.font.SysFont("Trebuchet MS", 24, italic=True)
         self.btn_font = pygame.font.SysFont("Segoe UI", 24, bold=True)
         self.font = pygame.font.SysFont("Segoe UI", 20)
+        self.bold_font = pygame.font.SysFont("Segoe UI", 20, bold=True)
         self.small_font = pygame.font.SysFont("Segoe UI", 16)
         self.anim_time = 0.0
         self.ai_info_scroll_y = 0
