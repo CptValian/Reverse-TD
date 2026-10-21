@@ -297,59 +297,80 @@ class AIController:
                 if game_state.deduct_resources(self.owner_id, cost_dict):
                     prod.queue_unit(chosen_unit)
 
-        # 7. Defense Response & Tactical Retreat (Level 8+)
+        # 7. Strategic Reflection & Dynamic Decision Engine (Equalized top intelligence for all AI)
         player_units = [u for u in game_state.units if u.alive and u.owner_id != self.owner_id]
+        player_targets = [e for e in game_state.buildings + game_state.units if e.alive and e.owner_id != self.owner_id]
+
+        # 7a. Defense Response: Immediate base defense call against encroaching enemies
         if self.spawn_point and player_units:
-            nearby_threats = [u for u in player_units if math.hypot(u.x - self.spawn_point[0], u.y - self.spawn_point[1]) < 450]
+            nearby_threats = [u for u in player_units if math.hypot(u.x - self.spawn_point[0], u.y - self.spawn_point[1]) < 550]
             if nearby_threats:
                 closest_threat = min(nearby_threats, key=lambda u: math.hypot(u.x - self.spawn_point[0], u.y - self.spawn_point[1]))
                 for u in army_units:
-                    if u.state in ["idle", "move"]:
+                    if u.state in ["idle", "move"] or (u.target_entity and not u.target_entity.alive):
                         u.attack_target(closest_threat)
 
-        # Tactical Retreat: retreat damaged AI units back to base if outnumbered (Level 8+)
-        if self.config.get("tactical_retreat") and self.spawn_point:
+        # 7b. Tactical Retreat: Low-HP units pull back to regroup/heal near base
+        if self.spawn_point:
             for u in army_units:
-                if u.hp < u.max_hp * 0.30 and u.state == "attack":
-                    u.move_to(self.spawn_point[0] + random.randint(-40, 40), self.spawn_point[1] + random.randint(-40, 40))
+                if u.hp < u.max_hp * 0.35 and u.state == "attack":
+                    u.move_to(self.spawn_point[0] + random.randint(-50, 50), self.spawn_point[1] + random.randint(-50, 50))
 
-        # 8. Continuous Strategic Wave Attacks & Flanking (Level 9+)
-        wave_interval = self.config.get("attack_wave_interval", 45)
-        min_wave_size = 2 if self.difficulty == 1 else 4
+        # 7c. Real Strategic Planning & Attack Logic (No fixed timers/intervals!)
+        # The AI continuously evaluates force power ratio, expansion opportunities, and target vulnerabilities.
+        total_ai_power = sum([u.attack_power + u.hp * 0.1 for u in army_units])
+        total_player_power = sum([u.attack_power + u.hp * 0.1 for u in player_units]) + 1.0
 
-        if self.timer_wave >= wave_interval or len(army_units) >= self.config.get("max_army_size", 15):
-            if len(army_units) >= min_wave_size:
-                self.timer_wave = 0.0
+        force_ratio = total_ai_power / total_player_power
 
-                player_targets = [e for e in game_state.buildings + game_state.units if e.alive and e.owner_id != self.owner_id]
-                if player_targets:
-                    p_workers = [e for e in player_targets if getattr(e, 'is_worker', False)]
-                    p_townhalls = [e for e in player_targets if getattr(e, 'building_type', None) in ["TownHall", "Hive"]]
-                    p_buildings = [e for e in player_targets if hasattr(e, 'building_type')]
+        # AI attacks when:
+        # - It has sufficient force advantage (force_ratio >= 1.1)
+        # - OR army size is reaching max capacity limit
+        # - OR player has undefended expansion/workers
+        p_workers = [e for e in player_targets if getattr(e, 'is_worker', False)]
+        p_townhalls = [e for e in player_targets if getattr(e, 'building_type', None) in ["TownHall", "Hive"]]
+        p_defenses = [e for e in player_targets if getattr(e, 'building_type', None) in ["WatchTower", "ArrowTower", "Tower", "SpineCrawler"]]
+        p_buildings = [e for e in player_targets if hasattr(e, 'building_type')]
 
-                    # Worker Raid Priority for Level 7+
-                    if p_workers and (self.config.get("worker_raid_priority") or random.random() < 0.4):
-                        target = random.choice(p_workers)
-                    elif p_townhalls and random.random() < 0.5:
-                        target = p_townhalls[0]
-                    elif p_buildings:
-                        target = random.choice(p_buildings)
-                    else:
-                        target = random.choice(player_targets)
+        should_strike = False
+        if len(army_units) >= 3 and (force_ratio >= 1.1 or len(army_units) >= self.config.get("max_army_size", 12) * 0.7):
+            should_strike = True
+        elif len(army_units) >= 2 and p_workers and not player_units:
+            should_strike = True  # Opportunistic raid on exposed workers
 
-                    # Flanking Attack: Split army into 2 groups (Level 9+)
-                    if self.config.get("flanking_attacks") and len(army_units) >= 6:
-                        mid = len(army_units) // 2
-                        group1 = army_units[:mid]
-                        group2 = army_units[mid:]
+        if should_strike and player_targets:
+            # Tactical Target Prioritization:
+            # 1. Exposed workers / expansion economy
+            # 2. Main base townhall / hive
+            # 3. Defensive structures / Military
+            # 4. Any remaining buildings/units
+            idle_or_moving_army = [u for u in army_units if u.state in ["idle", "move"] or not u.target_entity or not u.target_entity.alive]
 
-                        flank_offset1 = (target.x - 120, target.y - 120)
-                        flank_offset2 = (target.x + 120, target.y + 120)
+            if idle_or_moving_army:
+                if p_workers and random.random() < 0.45:
+                    target = min(p_workers, key=lambda w: min([math.hypot(w.x - u.x, w.y - u.y) for u in idle_or_moving_army] or [9999]))
+                elif p_townhalls and random.random() < 0.5:
+                    target = p_townhalls[0]
+                elif p_defenses and random.random() < 0.3:
+                    target = random.choice(p_defenses)
+                elif p_buildings:
+                    target = min(p_buildings, key=lambda b: min([math.hypot(b.x - u.x, b.y - u.y) for u in idle_or_moving_army] or [9999]))
+                else:
+                    target = random.choice(player_targets)
 
-                        for u in group1:
-                            u.attack_move_to(flank_offset1[0], flank_offset1[1])
-                        for u in group2:
-                            u.attack_move_to(flank_offset2[0], flank_offset2[1])
-                    else:
-                        for u in army_units:
-                            u.attack_move_to(target.x, target.y)
+                # Advanced Flanking Maneuvers when army size allows
+                if len(idle_or_moving_army) >= 6:
+                    mid = len(idle_or_moving_army) // 2
+                    group1 = idle_or_moving_army[:mid]
+                    group2 = idle_or_moving_army[mid:]
+
+                    flank1 = (target.x - 140, target.y - 140)
+                    flank2 = (target.x + 140, target.y + 140)
+
+                    for u in group1:
+                        u.attack_move_to(flank1[0], flank1[1])
+                    for u in group2:
+                        u.attack_move_to(flank2[0], flank2[1])
+                else:
+                    for u in idle_or_moving_army:
+                        u.attack_move_to(target.x, target.y)

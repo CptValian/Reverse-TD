@@ -36,6 +36,9 @@ class GameState:
         self.player_age = 1
 
     def is_fog_of_war_enabled(self):
+        if hasattr(self, 'save_manager') and self.save_manager:
+            if self.save_manager.get_setting("disable_fog_of_war", False):
+                return False
         return self.ai_difficulty > 4
 
     def is_point_visible(self, x, y, owner_id=0):

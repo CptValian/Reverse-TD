@@ -4,7 +4,7 @@ import config
 BUILDING_TYPES = {
     # Medieval
     "TownHall": {"cost": {"wood": 250, "gold": 300}, "hp": 1000, "radius": 45, "build_time": 30, "trainable": ["Worker", "Scout"], "pop_bonus": 10, "attack_power": 0, "range": 286, "vision": 350},
-    "House": {"cost": {"wood": 60}, "hp": 250, "radius": 22, "build_time": 10, "trainable": [], "pop_bonus": 5, "vision": 200},
+    "House": {"cost": {"wood": 100}, "hp": 250, "radius": 22, "build_time": 10, "trainable": [], "pop_bonus": 5, "vision": 200},
     "Barracks": {"cost": {"wood": 100, "gold": 50}, "hp": 500, "radius": 35, "build_time": 20, "trainable": ["Infantry", "Archer"], "vision": 250},
     "WatchTower": {"cost": {"wood": 60, "gold": 20}, "hp": 350, "radius": 25, "build_time": 12, "attack_power": 0, "range": 0, "trainable": [], "vision": 750},
     "ArrowTower": {"cost": {"wood": 80, "gold": 40}, "hp": 400, "radius": 25, "build_time": 16, "attack_power": 15, "range": 260, "trainable": [], "vision": 300},
@@ -13,7 +13,7 @@ BUILDING_TYPES = {
     "WoodStockpile": {"cost": {"wood": 80}, "hp": 350, "radius": 25, "build_time": 12, "trainable": []},
     "GoldStockpile": {"cost": {"wood": 80, "gold": 20}, "hp": 350, "radius": 25, "build_time": 12, "trainable": []},
     "FoodStockpile": {"cost": {"wood": 80}, "hp": 350, "radius": 25, "build_time": 12, "trainable": []},
-    "Farm": {"cost": {"wood": 100}, "hp": 300, "radius": 30, "build_time": 15, "trainable": []},
+    "Farm": {"cost": {"wood": 160}, "hp": 300, "radius": 30, "build_time": 15, "trainable": []},
     "Bank": {"cost": {"wood": 200, "gold": 250}, "hp": 450, "radius": 30, "build_time": 25, "trainable": []},
     "Sanctuary": {"cost": {"wood": 150, "gold": 100}, "hp": 400, "radius": 30, "build_time": 20, "trainable": []},
 
@@ -135,7 +135,7 @@ class Building(BaseEntity):
 
         # Gestion de la construction du bâtiment
         if not self.is_constructed:
-            if getattr(self, 'is_being_built', False):
+            if self.owner_id != 0 or getattr(self, 'is_being_built', False):
                 self.build_progress(dt, speed_mult=1.0)
             return None
 
@@ -175,7 +175,7 @@ class Building(BaseEntity):
             effective_attack = num_arrows * 12
 
         if self.building_type == "Farm" and self.garrisoned_units and game_state:
-            harvest_rate = config.DEFAULT_HARVEST_RATE * 0.5  # Slower food harvest than berry picking
+            harvest_rate = config.DEFAULT_HARVEST_RATE * 0.25  # Reduced farm food harvest yield
             food_collected = len(self.garrisoned_units) * harvest_rate * dt
             game_state.add_resources(self.owner_id, "food", food_collected)
 

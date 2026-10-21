@@ -13,6 +13,15 @@ class Projectile:
         self.on_hit_callback = on_hit_callback
         self.radius = 4
         self.alive = True
+        self.selected = False
+        self.hp = 1
+        self.max_hp = 1
+
+    def is_point_inside(self, px, py):
+        return False
+
+    def take_damage(self, amount):
+        pass
 
     def update(self, dt, game_state):
         if not self.alive:

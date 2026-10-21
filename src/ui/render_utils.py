@@ -41,7 +41,7 @@ class RenderUtils:
             RenderUtils._draw_projectile(surface, camera, entity, sx, sy)
 
         # Cercles de sélection
-        if entity.selected:
+        if getattr(entity, 'selected', False):
             pygame.draw.circle(surface, config.COLOR_SELECTION, (sx, sy), scaled_radius + 4, 2)
 
             # Draw attack range circle if building with attack range selected
