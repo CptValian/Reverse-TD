@@ -39,6 +39,7 @@ class Unit(BaseEntity):
         self.attack_cooldown = 0
         self.carried_resource = 0
         self.resource_type = None
+        self.is_action_locked = False
 
         # Animations et effets visuels
         self.anim_time = 0.0
@@ -70,6 +71,7 @@ class Unit(BaseEntity):
         self.target_entity = None
         self.state = "move"
         self.attack_move_mode = False
+        self.is_action_locked = False
         self.calculate_path(target_x, target_y, game_state)
 
     def attack_move_to(self, target_x, target_y, game_state=None):
@@ -77,12 +79,14 @@ class Unit(BaseEntity):
         self.target_entity = None
         self.state = "move"
         self.attack_move_mode = True
+        self.is_action_locked = False
         self.calculate_path(target_x, target_y, game_state)
 
     def attack_target(self, target, game_state=None):
         self.target_entity = target
         self.state = "attack"
         self.attack_move_mode = False
+        self.is_action_locked = False
         if target:
             self.calculate_path(target.x, target.y, game_state)
 
@@ -92,6 +96,7 @@ class Unit(BaseEntity):
         self.target_entity = building
         self.state = "construct"
         self.attack_move_mode = False
+        self.is_action_locked = False
         if building:
             self.calculate_path(building.x, building.y, game_state)
 
@@ -101,6 +106,7 @@ class Unit(BaseEntity):
         self.target_entity = building
         self.state = "repair"
         self.attack_move_mode = False
+        self.is_action_locked = False
         if building:
             self.calculate_path(building.x, building.y, game_state)
 
@@ -110,6 +116,7 @@ class Unit(BaseEntity):
         self.target_entity = node
         self.state = "harvest"
         self.attack_move_mode = False
+        self.is_action_locked = False
         if node:
             self.calculate_path(node.x, node.y, game_state)
 
@@ -154,8 +161,8 @@ class Unit(BaseEntity):
                 self.target_entity = enemy
                 self.state = "attack"
 
-        # Anti-stuck check for active movement/harvesting
-        if self.state in ["move", "harvest", "return_resource", "construct", "repair"]:
+        # Anti-stuck check for active movement (exempt locked static workers)
+        if self.state in ["move", "harvest", "return_resource", "construct", "repair"] and not getattr(self, 'is_action_locked', False):
             effective_dt = min(dt, 0.2)
             self.stuck_check_timer += effective_dt
             if self.stuck_check_timer >= 0.8:
@@ -185,6 +192,9 @@ class Unit(BaseEntity):
                 elif self.state in ["move", "attack"]:
                     if self.target_pos:
                         self.calculate_path(self.target_pos[0], self.target_pos[1], game_state)
+        elif getattr(self, 'is_action_locked', False):
+            self.stuck_timer = 0.0
+            self.stuck_check_timer = 0.0
 
         if self.state == "move":
             self._process_movement(dt)
@@ -296,6 +306,7 @@ class Unit(BaseEntity):
         if not self.target_entity or not getattr(self.target_entity, 'alive', True):
             self.target_entity = None
             self.state = "idle"
+            self.is_action_locked = False
             self.pop_next_command(game_state)
             return
 
@@ -303,7 +314,7 @@ class Unit(BaseEntity):
         if getattr(bld, 'is_constructed', True):
             self.target_entity = None
             self.state = "idle"
-            # If worker, check if there is another nearby unconstructed building/wall to continue building automatically in series
+            self.is_action_locked = False
             if self.is_worker and not self.command_queue and game_state:
                 nearby_unconstructed = [
                     b for b in game_state.buildings
@@ -321,27 +332,32 @@ class Unit(BaseEntity):
         dx = bld.x - self.x
         dy = bld.y - self.y
 
-        if dist > self.radius + bld.radius + 18:
-            # Move towards unconstructed building
-            self._move_towards(bld.x, bld.y, dt, game_state)
-        else:
-            if dist > 0:
-                self.facing_angle = math.atan2(dy, dx)
-            self.path_waypoints.clear()
-            self.target_pos = None
-            # Construct building
-            if self.unit_type == "Drone":
-                # Alien Drone morphs/sacrifices itself to become the building
-                self.alive = False
-                bld.is_being_built = True
-            elif self.is_worker:
-                bld.build_progress(dt, speed_mult=1.0)
-                self.is_harvesting_anim = 0.2
+        if not self.is_action_locked:
+            if dist > self.radius + bld.radius + 22:
+                self._move_towards(bld.x, bld.y, dt, game_state)
+            else:
+                self.is_action_locked = True
+                if dist > 0:
+                    self.facing_angle = math.atan2(dy, dx)
+                self.path_waypoints.clear()
+                self.target_pos = None
+
+        if self.is_action_locked:
+            if dist > self.radius + bld.radius + 38:
+                self.is_action_locked = False
+            else:
+                if self.unit_type == "Drone":
+                    self.alive = False
+                    bld.is_being_built = True
+                elif self.is_worker:
+                    bld.build_progress(dt, speed_mult=1.0)
+                    self.is_harvesting_anim = 0.2
 
     def _process_repair(self, dt, game_state):
         if not self.target_entity or not getattr(self.target_entity, 'alive', True):
             self.target_entity = None
             self.state = "idle"
+            self.is_action_locked = False
             self.pop_next_command(game_state)
             return
 
@@ -349,6 +365,7 @@ class Unit(BaseEntity):
         if bld.hp >= bld.max_hp:
             self.target_entity = None
             self.state = "idle"
+            self.is_action_locked = False
             self.pop_next_command(game_state)
             return
 
@@ -356,25 +373,32 @@ class Unit(BaseEntity):
         dx = bld.x - self.x
         dy = bld.y - self.y
 
-        if dist > self.radius + bld.radius + 18:
-            self._move_towards(bld.x, bld.y, dt, game_state)
-        else:
-            if dist > 0:
-                self.facing_angle = math.atan2(dy, dx)
-            self.path_waypoints.clear()
-            self.target_pos = None
-            # Repair cost is cheap fraction of building cost
-            repair_rate = 25.0 * dt  # 25 HP per second
-            cost_factor = repair_rate / max(1.0, bld.max_hp)
-            rep_cost = {}
-            for r_k, r_v in bld.cost.items():
-                rep_cost[r_k] = max(0.1 * dt, r_v * cost_factor * 0.2)
-
-            if game_state.deduct_resources(self.owner_id, rep_cost):
-                bld.hp = min(bld.max_hp, bld.hp + repair_rate)
-                self.is_harvesting_anim = 0.2
+        if not self.is_action_locked:
+            if dist > self.radius + bld.radius + 22:
+                self._move_towards(bld.x, bld.y, dt, game_state)
             else:
-                self.state = "idle"
+                self.is_action_locked = True
+                if dist > 0:
+                    self.facing_angle = math.atan2(dy, dx)
+                self.path_waypoints.clear()
+                self.target_pos = None
+
+        if self.is_action_locked:
+            if dist > self.radius + bld.radius + 38:
+                self.is_action_locked = False
+            else:
+                repair_rate = 25.0 * dt
+                cost_factor = repair_rate / max(1.0, bld.max_hp)
+                rep_cost = {}
+                for r_k, r_v in bld.cost.items():
+                    rep_cost[r_k] = max(0.1 * dt, r_v * cost_factor * 0.2)
+
+                if game_state.deduct_resources(self.owner_id, rep_cost):
+                    bld.hp = min(bld.max_hp, bld.hp + repair_rate)
+                    self.is_harvesting_anim = 0.2
+                else:
+                    self.state = "idle"
+                    self.is_action_locked = False
 
     def take_damage(self, amount, attacker=None, game_state=None):
         if attacker and game_state and not game_state.are_enemies(self.owner_id, attacker.owner_id):
@@ -467,6 +491,7 @@ class Unit(BaseEntity):
         if not self.target_entity or not getattr(self.target_entity, 'alive', True):
             self.target_entity = None
             self.state = "idle"
+            self.is_action_locked = False
             self.pop_next_command(game_state)
             return
 
@@ -474,35 +499,42 @@ class Unit(BaseEntity):
         dx = self.target_entity.x - self.x
         dy = self.target_entity.y - self.y
 
-        if dist > self.radius + self.target_entity.radius + 12:
-            # Se rapprocher du gisement
-            self._move_towards(self.target_entity.x, self.target_entity.y, dt, game_state)
-        else:
-            if dist > 0:
-                self.facing_angle = math.atan2(dy, dx)
-            self.path_waypoints.clear()
-            self.target_pos = None
+        if not self.is_action_locked:
+            if dist > self.radius + self.target_entity.radius + 18:
+                self._move_towards(self.target_entity.x, self.target_entity.y, dt, game_state)
+            else:
+                self.is_action_locked = True
+                if dist > 0:
+                    self.facing_angle = math.atan2(dy, dx)
+                self.path_waypoints.clear()
+                self.target_pos = None
 
-            # Récolter
-            if hasattr(self.target_entity, 'harvest'):
-                harvested = self.target_entity.harvest(config.DEFAULT_HARVEST_RATE * dt)
-                self.carried_resource += harvested
-                self.resource_type = self.target_entity.resource_type
-            elif getattr(self.target_entity, 'building_type', None) == "Farm":
-                # Worker enters inside the Farm to work
-                if self.target_entity.garrison_unit(self):
-                    return
-                else:
-                    self.state = "idle"
-                    return
-            self.is_harvesting_anim = 0.2
-            if self.carried_resource >= config.DEFAULT_HARVEST_CAPACITY or not getattr(self.target_entity, 'alive', True):
-                self.state = "return_resource"
+        if self.is_action_locked:
+            if dist > self.radius + self.target_entity.radius + 38:
+                self.is_action_locked = False
+            else:
+                if hasattr(self.target_entity, 'harvest'):
+                    harvested = self.target_entity.harvest(config.DEFAULT_HARVEST_RATE * dt)
+                    self.carried_resource += harvested
+                    self.resource_type = self.target_entity.resource_type
+                elif getattr(self.target_entity, 'building_type', None) == "Farm":
+                    if self.target_entity.garrison_unit(self):
+                        self.is_action_locked = False
+                        return
+                    else:
+                        self.state = "idle"
+                        self.is_action_locked = False
+                        return
+                self.is_harvesting_anim = 0.2
+                if self.carried_resource >= config.DEFAULT_HARVEST_CAPACITY or not getattr(self.target_entity, 'alive', True):
+                    self.is_action_locked = False
+                    self.state = "return_resource"
 
     def _process_return_resource(self, dt, game_state):
         deposit = self._find_nearest_deposit(game_state)
         if not deposit:
             self.state = "idle"
+            self.is_action_locked = False
             self.pop_next_command(game_state)
             return
 
@@ -510,7 +542,7 @@ class Unit(BaseEntity):
         dx = deposit.x - self.x
         dy = deposit.y - self.y
 
-        if dist > self.radius + deposit.radius + 12:
+        if dist > self.radius + deposit.radius + 18:
             self._move_towards(deposit.x, deposit.y, dt, game_state)
         else:
             if dist > 0:
@@ -518,10 +550,9 @@ class Unit(BaseEntity):
             self.path_waypoints.clear()
             self.target_pos = None
 
-            # Déposer les ressources
             game_state.add_resources(self.owner_id, self.resource_type, self.carried_resource)
             self.carried_resource = 0
-            # Repartir récolter
+            self.is_action_locked = False
             if self.target_entity and getattr(self.target_entity, 'alive', True):
                 self.state = "harvest"
             else:
