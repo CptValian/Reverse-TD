@@ -53,22 +53,22 @@ class Menu:
 
         # Main Navigation Buttons
         btn_width = 380
-        btn_height = 48
-        start_y = 265
-        gap = 14
+        btn_height = 46
+        start_y = 250
+        gap = 12
 
-        start_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y, btn_width, btn_height)
-        iacia_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y + btn_height + gap, btn_width, btn_height)
-        skill_tree_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y + (btn_height + gap) * 2, btn_width, btn_height)
+        h_v_a_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y, btn_width, btn_height)
+        a_v_h_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y + (btn_height + gap), btn_width, btn_height)
+        iacia_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y + (btn_height + gap) * 2, btn_width, btn_height)
         ai_info_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y + (btn_height + gap) * 3, btn_width, btn_height)
         options_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y + (btn_height + gap) * 4, btn_width, btn_height)
         quit_btn = pygame.Rect(self.screen_width // 2 - btn_width // 2, start_y + (btn_height + gap) * 5, btn_width, btn_height)
 
-        def draw_button(rect, text, is_primary=False):
+        def draw_button(rect, text, is_primary=False, is_alien=False):
             mouse_p = pygame.mouse.get_pos()
             hovered = rect.collidepoint(mouse_p)
-            bg_col = (45, 55, 75) if hovered else ((32, 40, 56) if not is_primary else (40, 80, 120))
-            border_col = (255, 215, 0) if hovered else (config.COLOR_UI_ACCENT if is_primary else (90, 110, 140))
+            bg_col = (45, 55, 75) if hovered else ((32, 40, 56) if not is_primary else ((120, 30, 70) if is_alien else (40, 80, 120)))
+            border_col = (255, 215, 0) if hovered else ((216, 27, 96) if is_alien else (config.COLOR_UI_ACCENT if is_primary else (90, 110, 140)))
 
             pygame.draw.rect(surface, bg_col, rect, border_radius=8)
             pygame.draw.rect(surface, border_col, rect, 2, border_radius=8)
@@ -76,9 +76,9 @@ class Menu:
             t_surf = self.btn_font.render(text, True, (255, 255, 255) if hovered else config.COLOR_UI_TEXT)
             surface.blit(t_surf, (rect.x + rect.width // 2 - t_surf.get_width() // 2, rect.y + rect.height // 2 - t_surf.get_height() // 2))
 
-        draw_button(start_btn, "LAUNCH GAME", is_primary=True)
+        draw_button(h_v_a_btn, "Human vs Alien", is_primary=True)
+        draw_button(a_v_h_btn, "Alien vs Human", is_primary=True, is_alien=True)
         draw_button(iacia_btn, "SPECTATOR MODE (AI vs AI)")
-        draw_button(skill_tree_btn, "SKILL TREE & UPGRADES")
         draw_button(ai_info_btn, "AI TECHS & INFO")
         draw_button(options_btn, "OPTIONS")
         draw_button(quit_btn, "QUIT GAME")
@@ -88,9 +88,9 @@ class Menu:
         surface.blit(footer, (self.screen_width // 2 - footer.get_width() // 2, self.screen_height - 35))
 
         return {
-            "start": start_btn,
+            "h_v_a": h_v_a_btn,
+            "a_v_h": a_v_h_btn,
             "iacia": iacia_btn,
-            "skill_tree": skill_tree_btn,
             "ai_info": ai_info_btn,
             "options": options_btn,
             "quit": quit_btn

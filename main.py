@@ -52,11 +52,13 @@ def main():
             elif game_state.state == "MENU":
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     buttons = menu.draw_main_menu(screen, game_state.num_ais, game_state.ai_difficulty, game_state.map_type)
-                    if buttons["start"].collidepoint(event.pos):
+                    if buttons.get("h_v_a") and buttons["h_v_a"].collidepoint(event.pos):
+                        game_state.player_faction = config.FACTION_HUMAN
                         game_state.state = "GAME_SETUP"
 
-                    elif buttons["skill_tree"].collidepoint(event.pos):
-                        game_state.state = "SKILL_TREE"
+                    elif buttons.get("a_v_h") and buttons["a_v_h"].collidepoint(event.pos):
+                        game_state.player_faction = config.FACTION_ALIEN
+                        game_state.state = "GAME_SETUP"
 
                     elif buttons.get("ai_info") and buttons["ai_info"].collidepoint(event.pos):
                         game_state.state = "AI_INFO"
@@ -73,8 +75,12 @@ def main():
             elif game_state.state == "GAME_SETUP":
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     buttons = menu.draw_game_setup_menu(screen, game_state.num_ais, game_state.ai_difficulty, game_state.map_type)
-                    if buttons.get("start_match") and buttons["start_match"].collidepoint(event.pos):
-                        game_state.start_new_game()
+                    if buttons.get("skill_tree") and buttons["skill_tree"].collidepoint(event.pos):
+                        game_state.state = "SKILL_TREE"
+
+                    elif buttons.get("start_match") and buttons["start_match"].collidepoint(event.pos):
+                        p_faction = getattr(game_state, 'player_faction', config.FACTION_HUMAN)
+                        game_state.start_new_game(player_faction=p_faction)
                         # Position camera on human player spawn
                         player_base = next((b for b in game_state.buildings if b.owner_id == 0), None)
                         if player_base:
@@ -526,7 +532,7 @@ def main():
                                         if upgrades.get("townhall_unlocked") and getattr(game_state, 'player_age', 1) >= 2:
                                             buildings_to_build.append("TownHall")
                                     else:
-                                        buildings_to_build = ["SpawningPool", "SpineCrawler"]
+                                        buildings_to_build = ["SpawningPool", "SpineCrawler", "BiomassGenerator", "BiomassStockpile", "EvolutionChamber"]
 
                                     for b_type in buildings_to_build:
                                         btn_width = 125
