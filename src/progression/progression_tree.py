@@ -28,8 +28,11 @@ class ProgressionUI:
         ls_pts = pts.get("LandShard", pts.get("Commandement", 0))
         sb_pts = pts.get("SwarmerBlood", pts.get("Forge", 0))
         py_pts = pts.get("Pykrite", pts.get("Architecture", 0))
+        muc_pts = pts.get("Muculus", 0)
+        conj_pts = pts.get("Conjulat", 0)
+        mass_pts = pts.get("Mass", 0)
 
-        pts_text = f"LandShard: {ls_pts}   |   SwarmerBlood: {sb_pts}   |   Pykrite: {py_pts}"
+        pts_text = f"LandShard: {ls_pts} | SwarmerBlood: {sb_pts} | Pykrite: {py_pts}   ||   Muculus: {muc_pts} | Conjulat: {conj_pts} | Mass: {mass_pts}"
         pts_surf = self.bold_font.render(pts_text, True, config.COLOR_UI_TEXT)
         surface.blit(pts_surf, (self.screen_width // 2 - pts_surf.get_width() // 2, 58))
 
@@ -343,6 +346,30 @@ class ProgressionUI:
                 "cost": 15,
                 "parents": ["high_starting_res"],
                 "pos": (410, 680)
+            },
+            {
+                "key": "near_base_res_boost",
+                "name": "Base Deposit Boost",
+                "desc": "x1.5 Resource Node Quantity Near Base",
+                "cost": 30,
+                "parents": ["double_base_res_cap"],
+                "pos": (1180, 620)
+            },
+            {
+                "key": "temple_unlocked",
+                "name": "Holy Temple & Monk",
+                "desc": "Train Monks (+2 HP/s Healing Beam)",
+                "cost": 35,
+                "parents": ["sanctuary_unlocked"],
+                "pos": (1380, 1360)
+            },
+            {
+                "key": "tower_extra_projectile",
+                "name": "Tower Volley",
+                "desc": "Defensive Towers fire +1 Arrow",
+                "cost": 35,
+                "parents": ["arrow_tower_unlocked"],
+                "pos": (1100, 1180)
             },
             {
                 "key": "archer_spawn_speed",

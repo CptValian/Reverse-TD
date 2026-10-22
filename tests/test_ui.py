@@ -30,7 +30,8 @@ class TestUI(unittest.TestCase):
         game_state = GameState(save_manager)
 
         btn_main = menu.draw_main_menu(surface)
-        self.assertIn("start", btn_main)
+        self.assertIn("h_v_a", btn_main)
+        self.assertIn("a_v_h", btn_main)
 
         btn_setup = menu.draw_game_setup_menu(surface)
         self.assertIn("start_match", btn_setup)
