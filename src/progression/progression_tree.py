@@ -11,6 +11,7 @@ class ProgressionUI:
         self.bold_font = pygame.font.SysFont("Arial", 16, bold=True)
         self.small_font = pygame.font.SysFont("Arial", 13)
         self.active_tab = "skill_tree"  # "skill_tree", "troops", "buildings"
+        self.active_faction = config.FACTION_HUMAN  # FACTION_HUMAN or FACTION_ALIEN
         self.camera_offset_x = 0
         self.camera_offset_y = 0
         self.zoom_level = 1.0
@@ -38,10 +39,31 @@ class ProgressionUI:
 
         buttons = {}
 
+        # Faction Switcher
+        fac_w = 200
+        fac_h = 36
+        fac_y = 85
+        fac_human_rect = pygame.Rect(self.screen_width // 2 - fac_w - 10, fac_y, fac_w, fac_h)
+        fac_alien_rect = pygame.Rect(self.screen_width // 2 + 10, fac_y, fac_w, fac_h)
+
+        def draw_faction_btn(rect, label, is_active):
+            bg_col = (40, 70, 50) if (is_active and label == "ALIEN FACTION") else ((50, 70, 110) if is_active else (30, 32, 40))
+            border_col = (100, 220, 120) if (is_active and label == "ALIEN FACTION") else (config.COLOR_UI_ACCENT if is_active else (80, 80, 80))
+            pygame.draw.rect(surface, bg_col, rect, border_radius=6)
+            pygame.draw.rect(surface, border_col, rect, 2, border_radius=6)
+            t_surf = self.bold_font.render(label, True, (255, 255, 255) if is_active else (160, 160, 160))
+            surface.blit(t_surf, (rect.x + rect.width // 2 - t_surf.get_width() // 2, rect.y + 8))
+
+        draw_faction_btn(fac_human_rect, "HUMAN FACTION", self.active_faction == config.FACTION_HUMAN)
+        draw_faction_btn(fac_alien_rect, "ALIEN FACTION", self.active_faction == config.FACTION_ALIEN)
+
+        buttons["fac_human"] = fac_human_rect
+        buttons["fac_alien"] = fac_alien_rect
+
         # Tabs
-        tab_w = 300
-        tab_h = 42
-        tab_y = 90
+        tab_w = 280
+        tab_h = 40
+        tab_y = 130
         start_x = self.screen_width // 2 - (tab_w * 3 + 20) // 2
 
         tab_tree_rect = pygame.Rect(start_x, tab_y, tab_w, tab_h)
@@ -49,16 +71,21 @@ class ProgressionUI:
         tab_bld_rect = pygame.Rect(start_x + (tab_w + 10) * 2, tab_y, tab_w, tab_h)
 
         def draw_tab(rect, label, is_active):
-            bg_col = config.COLOR_UI_PANEL if not is_active else (60, 80, 110)
-            border_col = config.COLOR_UI_ACCENT if is_active else (100, 100, 100)
+            bg_col = config.COLOR_UI_PANEL if not is_active else ((40, 75, 50) if self.active_faction == config.FACTION_ALIEN else (60, 80, 110))
+            border_col = (100, 220, 120) if (is_active and self.active_faction == config.FACTION_ALIEN) else (config.COLOR_UI_ACCENT if is_active else (100, 100, 100))
             pygame.draw.rect(surface, bg_col, rect, border_radius=6)
             pygame.draw.rect(surface, border_col, rect, 2, border_radius=6)
             t_surf = self.bold_font.render(label, True, config.COLOR_UI_TEXT if is_active else (180, 180, 180))
-            surface.blit(t_surf, (rect.x + rect.width // 2 - t_surf.get_width() // 2, rect.y + 10))
+            surface.blit(t_surf, (rect.x + rect.width // 2 - t_surf.get_width() // 2, rect.y + 9))
 
-        draw_tab(tab_tree_rect, "1. Tech Tree (LandShard)", self.active_tab == "skill_tree")
-        draw_tab(tab_troops_rect, "2. Troops (SwarmerBlood)", self.active_tab == "troops")
-        draw_tab(tab_bld_rect, "3. Buildings (Pykrite)", self.active_tab == "buildings")
+        if self.active_faction == config.FACTION_HUMAN:
+            draw_tab(tab_tree_rect, "1. Tech Tree (LandShard)", self.active_tab == "skill_tree")
+            draw_tab(tab_troops_rect, "2. Troops (SwarmerBlood)", self.active_tab == "troops")
+            draw_tab(tab_bld_rect, "3. Buildings (Pykrite)", self.active_tab == "buildings")
+        else:
+            draw_tab(tab_tree_rect, "1. Alien Tech (Muculus)", self.active_tab == "skill_tree")
+            draw_tab(tab_troops_rect, "2. Alien Troops (Conjulat)", self.active_tab == "troops")
+            draw_tab(tab_bld_rect, "3. Alien Structures (Mass)", self.active_tab == "buildings")
 
         buttons["tab_tree"] = tab_tree_rect
         buttons["tab_troops"] = tab_troops_rect
@@ -66,13 +93,21 @@ class ProgressionUI:
 
         upg_data = self.save_manager.data.get("upgrades", {})
 
-        # Draw active tab content
-        if self.active_tab == "skill_tree":
-            self._draw_skill_tree_tab(surface, buttons, upg_data, ls_pts)
-        elif self.active_tab == "troops":
-            self._draw_troops_tab(surface, buttons, upg_data, sb_pts)
-        elif self.active_tab == "buildings":
-            self._draw_buildings_tab(surface, buttons, upg_data, py_pts)
+        # Draw active tab content according to active faction
+        if self.active_faction == config.FACTION_HUMAN:
+            if self.active_tab == "skill_tree":
+                self._draw_skill_tree_tab(surface, buttons, upg_data, ls_pts)
+            elif self.active_tab == "troops":
+                self._draw_troops_tab(surface, buttons, upg_data, sb_pts)
+            elif self.active_tab == "buildings":
+                self._draw_buildings_tab(surface, buttons, upg_data, py_pts)
+        else:
+            if self.active_tab == "skill_tree":
+                self._draw_alien_skill_tree_tab(surface, buttons, upg_data, muc_pts)
+            elif self.active_tab == "troops":
+                self._draw_alien_troops_tab(surface, buttons, upg_data, conj_pts)
+            elif self.active_tab == "buildings":
+                self._draw_alien_buildings_tab(surface, buttons, upg_data, mass_pts)
 
         # Back Button
         back_btn = pygame.Rect(self.screen_width // 2 - 120, self.screen_height - 65, 240, 45)
@@ -86,7 +121,7 @@ class ProgressionUI:
 
     def _draw_skill_tree_tab(self, surface, buttons, upg_data, points_available):
         nodes = [
-            # --- ROOT FOUNDATIONS (Vertical Progression Start) ---
+            # --- ROW 1 (ROOT FOUNDATIONS) ---
             {
                 "key": "starting_res_1",
                 "name": "Starting Cache I",
@@ -101,7 +136,7 @@ class ProgressionUI:
                 "desc": "Drop-off for Wood Workers",
                 "cost": 20,
                 "parents": [],
-                "pos": (680, 150)
+                "pos": (700, 160)
             },
             {
                 "key": "gold_stockpile_unlocked",
@@ -109,7 +144,7 @@ class ProgressionUI:
                 "desc": "Drop-off for Gold Workers",
                 "cost": 20,
                 "parents": [],
-                "pos": (1080, 170)
+                "pos": (1100, 160)
             },
             {
                 "key": "house_unlocked",
@@ -117,17 +152,17 @@ class ProgressionUI:
                 "desc": "Build Houses for +5 Pop Max",
                 "cost": 20,
                 "parents": [],
-                "pos": (1480, 155)
+                "pos": (1500, 160)
             },
 
-            # --- TIER 2 (BRANCHING DOWNWARDS) ---
+            # --- ROW 2 ---
             {
                 "key": "extra_worker_start",
                 "name": "Extra Worker",
                 "desc": "Start with +1 Worker",
                 "cost": 25,
                 "parents": ["starting_res_1"],
-                "pos": (180, 310)
+                "pos": (160, 320)
             },
             {
                 "key": "extra_melee_start",
@@ -135,7 +170,7 @@ class ProgressionUI:
                 "desc": "Start with +1 Melee Unit",
                 "cost": 25,
                 "parents": ["starting_res_1"],
-                "pos": (450, 335)
+                "pos": (440, 320)
             },
             {
                 "key": "food_stockpile_unlocked",
@@ -143,7 +178,7 @@ class ProgressionUI:
                 "desc": "Drop-off for Food Workers",
                 "cost": 20,
                 "parents": ["house_unlocked"],
-                "pos": (1320, 320)
+                "pos": (1360, 320)
             },
             {
                 "key": "garrison_unlocked",
@@ -151,10 +186,18 @@ class ProgressionUI:
                 "desc": "Garrison Peasants into Town Hall",
                 "cost": 30,
                 "parents": ["house_unlocked"],
-                "pos": (1620, 305)
+                "pos": (1640, 320)
+            },
+            {
+                "key": "house_pop_1",
+                "name": "Expanded Cottages I",
+                "desc": "+1 population per House",
+                "cost": 20,
+                "parents": ["house_unlocked"],
+                "pos": (1920, 320)
             },
 
-            # --- TIER 3 (TECH & INFRASTRUCTURE) ---
+            # --- ROW 3 ---
             {
                 "key": "scout_unlocked",
                 "name": "Unlock Scout",
@@ -169,15 +212,7 @@ class ProgressionUI:
                 "desc": "+100 Starting Resources",
                 "cost": 20,
                 "parents": ["extra_melee_start"],
-                "pos": (410, 510)
-            },
-            {
-                "key": "starting_cache_3",
-                "name": "Starting Cache III",
-                "desc": "+100 Starting Resources",
-                "cost": 25,
-                "parents": ["high_starting_res"],
-                "pos": (410, 680)
+                "pos": (440, 480)
             },
             {
                 "key": "archer_unlocked",
@@ -185,7 +220,7 @@ class ProgressionUI:
                 "desc": "Train Archers in Barracks",
                 "cost": 30,
                 "parents": ["extra_melee_start", "wood_stockpile_unlocked"],
-                "pos": (690, 470)
+                "pos": (720, 480)
             },
             {
                 "key": "wall_unlocked",
@@ -193,7 +228,7 @@ class ProgressionUI:
                 "desc": "Build Defensive Wooden Walls",
                 "cost": 25,
                 "parents": ["wood_stockpile_unlocked"],
-                "pos": (950, 490)
+                "pos": (980, 480)
             },
             {
                 "key": "double_base_res_cap",
@@ -201,7 +236,7 @@ class ProgressionUI:
                 "desc": "Double resource capacity at Forum",
                 "cost": 35,
                 "parents": ["gold_stockpile_unlocked"],
-                "pos": (1180, 460)
+                "pos": (1240, 480)
             },
             {
                 "key": "farm_unlocked",
@@ -209,7 +244,7 @@ class ProgressionUI:
                 "desc": "Harvest Food for Troops",
                 "cost": 25,
                 "parents": ["food_stockpile_unlocked"],
-                "pos": (1440, 485)
+                "pos": (1500, 480)
             },
             {
                 "key": "building_repair_unlocked",
@@ -217,207 +252,7 @@ class ProgressionUI:
                 "desc": "Workers repair structures",
                 "cost": 30,
                 "parents": ["garrison_unlocked"],
-                "pos": (1720, 475)
-            },
-
-            # --- TIER 4 (AGEING UP II - CENTRAL MILESTONE) ---
-            {
-                "key": "ageing_up_2",
-                "name": "Ageing Up II (Feudal)",
-                "desc": "Advance Age (Boost Bld HP & unlocks)",
-                "cost": 50,
-                "parents": ["archer_unlocked", "wall_unlocked", "farm_unlocked"],
-                "pos": (1050, 660)
-            },
-
-            # --- TIER 5 (POST AGE II UNLOCKS & HERO REQUIREMENT) ---
-            {
-                "key": "hero_unlocked",
-                "name": "Hero Knight",
-                "desc": "Unlocks Hero Knight (Leveling & Kills)",
-                "cost": 35,
-                "parents": ["ageing_up_2"],
-                "pos": (580, 830)
-            },
-            {
-                "key": "tower_unlocked",
-                "name": "Watchtower",
-                "desc": "High sight range watchtower",
-                "cost": 30,
-                "parents": ["ageing_up_2"],
-                "pos": (890, 850)
-            },
-            {
-                "key": "arrow_tower_unlocked",
-                "name": "Arrow Tower",
-                "desc": "Defensive archer shooting tower",
-                "cost": 35,
-                "parents": ["ageing_up_2"],
-                "pos": (1190, 820)
-            },
-            {
-                "key": "looting_unlocked",
-                "name": "Looting",
-                "desc": "+5 Food per troop kill",
-                "cost": 30,
-                "parents": ["ageing_up_2"],
-                "pos": (1440, 860)
-            },
-            {
-                "key": "bank_unlocked",
-                "name": "Royal Bank",
-                "desc": "Passive gold generation building",
-                "cost": 30,
-                "parents": ["ageing_up_2", "double_base_res_cap"],
-                "pos": (1680, 835)
-            },
-
-            # --- TIER 6 (HERO UPGRADES & ADVANCED BUILDINGS) ---
-            {
-                "key": "hero_archer",
-                "name": "Hero Archer",
-                "desc": "Hero attacks at range with longbow",
-                "cost": 30,
-                "parents": ["hero_unlocked"],
-                "pos": (460, 1010)
-            },
-            {
-                "key": "hero_range_boost",
-                "name": "Heroic Range",
-                "desc": "+25% attack range for Hero",
-                "cost": 30,
-                "parents": ["hero_archer"],
-                "pos": (460, 1180)
-            },
-            {
-                "key": "sanctuary_unlocked",
-                "name": "Sanctuary / Healer",
-                "desc": "Heals 1 troop @ 8 HP/sec",
-                "cost": 30,
-                "parents": ["farm_unlocked"],
-                "pos": (1380, 1020)
-            },
-            {
-                "key": "townhall_unlocked",
-                "name": "Secondary Keep",
-                "desc": "Build Additional Town Halls",
-                "cost": 40,
-                "parents": ["ageing_up_2"],
-                "pos": (1650, 1010)
-            },
-            {
-                "key": "forum_atk_range",
-                "name": "Forum Ballista",
-                "desc": "Forum Attack Range +10%",
-                "cost": 30,
-                "parents": ["building_repair_unlocked"],
-                "pos": (1920, 660)
-            },
-            {
-                "key": "forum_passive_arrow",
-                "name": "Sentry Guard Bow",
-                "desc": "Forum fires 1 arrow (+1 arrow)",
-                "cost": 35,
-                "parents": ["forum_atk_range"],
-                "pos": (1920, 840)
-            },
-            {
-                "key": "forum_atk_sight_range",
-                "name": "Forum Citadel",
-                "desc": "Forum Atk & Sight Range +25%",
-                "cost": 25,
-                "parents": ["forum_passive_arrow"],
-                "pos": (1920, 1020)
-            },
-
-            # --- DEEP SIDE BRANCHES & IMPROVEMENTS ---
-            {
-                "key": "worker_spawn_speed",
-                "name": "Fast Worker Guild",
-                "desc": "Worker spawn time -10%",
-                "cost": 15,
-                "parents": ["scout_unlocked"],
-                "pos": (160, 660)
-            },
-            {
-                "key": "start_with_scout",
-                "name": "Frontier Scout",
-                "desc": "Start with 1 Scout unit",
-                "cost": 20,
-                "parents": ["worker_spawn_speed"],
-                "pos": (160, 840)
-            },
-            {
-                "key": "melee_spawn_speed",
-                "name": "Footman Drill",
-                "desc": "Melee spawn time -10%",
-                "cost": 15,
-                "parents": ["starting_cache_3"],
-                "pos": (410, 850)
-            },
-            {
-                "key": "near_base_res_boost",
-                "name": "Base Deposit Boost",
-                "desc": "x1.5 Resource Node Quantity Near Base",
-                "cost": 30,
-                "parents": ["double_base_res_cap"],
-                "pos": (1180, 620)
-            },
-            {
-                "key": "temple_unlocked",
-                "name": "Holy Temple & Monk",
-                "desc": "Train Monks (+2 HP/s Healing Beam)",
-                "cost": 35,
-                "parents": ["sanctuary_unlocked"],
-                "pos": (1380, 1360)
-            },
-            {
-                "key": "tower_extra_projectile",
-                "name": "Tower Volley",
-                "desc": "Defensive Towers fire +1 Arrow",
-                "cost": 35,
-                "parents": ["arrow_tower_unlocked"],
-                "pos": (1100, 1180)
-            },
-            {
-                "key": "archer_spawn_speed",
-                "name": "Bowyer Crafting",
-                "desc": "Archer spawn time -10%",
-                "cost": 15,
-                "parents": ["archer_unlocked"],
-                "pos": (690, 650)
-            },
-            {
-                "key": "watchtower_sight",
-                "name": "Tower Optics",
-                "desc": "Watchtower Sight +20%",
-                "cost": 25,
-                "parents": ["tower_unlocked"],
-                "pos": (820, 1030)
-            },
-            {
-                "key": "tower_range_unlocked",
-                "name": "Arrow Tower Range",
-                "desc": "Arrow tower +10% range",
-                "cost": 25,
-                "parents": ["arrow_tower_unlocked"],
-                "pos": (1100, 1010)
-            },
-            {
-                "key": "sanctuary_boost",
-                "name": "Advanced Sanctuary",
-                "desc": "Range +40% & Heals +4 HP/s",
-                "cost": 30,
-                "parents": ["sanctuary_unlocked"],
-                "pos": (1380, 1190)
-            },
-            {
-                "key": "house_pop_1",
-                "name": "Expanded Cottages I",
-                "desc": "+1 population per House",
-                "cost": 20,
-                "parents": ["house_unlocked"],
-                "pos": (2180, 310)
+                "pos": (1760, 480)
             },
             {
                 "key": "house_pop_2",
@@ -425,7 +260,65 @@ class ProgressionUI:
                 "desc": "+1 population per House",
                 "cost": 25,
                 "parents": ["house_pop_1"],
-                "pos": (2180, 500)
+                "pos": (2020, 480)
+            },
+
+            # --- ROW 4 ---
+            {
+                "key": "worker_spawn_speed",
+                "name": "Fast Worker Guild",
+                "desc": "Worker spawn time -10%",
+                "cost": 15,
+                "parents": ["scout_unlocked"],
+                "pos": (160, 640)
+            },
+            {
+                "key": "starting_cache_3",
+                "name": "Starting Cache III",
+                "desc": "+100 Starting Resources",
+                "cost": 25,
+                "parents": ["high_starting_res"],
+                "pos": (440, 640)
+            },
+            {
+                "key": "archer_spawn_speed",
+                "name": "Bowyer Crafting",
+                "desc": "Archer spawn time -10%",
+                "cost": 15,
+                "parents": ["archer_unlocked"],
+                "pos": (720, 640)
+            },
+            {
+                "key": "ageing_up_2",
+                "name": "Ageing Up II (Feudal)",
+                "desc": "Advance Age (Boost Bld HP & unlocks)",
+                "cost": 50,
+                "parents": ["archer_unlocked", "wall_unlocked", "farm_unlocked"],
+                "pos": (980, 640)
+            },
+            {
+                "key": "near_base_res_boost",
+                "name": "Base Deposit Boost",
+                "desc": "x1.5 Resource Node Quantity Near Base",
+                "cost": 30,
+                "parents": ["double_base_res_cap"],
+                "pos": (1240, 640)
+            },
+            {
+                "key": "sanctuary_unlocked",
+                "name": "Sanctuary / Healer",
+                "desc": "Heals 1 troop @ 8 HP/sec",
+                "cost": 30,
+                "parents": ["farm_unlocked"],
+                "pos": (1500, 640)
+            },
+            {
+                "key": "forum_atk_range",
+                "name": "Forum Ballista",
+                "desc": "Forum Attack Range +10%",
+                "cost": 30,
+                "parents": ["building_repair_unlocked"],
+                "pos": (1760, 640)
             },
             {
                 "key": "house_pop_3",
@@ -433,7 +326,149 @@ class ProgressionUI:
                 "desc": "+1 population per House",
                 "cost": 30,
                 "parents": ["house_pop_2"],
-                "pos": (2180, 690)
+                "pos": (2020, 640)
+            },
+
+            # --- ROW 5 ---
+            {
+                "key": "start_with_scout",
+                "name": "Frontier Scout",
+                "desc": "Start with 1 Scout unit",
+                "cost": 20,
+                "parents": ["worker_spawn_speed"],
+                "pos": (160, 800)
+            },
+            {
+                "key": "melee_spawn_speed",
+                "name": "Footman Drill",
+                "desc": "Melee spawn time -10%",
+                "cost": 15,
+                "parents": ["starting_cache_3"],
+                "pos": (440, 800)
+            },
+            {
+                "key": "hero_unlocked",
+                "name": "Hero Knight",
+                "desc": "Unlocks Hero Knight (Leveling & Kills)",
+                "cost": 35,
+                "parents": ["ageing_up_2"],
+                "pos": (720, 800)
+            },
+            {
+                "key": "tower_unlocked",
+                "name": "Watchtower",
+                "desc": "High sight range watchtower",
+                "cost": 30,
+                "parents": ["ageing_up_2"],
+                "pos": (980, 800)
+            },
+            {
+                "key": "arrow_tower_unlocked",
+                "name": "Arrow Tower",
+                "desc": "Defensive archer shooting tower",
+                "cost": 35,
+                "parents": ["ageing_up_2"],
+                "pos": (1240, 800)
+            },
+            {
+                "key": "looting_unlocked",
+                "name": "Looting",
+                "desc": "+5 Food per troop kill",
+                "cost": 30,
+                "parents": ["ageing_up_2"],
+                "pos": (1500, 800)
+            },
+            {
+                "key": "forum_passive_arrow",
+                "name": "Sentry Guard Bow",
+                "desc": "Forum fires 1 arrow (+1 arrow)",
+                "cost": 35,
+                "parents": ["forum_atk_range"],
+                "pos": (1760, 800)
+            },
+
+            # --- ROW 6 ---
+            {
+                "key": "hero_archer",
+                "name": "Hero Archer",
+                "desc": "Hero attacks at range with longbow",
+                "cost": 30,
+                "parents": ["hero_unlocked"],
+                "pos": (720, 960)
+            },
+            {
+                "key": "watchtower_sight",
+                "name": "Tower Optics",
+                "desc": "Watchtower Sight +20%",
+                "cost": 25,
+                "parents": ["tower_unlocked"],
+                "pos": (980, 960)
+            },
+            {
+                "key": "tower_range_unlocked",
+                "name": "Arrow Tower Range",
+                "desc": "Arrow tower +10% range",
+                "cost": 25,
+                "parents": ["arrow_tower_unlocked"],
+                "pos": (1240, 960)
+            },
+            {
+                "key": "sanctuary_boost",
+                "name": "Advanced Sanctuary",
+                "desc": "Range +40% & Heals +4 HP/s",
+                "cost": 30,
+                "parents": ["sanctuary_unlocked"],
+                "pos": (1500, 960)
+            },
+            {
+                "key": "bank_unlocked",
+                "name": "Royal Bank",
+                "desc": "Passive gold generation building",
+                "cost": 30,
+                "parents": ["ageing_up_2", "double_base_res_cap"],
+                "pos": (1760, 960)
+            },
+            {
+                "key": "forum_atk_sight_range",
+                "name": "Forum Citadel",
+                "desc": "Forum Atk & Sight Range +25%",
+                "cost": 25,
+                "parents": ["forum_passive_arrow"],
+                "pos": (2020, 960)
+            },
+
+            # --- ROW 7 ---
+            {
+                "key": "hero_range_boost",
+                "name": "Heroic Range",
+                "desc": "+25% attack range for Hero",
+                "cost": 30,
+                "parents": ["hero_archer"],
+                "pos": (720, 1120)
+            },
+            {
+                "key": "tower_extra_projectile",
+                "name": "Tower Volley",
+                "desc": "Defensive Towers fire +1 Arrow",
+                "cost": 35,
+                "parents": ["arrow_tower_unlocked"],
+                "pos": (1240, 1120)
+            },
+            {
+                "key": "temple_unlocked",
+                "name": "Holy Temple & Monk",
+                "desc": "Train Monks (+2 HP/s Healing Beam)",
+                "cost": 35,
+                "parents": ["sanctuary_unlocked"],
+                "pos": (1500, 1120)
+            },
+            {
+                "key": "townhall_unlocked",
+                "name": "Secondary Keep",
+                "desc": "Build Additional Town Halls",
+                "cost": 40,
+                "parents": ["ageing_up_2"],
+                "pos": (1760, 1120)
             }
         ]
 
@@ -559,6 +594,212 @@ class ProgressionUI:
             available_upgrades.append({"key": "stockpile_hp_lvl", "bld": "Stockpiles", "name": "Stockpile Reinforced Walls (+15%)", "cost_base": 10, "stats": "HP: 350 | Drop-off Depot"})
 
         self._render_upgrade_list(surface, buttons, available_upgrades, "Pykrite", upg_data)
+
+    def _draw_alien_skill_tree_tab(self, surface, buttons, upg_data, points_available):
+        nodes = [
+            {
+                "key": "alien_starting_res_1",
+                "name": "Biomass Cache I",
+                "desc": "+100 Starting Biomass",
+                "cost": 20,
+                "parents": [],
+                "pos": (400, 180)
+            },
+            {
+                "key": "alien_biomass_stockpile_unlocked",
+                "name": "Biomass Depot",
+                "desc": "Drop-off for Drone workers",
+                "cost": 20,
+                "parents": [],
+                "pos": (800, 180)
+            },
+            {
+                "key": "alien_spawning_pool_unlocked",
+                "name": "Spawning Pool",
+                "desc": "Morph Swarmers & Spitters",
+                "cost": 25,
+                "parents": ["alien_starting_res_1"],
+                "pos": (400, 360)
+            },
+            {
+                "key": "alien_biomass_gen_unlocked",
+                "name": "Biomass Chamber",
+                "desc": "Passive Biomass generation",
+                "cost": 25,
+                "parents": ["alien_biomass_stockpile_unlocked"],
+                "pos": (800, 360)
+            },
+            {
+                "key": "alien_spine_crawler_unlocked",
+                "name": "Spine Crawler",
+                "desc": "Defensive Organism Tower",
+                "cost": 30,
+                "parents": ["alien_spawning_pool_unlocked"],
+                "pos": (250, 540)
+            },
+            {
+                "key": "alien_spitter_unlocked",
+                "name": "Acid Spitter",
+                "desc": "Ranged Acid Spitter unit",
+                "cost": 30,
+                "parents": ["alien_spawning_pool_unlocked"],
+                "pos": (550, 540)
+            },
+            {
+                "key": "alien_evolution_chamber_unlocked",
+                "name": "Evolution Chamber",
+                "desc": "Research Bio Upgrades",
+                "cost": 35,
+                "parents": ["alien_biomass_gen_unlocked"],
+                "pos": (800, 540)
+            },
+            {
+                "key": "alien_creep_spread_unlocked",
+                "name": "Creep Spread",
+                "desc": "+25% Speed & ATK near Hive",
+                "cost": 35,
+                "parents": ["alien_spitter_unlocked"],
+                "pos": (400, 720)
+            },
+            {
+                "key": "alien_second_hive_unlocked",
+                "name": "Secondary Hive",
+                "desc": "Expand with 2nd Hive Keep",
+                "cost": 40,
+                "parents": ["alien_evolution_chamber_unlocked"],
+                "pos": (800, 720)
+            },
+            {
+                "key": "alien_queen_unlocked",
+                "name": "Insect Queen Hero",
+                "desc": "Hero Queen unit (Morph Swarmers)",
+                "cost": 45,
+                "parents": ["alien_creep_spread_unlocked"],
+                "pos": (400, 900)
+            },
+            {
+                "key": "alien_hive_enrage_unlocked",
+                "name": "Hive Frenzy Ability",
+                "desc": "+20% Attack/Speed Frenzy burst",
+                "cost": 50,
+                "parents": ["alien_queen_unlocked", "alien_second_hive_unlocked"],
+                "pos": (600, 1080)
+            }
+        ]
+
+        node_map = {n["key"]: n for n in nodes}
+        ox = self.camera_offset_x
+        oy = self.camera_offset_y
+        zoom = self.zoom_level
+
+        def transform_pos(pos):
+            cx = (pos[0] - self.screen_width // 2) * zoom + self.screen_width // 2 + ox
+            cy = (pos[1] - self.screen_height // 2) * zoom + self.screen_height // 2 + oy
+            return int(cx), int(cy)
+
+        for n in nodes:
+            cx, cy = transform_pos(n["pos"])
+            for parent_key in n["parents"]:
+                parent = node_map[parent_key]
+                px, py = transform_pos(parent["pos"])
+                is_parent_unlocked = upg_data.get(parent_key, 0) >= 1
+                is_node_unlocked = upg_data.get(n["key"], 0) >= 1
+
+                if is_node_unlocked:
+                    line_color = (100, 220, 120)
+                elif is_parent_unlocked:
+                    line_color = (255, 179, 0)
+                else:
+                    line_color = (80, 80, 80)
+
+                pygame.draw.line(surface, line_color, (px, py + int(40 * zoom)), (cx, cy - int(40 * zoom)), max(1, int(3 * zoom)))
+
+        bold_size = max(8, min(22, int(15 * zoom)))
+        small_size = max(6, min(18, int(12 * zoom)))
+        z_bold_font = pygame.font.SysFont("Arial", bold_size, bold=True)
+        z_small_font = pygame.font.SysFont("Arial", small_size)
+
+        for n in nodes:
+            key = n["key"]
+            cx, cy = transform_pos(n["pos"])
+            card_w = int(220 * zoom)
+            card_h = int(82 * zoom)
+            card_rect = pygame.Rect(cx - card_w // 2, cy - card_h // 2, card_w, card_h)
+
+            is_unlocked = upg_data.get(key, 0) >= 1
+            parents_unlocked = all(upg_data.get(p, 0) >= 1 for p in n["parents"])
+
+            if is_unlocked:
+                bg_col = (20, 55, 30)
+                border_col = (100, 220, 120)
+                status_txt = "UNLOCKED"
+                status_col = (120, 255, 140)
+            elif parents_unlocked:
+                bg_col = (35, 45, 38)
+                border_col = (100, 200, 120)
+                status_txt = f"Cost: {n['cost']} Muculus"
+                status_col = (100, 220, 120)
+            else:
+                bg_col = (30, 32, 38)
+                border_col = (70, 70, 75)
+                status_txt = "LOCKED"
+                status_col = (120, 120, 120)
+
+            pygame.draw.rect(surface, bg_col, card_rect, border_radius=max(2, int(6 * zoom)))
+            pygame.draw.rect(surface, border_col, card_rect, max(1, int(2 * zoom)), border_radius=max(2, int(6 * zoom)))
+
+            t_title = z_bold_font.render(n["name"], True, config.COLOR_UI_TEXT if parents_unlocked or is_unlocked else (140, 140, 140))
+            surface.blit(t_title, (cx - t_title.get_width() // 2, cy - int(32 * zoom)))
+
+            t_desc = z_small_font.render(n["desc"], True, (180, 180, 180) if parents_unlocked or is_unlocked else (100, 100, 100))
+            surface.blit(t_desc, (cx - t_desc.get_width() // 2, cy - int(10 * zoom)))
+
+            t_stat = z_bold_font.render(status_txt, True, status_col)
+            surface.blit(t_stat, (cx - t_stat.get_width() // 2, cy + int(12 * zoom)))
+
+            if parents_unlocked and not is_unlocked:
+                buttons[key] = {
+                    "rect": card_rect,
+                    "type": "Muculus",
+                    "cost": n["cost"],
+                    "is_tree_unlock": True
+                }
+
+    def _draw_alien_troops_tab(self, surface, buttons, upg_data, points):
+        available_upgrades = [
+            {"key": "drone_hp_lvl", "unit": "Drone", "name": "Drone Worker HP (+15%)", "cost_base": 10, "stats": "HP: 55 | Atk: 6 | Range: 25 | Spd: 105"},
+            {"key": "drone_speed_lvl", "unit": "Drone", "name": "Drone Movement Speed (+10%)", "cost_base": 12, "stats": "HP: 55 | Atk: 6 | Range: 25 | Spd: 105"},
+
+            {"key": "swarmer_hp_lvl", "unit": "Swarmer", "name": "Swarmer Vitality (+10%)", "cost_base": 12, "stats": "HP: 100 | Atk: 15 | Range: 25 | Spd: 125"},
+            {"key": "swarmer_attack_lvl", "unit": "Swarmer", "name": "Swarmer Mandible Damage (+10%)", "cost_base": 15, "stats": "HP: 100 | Atk: 15 | Range: 25 | Spd: 125"},
+        ]
+
+        if upg_data.get("alien_spitter_unlocked"):
+            available_upgrades.append({"key": "spitter_hp_lvl", "unit": "Spitter", "name": "Spitter HP (+10%)", "cost_base": 15, "stats": "HP: 80 | Atk: 16 | Range: 170 | Spd: 95"})
+            available_upgrades.append({"key": "spitter_attack_lvl", "unit": "Spitter", "name": "Spitter Acid Power (+10%)", "cost_base": 18, "stats": "HP: 80 | Atk: 16 | Range: 170 | Spd: 95"})
+
+        if upg_data.get("alien_queen_unlocked"):
+            available_upgrades.append({"key": "queen_hp_lvl", "unit": "Queen", "name": "Insect Queen HP (+15%)", "cost_base": 20, "stats": "HP: 220 | Atk: 22 | Range: 160 | Spd: 90"})
+            available_upgrades.append({"key": "queen_attack_lvl", "unit": "Queen", "name": "Insect Queen Damage (+10%)", "cost_base": 25, "stats": "HP: 220 | Atk: 22 | Range: 160 | Spd: 90"})
+
+        self._render_upgrade_list(surface, buttons, available_upgrades, "Conjulat", upg_data)
+
+    def _draw_alien_buildings_tab(self, surface, buttons, upg_data, points):
+        available_upgrades = [
+            {"key": "hive_hp_lvl", "bld": "Hive", "name": "Hive Central Durability (+15%)", "cost_base": 15, "stats": "HP: 1000 | Pop: +10"},
+        ]
+
+        if upg_data.get("alien_spawning_pool_unlocked"):
+            available_upgrades.append({"key": "spawning_pool_hp_lvl", "bld": "SpawningPool", "name": "Spawning Pool Carapace (+15%)", "cost_base": 12, "stats": "HP: 500 | Build Time: 20s"})
+
+        if upg_data.get("alien_spine_crawler_unlocked"):
+            available_upgrades.append({"key": "spine_crawler_hp_lvl", "bld": "SpineCrawler", "name": "Spine Crawler Health (+15%)", "cost_base": 15, "stats": "HP: 400 | Atk: 24 | Range: 234"})
+            available_upgrades.append({"key": "spine_crawler_attack_lvl", "bld": "SpineCrawler", "name": "Spine Crawler Attack Damage (+10%)", "cost_base": 20, "stats": "HP: 400 | Atk: 24 | Range: 234"})
+
+        if upg_data.get("alien_biomass_gen_unlocked"):
+            available_upgrades.append({"key": "biomass_gen_hp_lvl", "bld": "BiomassGenerator", "name": "Biomass Generator Durability (+15%)", "cost_base": 15, "stats": "HP: 350 | Passive Biomass Influx"})
+
+        self._render_upgrade_list(surface, buttons, available_upgrades, "Mass", upg_data)
 
     def _render_upgrade_list(self, surface, buttons, upgrades, point_type, upg_data):
         y = 170

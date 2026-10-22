@@ -223,14 +223,36 @@ class Building(BaseEntity):
                 target = self.find_target(game_state)
                 if target:
                     from src.entities.projectile import Projectile
+                    import math
                     p_type = "arrow"
 
                     upgrades = game_state.save_manager.data.get("upgrades", {}) if hasattr(game_state, 'save_manager') and game_state.save_manager else {}
                     num_proj = 2 if (upgrades.get("tower_extra_projectile") and self.building_type in ["ArrowTower", "Tower", "WatchTower", "SpineCrawler"]) else 1
 
-                    for i in range(num_proj):
-                        delay = i * 0.08
-                        proj = Projectile(self.x, self.y, target, self.attack_power, speed=500, owner_id=self.owner_id, projectile_type=p_type, delay=delay, attacker_entity=self)
+                    if num_proj == 2:
+                        dx = target.x - self.x
+                        dy = target.y - self.y
+                        target_angle = math.atan2(dy, dx) if (dx != 0 or dy != 0) else 0.0
+                        offset_dist = max(8.0, self.radius * 0.5)
+
+                        # Left arrow (first)
+                        left_angle = target_angle - math.pi / 2.0
+                        lx = self.x + math.cos(left_angle) * offset_dist
+                        ly = self.y + math.sin(left_angle) * offset_dist
+                        proj_l = Projectile(lx, ly, target, self.attack_power, speed=500, owner_id=self.owner_id, projectile_type=p_type, delay=0.0, attacker_entity=self)
+
+                        # Right arrow (second with slight phase delay)
+                        right_angle = target_angle + math.pi / 2.0
+                        rx = self.x + math.cos(right_angle) * offset_dist
+                        ry = self.y + math.sin(right_angle) * offset_dist
+                        proj_r = Projectile(rx, ry, target, self.attack_power, speed=500, owner_id=self.owner_id, projectile_type=p_type, delay=0.08, attacker_entity=self)
+
+                        if hasattr(game_state, 'projectiles'):
+                            game_state.projectiles.extend([proj_l, proj_r])
+                        else:
+                            target.take_damage(self.attack_power * 2, attacker=self, game_state=game_state)
+                    else:
+                        proj = Projectile(self.x, self.y, target, self.attack_power, speed=500, owner_id=self.owner_id, projectile_type=p_type, delay=0.0, attacker_entity=self)
                         if hasattr(game_state, 'projectiles'):
                             game_state.projectiles.append(proj)
                         else:
