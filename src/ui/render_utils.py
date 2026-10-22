@@ -95,8 +95,24 @@ class RenderUtils:
         p_size = max(3, int(4 * camera.zoom))
 
         if p_type == "arrow":
-            pygame.draw.circle(surface, (255, 235, 59), (sx, sy), p_size)
-            pygame.draw.circle(surface, (255, 255, 255), (sx, sy), max(1, p_size - 2))
+            # Model projectile as a directional arrow shaft and iron tip
+            tx, ty = proj.target_pos
+            sp_target = camera.world_to_screen((tx, ty))
+            dx = sp_target[0] - sx
+            dy = sp_target[1] - sy
+            dist = math.hypot(dx, dy)
+            angle = math.atan2(dy, dx) if dist > 0 else 0
+
+            arrow_len = max(8, int(12 * camera.zoom))
+            back_x = sx - int(math.cos(angle) * arrow_len)
+            back_y = sy - int(math.sin(angle) * arrow_len)
+
+            # Wooden arrow shaft
+            pygame.draw.line(surface, (255, 235, 59), (back_x, back_y), (sx, sy), max(2, int(2 * camera.zoom)))
+            # Sharp iron arrowhead
+            tip_x = sx + int(math.cos(angle) * 3)
+            tip_y = sy + int(math.sin(angle) * 3)
+            pygame.draw.line(surface, (255, 255, 255), (sx, sy), (tip_x, tip_y), max(2, int(3 * camera.zoom)))
         elif p_type in ["spitter_spore", "queen_spore"]:
             col = (0, 255, 128) if p_type == "spitter_spore" else (216, 27, 96)
             pygame.draw.circle(surface, col, (sx, sy), p_size + 2)

@@ -156,6 +156,12 @@ def main():
                         if buttons.get("back") and buttons["back"].collidepoint(event.pos):
                             game_state.state = "MENU"
                             menu.ai_info_scroll_y = 0
+                        elif buttons.get("tab_med") and buttons["tab_med"].collidepoint(event.pos):
+                            menu.ai_info_tab = "medieval"
+                            menu.ai_info_scroll_y = 0
+                        elif buttons.get("tab_alien") and buttons["tab_alien"].collidepoint(event.pos):
+                            menu.ai_info_tab = "alien"
+                            menu.ai_info_scroll_y = 0
                     elif event.button == 4:  # Scroll Up
                         menu.ai_info_scroll_y = max(0, getattr(menu, 'ai_info_scroll_y', 0) - 40)
                     elif event.button == 5:  # Scroll Down
@@ -372,8 +378,9 @@ def main():
                                                 seg_len = math.hypot(x2 - x1, y2 - y1)
 
                                                 if game_state.can_place_building("Wall", cx, cy):
+                                                    p_fac = getattr(game_state, 'player_faction', config.FACTION_HUMAN)
                                                     nb = Building(
-                                                        0, config.FACTION_HUMAN, "Wall", cx, cy,
+                                                        0, p_fac, "Wall", cx, cy,
                                                         is_constructed=False,
                                                         wall_length=seg_len + 12.0,  # Overlap adjacent sections for continuous line without gaps
                                                         wall_width=20,
@@ -414,7 +421,8 @@ def main():
                                             # Additional vision
                                             range_bonus += 10
 
-                                        nb = Building(0, config.FACTION_HUMAN, placement_building_type, world_click[0], world_click[1], is_constructed=False, range_bonus=range_bonus)
+                                        p_fac = getattr(game_state, 'player_faction', config.FACTION_HUMAN)
+                                        nb = Building(0, p_fac, placement_building_type, world_click[0], world_click[1], is_constructed=False, range_bonus=range_bonus)
                                         if placement_building_type == "Tower" and upgrades.get("watchtower_sight"):
                                             nb.vision_radius = int(nb.vision_radius * 1.20)
 
@@ -709,12 +717,19 @@ def main():
             sb_earned = last_rewards.get(config.POINT_TYPE_FORGE, 0)
             py_earned = last_rewards.get(config.POINT_TYPE_ARCHITECTURE, 0)
 
-            res_str = f"Permanent Resources Earned:  LandShard: +{ls_earned}  |  SwarmerBlood: +{sb_earned}  |  Pykrite: +{py_earned}"
+            p_fac = getattr(game_state, 'player_faction', config.FACTION_HUMAN)
+            if p_fac == config.FACTION_ALIEN:
+                res_str = f"Permanent Resources Earned:  Muculus: +{ls_earned}  |  Conjulat: +{sb_earned}  |  Mass: +{py_earned}"
+            else:
+                res_str = f"Permanent Resources Earned:  LandShard: +{ls_earned}  |  SwarmerBlood: +{sb_earned}  |  Pykrite: +{py_earned}"
             res_txt = menu.font.render(res_str, True, (255, 215, 0))
             screen.blit(res_txt, (config.SCREEN_WIDTH // 2 - res_txt.get_width() // 2, 380))
 
             pts = save_manager.get_points()
-            tot_str = f"Total Permanent:  LandShard: {pts.get('LandShard', 0)}  |  SwarmerBlood: {pts.get('SwarmerBlood', 0)}  |  Pykrite: {pts.get('Pykrite', 0)}"
+            if p_fac == config.FACTION_ALIEN:
+                tot_str = f"Total Permanent:  Muculus: {pts.get('Muculus', 0)}  |  Conjulat: {pts.get('Conjulat', 0)}  |  Mass: {pts.get('Mass', 0)}"
+            else:
+                tot_str = f"Total Permanent:  LandShard: {pts.get('LandShard', 0)}  |  SwarmerBlood: {pts.get('SwarmerBlood', 0)}  |  Pykrite: {pts.get('Pykrite', 0)}"
             tot_txt = menu.small_font.render(tot_str, True, (200, 220, 240))
             screen.blit(tot_txt, (config.SCREEN_WIDTH // 2 - tot_txt.get_width() // 2, 420))
 
@@ -744,12 +759,19 @@ def main():
             sb_earned = last_rewards.get(config.POINT_TYPE_FORGE, 0)
             py_earned = last_rewards.get(config.POINT_TYPE_ARCHITECTURE, 0)
 
-            res_str = f"Permanent Resources Earned:  LandShard: +{ls_earned}  |  SwarmerBlood: +{sb_earned}  |  Pykrite: +{py_earned}"
+            p_fac = getattr(game_state, 'player_faction', config.FACTION_HUMAN)
+            if p_fac == config.FACTION_ALIEN:
+                res_str = f"Permanent Resources Earned:  Muculus: +{ls_earned}  |  Conjulat: +{sb_earned}  |  Mass: +{py_earned}"
+            else:
+                res_str = f"Permanent Resources Earned:  LandShard: +{ls_earned}  |  SwarmerBlood: +{sb_earned}  |  Pykrite: +{py_earned}"
             res_txt = menu.font.render(res_str, True, (255, 215, 0))
             screen.blit(res_txt, (config.SCREEN_WIDTH // 2 - res_txt.get_width() // 2, 380))
 
             pts = save_manager.get_points()
-            tot_str = f"Total Permanent:  LandShard: {pts.get('LandShard', 0)}  |  SwarmerBlood: {pts.get('SwarmerBlood', 0)}  |  Pykrite: {pts.get('Pykrite', 0)}"
+            if p_fac == config.FACTION_ALIEN:
+                tot_str = f"Total Permanent:  Muculus: {pts.get('Muculus', 0)}  |  Conjulat: {pts.get('Conjulat', 0)}  |  Mass: {pts.get('Mass', 0)}"
+            else:
+                tot_str = f"Total Permanent:  LandShard: {pts.get('LandShard', 0)}  |  SwarmerBlood: {pts.get('SwarmerBlood', 0)}  |  Pykrite: {pts.get('Pykrite', 0)}"
             tot_txt = menu.small_font.render(tot_str, True, (200, 220, 240))
             screen.blit(tot_txt, (config.SCREEN_WIDTH // 2 - tot_txt.get_width() // 2, 420))
 

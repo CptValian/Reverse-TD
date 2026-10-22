@@ -9,6 +9,7 @@ UNIT_TYPES = {
     "Infantry": {"cost": {"food": 60, "gold": 40}, "hp": 150, "speed": 90, "attack": 18, "range": 30, "is_worker": False, "radius": 15, "train_time": 14},
     "Archer": {"cost": {"food": 50, "wood": 50}, "hp": 90, "speed": 100, "attack": 14, "range": 180, "is_worker": False, "radius": 13, "train_time": 16},
     "Hero": {"cost": {"food": 0}, "hp": 200, "speed": 110, "attack": 25, "range": 30, "is_worker": False, "radius": 16, "train_time": 0},
+    "Monk": {"cost": {"gold": 150, "food": 50}, "hp": 80, "speed": 90, "attack": 0, "range": 200, "is_worker": False, "radius": 13, "train_time": 15},
 
     # Alien
     "Drone": {"cost": {"biomass": 50}, "hp": 55, "speed": 105, "attack": 6, "range": 25, "is_worker": True, "radius": 12, "train_time": 9},
@@ -195,6 +196,23 @@ class Unit(BaseEntity):
         elif getattr(self, 'is_action_locked', False):
             self.stuck_timer = 0.0
             self.stuck_check_timer = 0.0
+
+        if self.unit_type == "Monk" and game_state:
+            injured_allies = [
+                u for u in game_state.units
+                if u.alive and u is not self and u.hp < u.max_hp
+                and not game_state.are_enemies(self.owner_id, u.owner_id)
+                and self.distance_to(u) <= self.attack_range
+            ]
+            if injured_allies:
+                heal_target = min(injured_allies, key=lambda u: u.hp / float(u.max_hp))
+                heal_target.hp = min(heal_target.max_hp, heal_target.hp + 2.0 * dt)
+                self.target_entity = heal_target
+                self.is_attacking_anim = 0.2
+                dx_h = heal_target.x - self.x
+                dy_h = heal_target.y - self.y
+                if dx_h != 0 or dy_h != 0:
+                    self.facing_angle = math.atan2(dy_h, dx_h)
 
         if self.state == "move":
             self._process_movement(dt)
@@ -499,18 +517,39 @@ class Unit(BaseEntity):
         dx = self.target_entity.x - self.x
         dy = self.target_entity.y - self.y
 
+        min_range = self.radius + self.target_entity.radius + 18
+        max_range = self.radius + self.target_entity.radius + 55
+
         if not self.is_action_locked:
-            if dist > self.radius + self.target_entity.radius + 18:
+            if dist > max_range:
                 self._move_towards(self.target_entity.x, self.target_entity.y, dt, game_state)
-            else:
+            elif dist <= min_range:
                 self.is_action_locked = True
                 if dist > 0:
                     self.facing_angle = math.atan2(dy, dx)
                 self.path_waypoints.clear()
                 self.target_pos = None
+            else:
+                # Between min_range and max_range: lock if blocked by crowding or other workers
+                is_blocked = (getattr(self, 'stuck_timer', 0.0) > 0.15)
+                if not is_blocked and game_state:
+                    for other in game_state.units:
+                        if other is not self and getattr(other, 'is_action_locked', False) and getattr(other, 'target_entity', None) == self.target_entity:
+                            if self.distance_to(other) <= self.radius + other.radius + 16:
+                                is_blocked = True
+                                break
+
+                if is_blocked:
+                    self.is_action_locked = True
+                    if dist > 0:
+                        self.facing_angle = math.atan2(dy, dx)
+                    self.path_waypoints.clear()
+                    self.target_pos = None
+                else:
+                    self._move_towards(self.target_entity.x, self.target_entity.y, dt, game_state)
 
         if self.is_action_locked:
-            if dist > self.radius + self.target_entity.radius + 38:
+            if dist > max_range + 20:
                 self.is_action_locked = False
             else:
                 if hasattr(self.target_entity, 'harvest'):
