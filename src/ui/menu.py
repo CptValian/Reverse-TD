@@ -165,15 +165,19 @@ class Menu:
         map_btn = pygame.Rect(setup_rect.x + 300, setup_rect.y + 212, 480, 42)
         draw_button(map_btn, f"{map_names.get(selected_map_type, 'Standard')}")
 
-        # Action Buttons: Launch Match and Back
-        start_match_btn = pygame.Rect(self.screen_width // 2 - 260, 560, 240, 52)
-        draw_button(start_match_btn, "START MATCH", is_primary=True)
+        # Action Buttons: Launch Match, Skill Tree & Upgrades, and Back
+        btn_w = 230
+        start_match_btn = pygame.Rect(self.screen_width // 2 - 380, 560, btn_w, 52)
+        skill_tree_btn = pygame.Rect(self.screen_width // 2 - 115, 560, btn_w, 52)
+        back_btn = pygame.Rect(self.screen_width // 2 + 150, 560, btn_w, 52)
 
-        back_btn = pygame.Rect(self.screen_width // 2 + 20, 560, 240, 52)
+        draw_button(start_match_btn, "START MATCH", is_primary=True)
+        draw_button(skill_tree_btn, "SKILL TREE & UPGRADES")
         draw_button(back_btn, "BACK TO MENU")
 
         return {
             "start_match": start_match_btn,
+            "skill_tree": skill_tree_btn,
             "back": back_btn,
             "ai_minus": ai_minus_btn,
             "ai_plus": ai_plus_btn,
@@ -420,17 +424,41 @@ class Menu:
         self.ai_info_scroll_y = scroll_y
         surface.fill((15, 18, 26))
 
-        # Title (Fixed Header)
-        header_rect = pygame.Rect(0, 0, self.screen_width, 70)
-        pygame.draw.rect(surface, (22, 27, 38), header_rect)
-        pygame.draw.line(surface, config.COLOR_UI_ACCENT, (0, 70), (self.screen_width, 70), 2)
+        if not hasattr(self, 'ai_info_tab'):
+            self.ai_info_tab = "medieval"
 
-        t_title = self.title_font.render("ALIEN INSECT CIVILIZATION & AI LEVELS", True, (255, 215, 0))
-        surface.blit(t_title, (self.screen_width // 2 - t_title.get_width() // 2, 10))
+        # Title (Fixed Header)
+        header_rect = pygame.Rect(0, 0, self.screen_width, 85)
+        pygame.draw.rect(surface, (22, 27, 38), header_rect)
+        pygame.draw.line(surface, config.COLOR_UI_ACCENT, (0, 85), (self.screen_width, 85), 2)
+
+        t_title = self.title_font.render("FACTION CIVILIZATIONS & AI TECH UNLOCKS", True, (255, 215, 0))
+        surface.blit(t_title, (self.screen_width // 2 - t_title.get_width() // 2, 8))
+
+        # Tabs for Medieval vs Alien
+        tab_w, tab_h = 280, 36
+        tab_y = 44
+        tab_med = pygame.Rect(self.screen_width // 2 - tab_w - 10, tab_y, tab_w, tab_h)
+        tab_alien = pygame.Rect(self.screen_width // 2 + 10, tab_y, tab_w, tab_h)
+
+        mouse_p = pygame.mouse.get_pos()
+        def draw_info_tab(rect, label, is_active, is_alien=False):
+            hovered = rect.collidepoint(mouse_p)
+            bg_col = (50, 70, 100) if is_active else ((35, 45, 60) if not hovered else (45, 55, 75))
+            border_col = (255, 215, 0) if is_active else ((216, 27, 96) if is_alien else config.COLOR_UI_ACCENT)
+
+            pygame.draw.rect(surface, bg_col, rect, border_radius=6)
+            pygame.draw.rect(surface, border_col, rect, 2, border_radius=6)
+
+            t_s = self.bold_font.render(label, True, (255, 255, 255) if is_active else (180, 190, 200))
+            surface.blit(t_s, (rect.x + rect.width // 2 - t_s.get_width() // 2, rect.y + 6))
+
+        draw_info_tab(tab_med, "Medieval Human AI", self.ai_info_tab == "medieval")
+        draw_info_tab(tab_alien, "Alien Insect AI", self.ai_info_tab == "alien", is_alien=True)
 
         # Scrollable Viewport Surface
-        viewport_y = 75
-        viewport_h = self.screen_height - 150
+        viewport_y = 90
+        viewport_h = self.screen_height - 165
         viewport_w = min(1100, self.screen_width - 40)
         viewport_x = (self.screen_width - viewport_w) // 2
 
@@ -438,16 +466,6 @@ class Menu:
         from src.ai.ai_tech import AI_DIFFICULTY_LEVELS
 
         num_lvls = len(AI_DIFFICULTY_LEVELS)
-        content_h = 240 + num_lvls * 115 + 40
-        canvas = pygame.Surface((viewport_w, content_h))
-        canvas.fill((15, 18, 26))
-
-        civ_desc_lines = [
-            "• Biomass Economy: Alien insects harvest organic biomass to evolve structures and spawn army strains.",
-            "• Hive Mind Intelligence: Real-time strategic decision engine with dynamic target selection and flanking.",
-            "• Alien Strains: Drones (workers), Swarmers (fast melee combatants), Spitters (acid ranged), and Queen (spore launcher mutating victims into Swarmers).",
-            "• Structures & Tech: Hive (Main base), Spawning Pool (Troop hatchery), Spine Crawler (Defense), Biomass Generator (Passive income) & Evolution Chamber (Upgrades)."
-        ]
 
         def wrap_text(text, font, max_w):
             words = text.split(" ")
@@ -465,6 +483,64 @@ class Menu:
                 lines.append(" ".join(cur))
             return lines
 
+        if self.ai_info_tab == "medieval":
+            civ_head_title = "MEDIEVAL HUMAN CIVILIZATION MECHANICS"
+            civ_head_color = (30, 136, 229)
+            civ_desc_lines = [
+                "• Feudal Economy: Peasants harvest Wood, Gold, and Food to construct keeps, training grounds, and fortifications.",
+                "• Royal Army Strains: Peasants (workers), Footmen (heavy infantry), Archers (longbow ranged), Scouts (fast reconnaissance), and Hero Knight.",
+                "• Defenses & Tech: Town Hall (Castle Keep with Garrison Ballista), Barracks (Military Drill), Watchtowers, Arrow Towers, Royal Bank (Gold yield), and Healing Sanctuary."
+            ]
+            ai_descriptions = {
+                1: "Level 1: Income x1.0. Units: Peasants & Footmen. Basic Town Hall & Barracks.",
+                2: "Level 2: Income x1.1. +5% HP & Atk bonus for troops.",
+                3: "Level 3: Income x1.2. Unlocks Peasant Houses (+5 Pop Max) and Grain Farms.",
+                4: "Level 4: Income x1.3. Unlocks Watchtowers and Wooden Defensive Walls.",
+                5: "Level 5: Income x1.4. Builds Wood & Gold Stockpiles.",
+                6: "Level 6: Income x1.5. Unlocks Archers & Scout units. Builds multiple Barracks.",
+                7: "Level 7: Income x1.6. Army size cap expanded to 45 units.",
+                8: "Level 8 (Forum Ballista): Income x1.7. Forum Ballista Defence (Town Hall fires arrows at range 240).",
+                9: "Level 9: Income x1.85. +40% Atk bonus for troops.",
+                10: "Level 10 (Royal Bank & Sanctuary): Income x2.0. Unlocks Royal Banks (passive gold gen) & Healing Sanctuaries.",
+                11: "Level 11: Income x2.2. +55% HP & +55% Atk bonus for troops.",
+                12: "Level 12 (Hero Knight): Income x2.5. Unlocks Hero Knight champion (levels up and gains stats per kill).",
+                13: "Level 13: Income x2.8. Army size cap expanded to 110 units.",
+                14: "Level 14 (Hero Archer): Income x3.2. Unlocks Hero Archer longbow upgrade (ranged hero attacks).",
+                15: "Level 15 (Secondary Keep): Income x3.6. Expands with 2nd TownHall Keep.",
+                16: "Level 16: Income x4.0. Army size cap expanded to 150 units, Max Workers 38.",
+                17: "Level 17: Income x4.5. Max Workers expanded to 40.",
+                18: "Level 18 (Ultimate Citadel): Income x5.0. Ultimate Citadel Garrison & Army size cap 175."
+            }
+        else:
+            civ_head_title = "ALIEN INSECT CIVILIZATION MECHANICS"
+            civ_head_color = (216, 27, 96)
+            civ_desc_lines = [
+                "• Biomass Economy: Alien insects harvest organic biomass to evolve structures and spawn army strains.",
+                "• Hive Mind Intelligence: Real-time strategic decision engine with dynamic target selection and flanking.",
+                "• Alien Strains: Drones (workers), Swarmers (fast melee combatants), Spitters (acid ranged), and Queen (spore launcher mutating victims into Swarmers).",
+                "• Structures & Tech: Hive (Main base), Spawning Pool (Troop hatchery), Spine Crawler (Defense), Biomass Generator (Passive income) & Evolution Chamber (Upgrades)."
+            ]
+            ai_descriptions = {
+                1: "Level 1: Income x1.0. Units: Drones & Swarmers. Full real-time strategic decision engine.",
+                2: "Level 2: Income x1.1. Unlocks +1 extra starting Swarmer.",
+                3: "Level 3: Income x1.2. Unlocks +1 extra starting Drone.",
+                4: "Level 4: Income x1.3. Unlocks defensive Spine Crawlers. +15% HP/Atk.",
+                5: "Level 5 (Biomass Depot): Income x1.4. Builds Biomass Stockpiles.",
+                6: "Level 6 (Spitters): Income x1.5. Unlocks ranged acid Spitters.",
+                7: "Level 7 (Hive Enrage): Income x1.6. Hive ability (60s CD): +10% Speed/Atk for 5s.",
+                8: "Level 8 (Creep Spread): Income x1.7. Creep around Hives (+25% Speed/Atk on Creep).",
+                9: "Level 9 (Double Swarmer): Income x1.85. Swarmer training spawns 2 Swarmers per egg.",
+                10: "Level 10 (Biomass Generators): Income x2.0. Builds Biomass Generators.",
+                11: "Level 11 (Swarm Frenzy): Income x2.2. Swarm Frenzy (+25% Speed). +45% HP, +60% Atk.",
+                12: "Level 12 (Supreme Harvest): Income x2.5. Enemy kills award Biomass.",
+                13: "Level 13 (Enhanced Enrage): Income x2.8. Boosts Hive ability to +20% Speed/Atk.",
+                14: "Level 14 (Alien Queen): Income x3.2. Unlocks Queen (mutates killed targets into Swarmers).",
+                15: "Level 15 (Second Hive & Drones): Income x3.6. Expands with 2nd Hive & +2 starting Drones.",
+                16: "Level 16 (Double Deposits): Income x4.0. Biomass nodes on map generated with 2x capacity.",
+                17: "Level 17 (Drone Swarm): Income x4.5. +4 additional starting Drones.",
+                18: "Level 18 (Evolution Chamber): Income x5.0. Evolution Chamber (+10% HP, -10% Swarmer cost, +5% biomass gen)."
+            }
+
         wrapped_desc_lines = []
         max_line_w = viewport_w - 60
         for raw_line in civ_desc_lines:
@@ -475,27 +551,6 @@ class Menu:
 
         ai_head_y = civ_box.y + civ_box_h + 15
         t_lvl_head = self.btn_font.render("AI DIFFICULTY LEVEL DESCRIPTIONS (1 TO 18)", True, config.COLOR_UI_ACCENT)
-
-        ai_descriptions = {
-            1: "Level 1: Income x1.0. Units: Drones & Swarmers. Full real-time strategic decision engine.",
-            2: "Level 2: Income x1.1. Unlocks +1 extra starting Swarmer.",
-            3: "Level 3: Income x1.2. Unlocks +1 extra starting Drone.",
-            4: "Level 4: Income x1.3. Unlocks defensive Spine Crawlers. +15% HP/Atk.",
-            5: "Level 5 (Biomass Depot): Income x1.4. Builds Biomass Stockpiles.",
-            6: "Level 6 (Spitters): Income x1.5. Unlocks ranged acid Spitters.",
-            7: "Level 7 (Hive Enrage): Income x1.6. Hive ability (60s CD): +10% Speed/Atk for 5s.",
-            8: "Level 8 (Creep Spread): Income x1.7. Creep around Hives (+25% Speed/Atk on Creep).",
-            9: "Level 9 (Double Swarmer): Income x1.85. Swarmer training spawns 2 Swarmers per egg.",
-            10: "Level 10 (Biomass Generators): Income x2.0. Builds Biomass Generators.",
-            11: "Level 11 (Swarm Frenzy): Income x2.2. Swarm Frenzy (+25% Speed). +45% HP, +60% Atk.",
-            12: "Level 12 (Supreme Harvest): Income x2.5. Enemy kills award Biomass.",
-            13: "Level 13 (Enhanced Enrage): Income x2.8. Boosts Hive ability to +20% Speed/Atk.",
-            14: "Level 14 (Alien Queen): Income x3.2. Unlocks Queen (mutates killed targets into Swarmers).",
-            15: "Level 15 (Second Hive & Drones): Income x3.6. Expands with 2nd Hive & +2 starting Drones.",
-            16: "Level 16 (Double Deposits): Income x4.0. Biomass nodes on map generated with 2x capacity.",
-            17: "Level 17 (Drone Swarm): Income x4.5. +4 additional starting Drones.",
-            18: "Level 18 (Evolution Chamber): Income x5.0. Evolution Chamber (+10% HP, -10% Swarmer cost, +5% biomass gen)."
-        }
 
         # Calculate card heights and dynamic lines
         cards_data = []
@@ -533,8 +588,8 @@ class Menu:
 
         # Redraw top section on resized canvas
         pygame.draw.rect(canvas, (28, 34, 48), civ_box, border_radius=10)
-        pygame.draw.rect(canvas, (216, 27, 96), civ_box, 2, border_radius=10)
-        t_civ_head = self.btn_font.render("ALIEN INSECT CIVILIZATION MECHANICS", True, (216, 27, 96))
+        pygame.draw.rect(canvas, civ_head_color, civ_box, 2, border_radius=10)
+        t_civ_head = self.btn_font.render(civ_head_title, True, civ_head_color)
         canvas.blit(t_civ_head, (civ_box.x + 20, civ_box.y + 12))
 
         curr_y = civ_box.y + 45
@@ -609,6 +664,8 @@ class Menu:
 
         return {
             "back": back_btn,
+            "tab_med": tab_med,
+            "tab_alien": tab_alien,
             "max_scroll": content_h - viewport_h,
             "current_scroll": clamp_scroll
         }

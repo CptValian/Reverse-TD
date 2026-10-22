@@ -101,7 +101,12 @@ class GameState:
                     b.max_hp = int(b.max_hp * 1.2)
                     b.hp = int(b.max_hp * hp_ratio)
 
-    def start_new_game(self, is_iacia=False):
+    def start_new_game(self, is_iacia=False, player_faction=None):
+        if player_faction:
+            self.player_faction = player_faction
+        elif not hasattr(self, 'player_faction'):
+            self.player_faction = config.FACTION_HUMAN
+
         self.game_time = 0.0
         self.units.clear()
         self.buildings.clear()
@@ -127,28 +132,42 @@ class GameState:
         for ai_id in range(1, self.num_ais + 1):
             self.teams[ai_id] = 2  # Enemy team
 
+        p_faction = getattr(self, 'player_faction', config.FACTION_HUMAN)
+
         upgrades = self.save_manager.data.get("upgrades", {}) if hasattr(self, 'save_manager') and self.save_manager else {}
         hp_bonus_units = upgrades.get("unit_hp_lvl", 0) * 0.10
         atk_bonus_units = upgrades.get("unit_attack_lvl", 0) * 0.10
         hp_bonus_bld = upgrades.get("building_hp_lvl", 0) * 0.15
         armor_bonus_bld = upgrades.get("building_armor_lvl", 0) * 1.0
 
-        extra_res_bonus = (100 if upgrades.get("starting_res_1") else 0) + (250 if upgrades.get("high_starting_res") else 0)
-        self.resources_player[0] = {
-            "gold": 200 + extra_res_bonus,
-            "wood": 200 + extra_res_bonus,
-            "food": 150 + extra_res_bonus,
-            "biomass": 0
-        }
+        extra_res_bonus = (100 if upgrades.get("starting_res_1") else 0) + (100 if upgrades.get("high_starting_res") else 0) + (100 if upgrades.get("starting_cache_3") else 0)
+
+        if p_faction == config.FACTION_ALIEN:
+            self.resources_player[0] = {
+                "gold": 0,
+                "wood": 0,
+                "food": 0,
+                "biomass": 300 + extra_res_bonus
+            }
+        else:
+            self.resources_player[0] = {
+                "gold": 200 + extra_res_bonus,
+                "wood": 200 + extra_res_bonus,
+                "food": 150 + extra_res_bonus,
+                "biomass": 0
+            }
         self.resources_gathered_player[0] = dict(self.resources_player[0])
 
+        player_factions = {0: p_faction}
         for ai_id in range(1, self.num_ais + 1):
-            self.resources_player[ai_id] = {"gold": 0, "wood": 0, "food": 0, "biomass": 300}
-            self.resources_gathered_player[ai_id] = dict(self.resources_player[ai_id])
+            ai_faction = config.FACTION_HUMAN if p_faction == config.FACTION_ALIEN else config.FACTION_ALIEN
+            player_factions[ai_id] = ai_faction
 
-        player_factions = {0: config.FACTION_HUMAN}
-        for ai_id in range(1, self.num_ais + 1):
-            player_factions[ai_id] = config.FACTION_ALIEN
+            if ai_faction == config.FACTION_ALIEN:
+                self.resources_player[ai_id] = {"gold": 0, "wood": 0, "food": 0, "biomass": 300}
+            else:
+                self.resources_player[ai_id] = {"gold": 300, "wood": 300, "food": 200, "biomass": 0}
+            self.resources_gathered_player[ai_id] = dict(self.resources_player[ai_id])
 
         map_gen = MapGenerator(config.MAP_WIDTH, config.MAP_HEIGHT)
         map_data = map_gen.generate_map(num_players=self.num_ais + 1, map_type=self.map_type, player_factions=player_factions)
@@ -169,8 +188,9 @@ class GameState:
             sx, sy = spawn["x"], spawn["y"]
 
             if owner_id == 0:
+                base_type = "Hive" if faction == config.FACTION_ALIEN else "TownHall"
                 range_bonus = (22 if upgrades.get("forum_atk_range") else 0) + (55 if upgrades.get("forum_atk_sight_range") else 0)
-                base = Building(owner_id, faction, "TownHall", sx, sy,
+                base = Building(owner_id, faction, base_type, sx, sy,
                                 hp_bonus=int(1000 * hp_bonus_bld), armor_bonus=armor_bonus_bld, range_bonus=range_bonus)
                 if upgrades.get("forum_atk_sight_range"):
                     base.vision_radius = int(base.vision_radius * 1.25)
@@ -180,18 +200,26 @@ class GameState:
                     for r in self.resources:
                         if math.hypot(r.x - sx, r.y - sy) < 400:
                             r.amount *= 2
-                            r.max_amount *= 2
+                            r.max_hp *= 2
 
+                if upgrades.get("near_base_res_boost"):
+                    for r in self.resources:
+                        if math.hypot(r.x - sx, r.y - sy) < 450:
+                            r.amount = int(r.amount * 1.5)
+                            r.max_hp = int(r.max_hp * 1.5)
+
+                worker_type = "Drone" if faction == config.FACTION_ALIEN else "Worker"
                 num_workers = 3 + (1 if upgrades.get("extra_worker_start") else 0)
                 worker_offsets = [(-30, 40), (0, 50), (30, 40), (-45, 50), (45, 50)]
                 for i in range(num_workers):
                     offset = worker_offsets[i % len(worker_offsets)]
-                    u = Unit(owner_id, faction, "Worker", sx + offset[0], sy + offset[1],
+                    u = Unit(owner_id, faction, worker_type, sx + offset[0], sy + offset[1],
                              hp_bonus=int(60 * hp_bonus_units), attack_bonus=int(5 * atk_bonus_units))
                     self.units.append(u)
 
                 if upgrades.get("extra_melee_start"):
-                    u_inf = Unit(owner_id, faction, "Infantry", sx, sy + 60,
+                    melee_type = "Swarmer" if faction == config.FACTION_ALIEN else "Infantry"
+                    u_inf = Unit(owner_id, faction, melee_type, sx, sy + 60,
                                  hp_bonus=int(150 * hp_bonus_units), attack_bonus=int(18 * atk_bonus_units))
                     self.units.append(u_inf)
 
@@ -201,7 +229,8 @@ class GameState:
                     self.units.append(u_scout)
 
                 if upgrades.get("hero_unlocked"):
-                    hero_u = Unit(owner_id, faction, "Hero", sx + 20, sy - 50,
+                    hero_type = "Queen" if faction == config.FACTION_ALIEN else "Hero"
+                    hero_u = Unit(owner_id, faction, hero_type, sx + 20, sy - 50,
                                   hp_bonus=int(200 * hp_bonus_units), attack_bonus=int(25 * atk_bonus_units))
                     if upgrades.get("hero_archer"):
                         hero_u.is_hero_archer = True
@@ -722,19 +751,33 @@ class GameState:
                 rewards = Rewards.calculate_rewards(False, self.num_ais, self.ai_difficulty, survival_time=self.game_time, map_type=self.map_type)
                 self.last_match_rewards = rewards
                 if hasattr(self, 'save_manager') and self.save_manager:
-                    self.save_manager.add_points(
-                        landshard=rewards[config.POINT_TYPE_COMMAND],
-                        swarmerblood=rewards[config.POINT_TYPE_FORGE],
-                        pykrite=rewards[config.POINT_TYPE_ARCHITECTURE]
-                    )
+                    if getattr(self, 'player_faction', config.FACTION_HUMAN) == config.FACTION_ALIEN:
+                        self.save_manager.add_points(
+                            muculus=rewards[config.POINT_TYPE_COMMAND],
+                            conjulat=rewards[config.POINT_TYPE_FORGE],
+                            mass=rewards[config.POINT_TYPE_ARCHITECTURE]
+                        )
+                    else:
+                        self.save_manager.add_points(
+                            landshard=rewards[config.POINT_TYPE_COMMAND],
+                            swarmerblood=rewards[config.POINT_TYPE_FORGE],
+                            pykrite=rewards[config.POINT_TYPE_ARCHITECTURE]
+                        )
 
             elif not enemy_buildings and not enemy_units:
                 self.state = "VICTORY"
                 rewards = Rewards.calculate_rewards(True, self.num_ais, self.ai_difficulty, survival_time=self.game_time, map_type=self.map_type)
                 self.last_match_rewards = rewards
                 if hasattr(self, 'save_manager') and self.save_manager:
-                    self.save_manager.add_points(
-                        landshard=rewards[config.POINT_TYPE_COMMAND],
-                        swarmerblood=rewards[config.POINT_TYPE_FORGE],
-                        pykrite=rewards[config.POINT_TYPE_ARCHITECTURE]
-                    )
+                    if getattr(self, 'player_faction', config.FACTION_HUMAN) == config.FACTION_ALIEN:
+                        self.save_manager.add_points(
+                            muculus=rewards[config.POINT_TYPE_COMMAND],
+                            conjulat=rewards[config.POINT_TYPE_FORGE],
+                            mass=rewards[config.POINT_TYPE_ARCHITECTURE]
+                        )
+                    else:
+                        self.save_manager.add_points(
+                            landshard=rewards[config.POINT_TYPE_COMMAND],
+                            swarmerblood=rewards[config.POINT_TYPE_FORGE],
+                            pykrite=rewards[config.POINT_TYPE_ARCHITECTURE]
+                        )

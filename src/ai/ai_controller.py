@@ -74,6 +74,22 @@ class BaseAIController:
                     if not exit_clear:
                         continue
 
+                # Risk Factor Evaluation: Check if candidate location is compromised by uncountered enemy threat
+                enemy_threat = sum(
+                    getattr(e, 'attack_power', 10) + 5
+                    for e in game_state.units + game_state.buildings
+                    if e.alive and self._check_enemy(self.owner_id, e.owner_id, game_state)
+                    and math.hypot(e.x - bx, e.y - by) <= 450
+                )
+                friendly_defense = sum(
+                    getattr(e, 'attack_power', 10) + 5
+                    for e in game_state.units + game_state.buildings
+                    if e.alive and not getattr(e, 'is_worker', False) and not self._check_enemy(self.owner_id, e.owner_id, game_state)
+                    and math.hypot(e.x - bx, e.y - by) <= 450
+                )
+                if enemy_threat > 0 and friendly_defense < enemy_threat:
+                    continue  # Compromised position: high risk of structure destruction, skip placing here
+
                 return (bx, by)
 
         return None

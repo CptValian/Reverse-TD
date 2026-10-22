@@ -166,10 +166,18 @@ class ProgressionUI:
             {
                 "key": "high_starting_res",
                 "name": "Starting Cache II",
-                "desc": "+250 Starting Resources",
+                "desc": "+100 Starting Resources",
                 "cost": 20,
                 "parents": ["extra_melee_start"],
                 "pos": (410, 510)
+            },
+            {
+                "key": "starting_cache_3",
+                "name": "Starting Cache III",
+                "desc": "+100 Starting Resources",
+                "cost": 25,
+                "parents": ["high_starting_res"],
+                "pos": (410, 680)
             },
             {
                 "key": "archer_unlocked",
@@ -344,8 +352,8 @@ class ProgressionUI:
                 "name": "Footman Drill",
                 "desc": "Melee spawn time -10%",
                 "cost": 15,
-                "parents": ["high_starting_res"],
-                "pos": (410, 680)
+                "parents": ["starting_cache_3"],
+                "pos": (410, 850)
             },
             {
                 "key": "near_base_res_boost",

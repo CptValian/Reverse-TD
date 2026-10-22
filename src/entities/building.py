@@ -7,8 +7,8 @@ BUILDING_TYPES = {
     "House": {"cost": {"wood": 100}, "hp": 250, "radius": 22, "build_time": 10, "trainable": [], "pop_bonus": 5, "vision": 200},
     "Barracks": {"cost": {"wood": 100, "gold": 50}, "hp": 500, "radius": 35, "build_time": 20, "trainable": ["Infantry", "Archer"], "vision": 250},
     "WatchTower": {"cost": {"wood": 60, "gold": 20}, "hp": 350, "radius": 25, "build_time": 12, "attack_power": 0, "range": 0, "trainable": [], "vision": 750},
-    "ArrowTower": {"cost": {"wood": 80, "gold": 40}, "hp": 400, "radius": 25, "build_time": 16, "attack_power": 15, "range": 260, "trainable": [], "vision": 300},
-    "Tower": {"cost": {"wood": 80, "gold": 40}, "hp": 400, "radius": 25, "build_time": 16, "attack_power": 15, "range": 260, "trainable": [], "vision": 300},
+    "ArrowTower": {"cost": {"wood": 80, "gold": 40}, "hp": 400, "radius": 25, "build_time": 16, "attack_power": 20, "range": 260, "trainable": [], "vision": 300},
+    "Tower": {"cost": {"wood": 80, "gold": 40}, "hp": 400, "radius": 25, "build_time": 16, "attack_power": 20, "range": 260, "trainable": [], "vision": 300},
     "Wall": {"cost": {"wood": 30}, "hp": 750, "radius": 18, "build_time": 8, "trainable": []},
     "WoodStockpile": {"cost": {"wood": 80}, "hp": 350, "radius": 25, "build_time": 12, "trainable": []},
     "GoldStockpile": {"cost": {"wood": 80, "gold": 20}, "hp": 350, "radius": 25, "build_time": 12, "trainable": []},
@@ -16,11 +16,12 @@ BUILDING_TYPES = {
     "Farm": {"cost": {"wood": 160}, "hp": 300, "radius": 30, "build_time": 15, "trainable": []},
     "Bank": {"cost": {"wood": 200, "gold": 250}, "hp": 450, "radius": 30, "build_time": 25, "trainable": []},
     "Sanctuary": {"cost": {"wood": 150, "gold": 100}, "hp": 400, "radius": 30, "build_time": 20, "trainable": []},
+    "Temple": {"cost": {"wood": 180, "gold": 150}, "hp": 400, "radius": 30, "build_time": 20, "trainable": ["Monk"], "vision": 250},
 
     # Alien
     "Hive": {"cost": {"biomass": 400}, "hp": 1000, "radius": 45, "build_time": 30, "trainable": ["Drone"], "pop_bonus": 10},
     "SpawningPool": {"cost": {"biomass": 150}, "hp": 500, "radius": 35, "build_time": 20, "trainable": ["Swarmer", "Spitter", "Queen"]},
-    "SpineCrawler": {"cost": {"biomass": 100}, "hp": 400, "radius": 25, "build_time": 16, "attack_power": 18, "range": 234, "trainable": []},
+    "SpineCrawler": {"cost": {"biomass": 100}, "hp": 400, "radius": 25, "build_time": 16, "attack_power": 24, "range": 234, "trainable": []},
     "BiomassGenerator": {"cost": {"biomass": 300}, "hp": 350, "radius": 30, "build_time": 25, "trainable": []},
     "BiomassStockpile": {"cost": {"biomass": 80}, "hp": 350, "radius": 25, "build_time": 12, "trainable": []},
     "EvolutionChamber": {"cost": {"biomass": 200}, "hp": 500, "radius": 32, "build_time": 20, "trainable": []}
@@ -223,14 +224,17 @@ class Building(BaseEntity):
                 if target:
                     from src.entities.projectile import Projectile
                     p_type = "arrow"
-                    if self.building_type in ["SpineCrawler", "Hive"]:
-                        p_type = "spine"
 
-                    proj = Projectile(self.x, self.y, target, self.attack_power, speed=500, owner_id=self.owner_id, projectile_type=p_type, attacker_entity=self)
-                    if hasattr(game_state, 'projectiles'):
-                        game_state.projectiles.append(proj)
-                    else:
-                        target.take_damage(self.attack_power, attacker=self, game_state=game_state)
+                    upgrades = game_state.save_manager.data.get("upgrades", {}) if hasattr(game_state, 'save_manager') and game_state.save_manager else {}
+                    num_proj = 2 if (upgrades.get("tower_extra_projectile") and self.building_type in ["ArrowTower", "Tower", "WatchTower", "SpineCrawler"]) else 1
+
+                    for i in range(num_proj):
+                        delay = i * 0.08
+                        proj = Projectile(self.x, self.y, target, self.attack_power, speed=500, owner_id=self.owner_id, projectile_type=p_type, delay=delay, attacker_entity=self)
+                        if hasattr(game_state, 'projectiles'):
+                            game_state.projectiles.append(proj)
+                        else:
+                            target.take_damage(self.attack_power, attacker=self, game_state=game_state)
                     self.attack_cooldown = 1.0
 
         return produced_unit

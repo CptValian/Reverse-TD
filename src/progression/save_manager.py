@@ -8,10 +8,13 @@ DEFAULT_SAVE_DATA = {
     "points": {
         "LandShard": 0,
         "SwarmerBlood": 0,
-        "Pykrite": 0
+        "Pykrite": 0,
+        "Muculus": 0,
+        "Conjulat": 0,
+        "Mass": 0
     },
     "upgrades": {
-        # Skill Tree unlocks (LandShard)
+        # Skill Tree unlocks (LandShard / Muculus)
         "starting_res_1": 0,
         "wood_stockpile_unlocked": 0,
         "gold_stockpile_unlocked": 0,
@@ -26,6 +29,11 @@ DEFAULT_SAVE_DATA = {
         "townhall_unlocked": 0,
 
         # New requested Skill Tree upgrades
+        "high_starting_res": 0,        # Starting Cache II (+100)
+        "starting_cache_3": 0,         # Starting Cache III (+100)
+        "near_base_res_boost": 0,      # x1.5 quantity for resource piles near base
+        "temple_unlocked": 0,          # Holy Temple & Monk unlock
+        "tower_extra_projectile": 0,   # Defensive towers fire +1 projectile
         "forum_atk_range": 0,          # Forum attack range +10%
         "watchtower_sight": 0,         # Watchtower sight +20%
         "scout_unlocked": 0,           # Scout unit unlock
@@ -103,10 +111,20 @@ class SaveManager:
         except Exception as e:
             print(f"Erreur lors de la sauvegarde: {e}")
 
-    def add_points(self, command=0, forge=0, architecture=0, landshard=0, swarmerblood=0, pykrite=0):
+    def add_points(self, command=0, forge=0, architecture=0, landshard=0, swarmerblood=0, pykrite=0, muculus=0, conjulat=0, mass=0):
+        if "LandShard" not in self.data["points"]: self.data["points"]["LandShard"] = 0
+        if "SwarmerBlood" not in self.data["points"]: self.data["points"]["SwarmerBlood"] = 0
+        if "Pykrite" not in self.data["points"]: self.data["points"]["Pykrite"] = 0
+        if "Muculus" not in self.data["points"]: self.data["points"]["Muculus"] = 0
+        if "Conjulat" not in self.data["points"]: self.data["points"]["Conjulat"] = 0
+        if "Mass" not in self.data["points"]: self.data["points"]["Mass"] = 0
+
         self.data["points"]["LandShard"] += command + landshard
         self.data["points"]["SwarmerBlood"] += forge + swarmerblood
         self.data["points"]["Pykrite"] += architecture + pykrite
+        self.data["points"]["Muculus"] += muculus
+        self.data["points"]["Conjulat"] += conjulat
+        self.data["points"]["Mass"] += mass
         self.save()
 
     def get_setting(self, key, default=False):

@@ -65,9 +65,9 @@ class TestV2Features(unittest.TestCase):
         self.game_state.start_new_game()
         player_res = self.game_state.resources_player[0]
 
-        # 200 base + 250 high_starting_res = 450
-        self.assertEqual(player_res["gold"], 450)
-        self.assertEqual(player_res["wood"], 450)
+        # 200 base + 100 high_starting_res = 300
+        self.assertEqual(player_res["gold"], 300)
+        self.assertEqual(player_res["wood"], 300)
 
         # Scout unit should be present
         scouts = [u for u in self.game_state.units if u.owner_id == 0 and u.unit_type == "Scout"]

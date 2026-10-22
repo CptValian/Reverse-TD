@@ -128,13 +128,25 @@ class PathfindingGrid:
 
         found = False
         directions = [(-1,0), (1,0), (0,-1), (0,1), (-1,-1), (-1,1), (1,-1), (1,1)]
+        max_expansions = 350
+        expansions = 0
 
-        while open_set:
+        best_node = (start_col, start_row)
+        best_h = heuristic(start_col, start_row)
+
+        while open_set and expansions < max_expansions:
+            expansions += 1
             _, curr_c, curr_r = heapq.heappop(open_set)
 
             if (curr_c, curr_r) == (goal_col, goal_row):
                 found = True
+                best_node = (curr_c, curr_r)
                 break
+
+            h_val = heuristic(curr_c, curr_r)
+            if h_val < best_h:
+                best_h = h_val
+                best_node = (curr_c, curr_r)
 
             for dc, dr in directions:
                 nc, nr = curr_c + dc, curr_r + dr
@@ -159,13 +171,13 @@ class PathfindingGrid:
                         f_score = tentative_g + heuristic(nc, nr) * 1.001
                         heapq.heappush(open_set, (f_score, nc, nr))
 
-        if not found:
+        if not found and best_node == (start_col, start_row):
             # Fallback: direct line to target
             return [(gx, gy)]
 
         # Reconstruct path
         path_nodes = []
-        curr = (goal_col, goal_row)
+        curr = best_node if not found else (goal_col, goal_row)
         while curr in came_from:
             path_nodes.append(curr)
             curr = came_from[curr]

@@ -246,6 +246,8 @@ class HUD:
                         buildings_to_build.append("Bank")
                     if upgrades.get("sanctuary_unlocked"):
                         buildings_to_build.append("Sanctuary")
+                    if upgrades.get("temple_unlocked"):
+                        buildings_to_build.append("Temple")
                     if upgrades.get("wood_stockpile_unlocked"):
                         buildings_to_build.append("WoodStockpile")
                     if upgrades.get("gold_stockpile_unlocked"):
@@ -259,7 +261,7 @@ class HUD:
                     if upgrades.get("townhall_unlocked") and getattr(game_state, 'player_age', 1) >= 2:
                         buildings_to_build.append("TownHall")
                 else:
-                    buildings_to_build = ["SpawningPool", "SpineCrawler"]
+                    buildings_to_build = ["SpawningPool", "SpineCrawler", "BiomassGenerator", "BiomassStockpile", "EvolutionChamber"]
 
                 from src.entities.building import BUILDING_TYPES
                 for b_type in buildings_to_build:
