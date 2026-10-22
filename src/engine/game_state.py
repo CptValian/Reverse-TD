@@ -453,6 +453,10 @@ class GameState:
                         if u1_locked and u2_locked:
                             continue
 
+                        if getattr(u1, 'is_worker', False) and getattr(u2, 'is_worker', False):
+                            if u1.state in ["harvest", "return_resource"] and u2.state in ["harvest", "return_resource"]:
+                                continue
+
                         dist = math.sqrt(dist_sq)
                         overlap = min_dist - dist
                         if dist == 0:
@@ -492,6 +496,10 @@ class GameState:
                             u2_locked = getattr(u2, 'is_action_locked', False)
                             if u1_locked and u2_locked:
                                 continue
+
+                            if getattr(u1, 'is_worker', False) and getattr(u2, 'is_worker', False):
+                                if u1.state in ["harvest", "return_resource"] and u2.state in ["harvest", "return_resource"]:
+                                    continue
 
                             dist = math.sqrt(dist_sq)
                             overlap = min_dist - dist

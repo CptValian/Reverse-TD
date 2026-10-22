@@ -41,7 +41,7 @@ DEFAULT_SAVE_DATA = {
         "double_base_res_cap": 0,      # Double starting resource node capacity around base
         "forum_passive_arrow": 0,      # Forum shoots base arrow even without workers (arrows = workers + 1)
 
-        # SwarmerBlood (Stats Troupes / Workers)
+        # SwarmerBlood (Stats Troupes / Workers - Human)
         "worker_hp_lvl": 0,
         "worker_speed_lvl": 0,
         "infantry_hp_lvl": 0,
@@ -49,14 +49,44 @@ DEFAULT_SAVE_DATA = {
         "archer_hp_lvl": 0,
         "archer_attack_lvl": 0,
 
-        # Pykrite (Stats Bâtiments)
+        # Pykrite (Stats Bâtiments - Human)
         "townhall_hp_lvl": 0,
         "barracks_hp_lvl": 0,
         "wall_hp_lvl": 0,
         "tower_hp_lvl": 0,
         "tower_attack_lvl": 0,
         "farm_hp_lvl": 0,
-        "stockpile_hp_lvl": 0
+        "stockpile_hp_lvl": 0,
+
+        # --- ALIEN SKILL TREE UNLOCKS (Muculus) ---
+        "alien_starting_res_1": 0,          # Organic Cache (+100 Biomass)
+        "alien_biomass_stockpile_unlocked": 0, # Biomass Depot
+        "alien_spawning_pool_unlocked": 0,  # Spawning Pool (Swarmers)
+        "alien_spitter_unlocked": 0,        # Spitter Unit
+        "alien_spine_crawler_unlocked": 0,  # Spine Crawler defense
+        "alien_biomass_gen_unlocked": 0,     # Biomass Generator
+        "alien_evolution_chamber_unlocked": 0,# Evolution Chamber
+        "alien_queen_unlocked": 0,          # Queen Hero unit
+        "alien_second_hive_unlocked": 0,     # Secondary Hive
+        "alien_creep_spread_unlocked": 0,   # Creep Speed/Attack Buff
+        "alien_hive_enrage_unlocked": 0,    # Hive Enrage Ability
+
+        # Conjulat (Stats Troupes / Drones - Alien)
+        "drone_hp_lvl": 0,
+        "drone_speed_lvl": 0,
+        "swarmer_hp_lvl": 0,
+        "swarmer_attack_lvl": 0,
+        "spitter_hp_lvl": 0,
+        "spitter_attack_lvl": 0,
+        "queen_hp_lvl": 0,
+        "queen_attack_lvl": 0,
+
+        # Mass (Stats Bâtiments - Alien)
+        "hive_hp_lvl": 0,
+        "spawning_pool_hp_lvl": 0,
+        "spine_crawler_hp_lvl": 0,
+        "spine_crawler_attack_lvl": 0,
+        "biomass_gen_hp_lvl": 0
     },
     "max_ai_defeated": 0
 }

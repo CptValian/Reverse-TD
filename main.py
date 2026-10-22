@@ -197,6 +197,12 @@ def main():
                             elif buttons.get("tab_buildings") and buttons["tab_buildings"].collidepoint(event.pos):
                                 progression_ui.active_tab = "buildings"
                                 clicked_button = True
+                            elif buttons.get("fac_human") and buttons["fac_human"].collidepoint(event.pos):
+                                progression_ui.active_faction = config.FACTION_HUMAN
+                                clicked_button = True
+                            elif buttons.get("fac_alien") and buttons["fac_alien"].collidepoint(event.pos):
+                                progression_ui.active_faction = config.FACTION_ALIEN
+                                clicked_button = True
                             else:
                                 for key, info in buttons.items():
                                     if key not in ["back", "tab_tree", "tab_troops", "tab_buildings"] and isinstance(info, dict) and info.get("rect") and info["rect"].collidepoint(event.pos):
@@ -489,14 +495,18 @@ def main():
                                         if ungarr_btn.collidepoint(event.pos):
                                             first.ungarrison_all(game_state)
 
-                                if hasattr(first, 'building_type') and first.trainable_units:
-                                    trainable = []
-                                    for u in first.trainable_units:
-                                        if u == "Archer" and not upgrades.get("archer_unlocked"):
-                                            continue
-                                        if u == "Scout" and not upgrades.get("scout_unlocked"):
-                                            continue
-                                        trainable.append(u)
+                                    if hasattr(first, 'building_type') and first.trainable_units:
+                                        trainable = []
+                                        for u in first.trainable_units:
+                                            if u == "Archer" and not upgrades.get("archer_unlocked"):
+                                                continue
+                                            if u == "Scout" and not upgrades.get("scout_unlocked"):
+                                                continue
+                                            if u == "Spitter" and not upgrades.get("alien_spitter_unlocked"):
+                                                continue
+                                            if u == "Queen" and not upgrades.get("alien_queen_unlocked"):
+                                                continue
+                                            trainable.append(u)
 
                                     panel_x = 180
                                     btn_x = panel_x + 20
@@ -540,7 +550,19 @@ def main():
                                         if upgrades.get("townhall_unlocked") and getattr(game_state, 'player_age', 1) >= 2:
                                             buildings_to_build.append("TownHall")
                                     else:
-                                        buildings_to_build = ["SpawningPool", "SpineCrawler", "BiomassGenerator", "BiomassStockpile", "EvolutionChamber"]
+                                        buildings_to_build = []
+                                        if upgrades.get("alien_spawning_pool_unlocked"):
+                                            buildings_to_build.append("SpawningPool")
+                                        if upgrades.get("alien_spine_crawler_unlocked"):
+                                            buildings_to_build.append("SpineCrawler")
+                                        if upgrades.get("alien_biomass_gen_unlocked"):
+                                            buildings_to_build.append("BiomassGenerator")
+                                        if upgrades.get("alien_biomass_stockpile_unlocked"):
+                                            buildings_to_build.append("BiomassStockpile")
+                                        if upgrades.get("alien_evolution_chamber_unlocked"):
+                                            buildings_to_build.append("EvolutionChamber")
+                                        if upgrades.get("alien_second_hive_unlocked"):
+                                            buildings_to_build.append("Hive")
 
                                     for b_type in buildings_to_build:
                                         btn_width = 125
