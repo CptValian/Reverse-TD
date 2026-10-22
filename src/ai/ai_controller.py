@@ -24,6 +24,16 @@ class BaseAIController:
             return game_state.are_enemies(owner1, owner2)
         return owner1 != owner2
 
+    def notify_under_attack(self, attacker, target, game_state):
+        if not attacker or not getattr(attacker, 'alive', True):
+            return
+        ai_units = [u for u in game_state.units if u.alive and u.owner_id == self.owner_id]
+        army_units = [u for u in ai_units if not u.is_worker]
+        for u in army_units:
+            if u.state in ["idle", "move"] or (u.target_entity and not u.target_entity.alive):
+                if u.distance_to(target) <= 900 or u.distance_to(attacker) <= 900:
+                    u.attack_target(attacker, game_state)
+
     def _handle_common_combat_tactics(self, dt, game_state, ai_units):
         army_units = [u for u in ai_units if not u.is_worker]
 
@@ -39,20 +49,20 @@ class BaseAIController:
 
         # 1. Base Defense Call against encroaching threats
         if self.spawn_point and enemy_units:
-            nearby_threats = [u for u in enemy_units if math.hypot(u.x - self.spawn_point[0], u.y - self.spawn_point[1]) < 550]
+            nearby_threats = [u for u in enemy_units if math.hypot(u.x - self.spawn_point[0], u.y - self.spawn_point[1]) < 650]
             if nearby_threats:
                 closest_threat = min(nearby_threats, key=lambda u: math.hypot(u.x - self.spawn_point[0], u.y - self.spawn_point[1]))
                 for u in army_units:
                     if u.state in ["idle", "move"] or (u.target_entity and not u.target_entity.alive):
-                        u.attack_target(closest_threat)
+                        u.attack_target(closest_threat, game_state)
 
         # 2. Tactical Retreat for heavily wounded troops
         if self.spawn_point:
             for u in army_units:
                 if u.hp < u.max_hp * 0.35 and u.state == "attack":
-                    u.move_to(self.spawn_point[0] + random.randint(-50, 50), self.spawn_point[1] + random.randint(-50, 50))
+                    u.move_to(self.spawn_point[0] + random.randint(-50, 50), self.spawn_point[1] + random.randint(-50, 50), game_state)
 
-        # 3. Dynamic Attack Execution
+        # 3. Dynamic Attack Execution & Wave Timers
         total_ai_power = sum([u.attack_power + u.hp * 0.1 for u in army_units])
         total_player_power = sum([u.attack_power + u.hp * 0.1 for u in enemy_units]) + 1.0
         force_ratio = total_ai_power / total_player_power
@@ -62,21 +72,27 @@ class BaseAIController:
         p_defenses = [e for e in enemy_targets if getattr(e, 'building_type', None) in ["WatchTower", "ArrowTower", "Tower", "SpineCrawler"]]
         p_buildings = [e for e in enemy_targets if hasattr(e, 'building_type')]
 
+        wave_interval = max(6.0, 16.0 - (self.difficulty * 0.5))
+        army_threshold = min(8, max(2, int(self.config.get("max_army_size", 12) * 0.7)))
+
         should_strike = False
-        if len(army_units) >= 3 and (force_ratio >= 1.1 or len(army_units) >= self.config.get("max_army_size", 12) * 0.7):
+        if len(army_units) >= army_threshold and (force_ratio >= 0.85 or len(army_units) >= army_threshold + 2):
             should_strike = True
+        elif self.timer_wave >= wave_interval and len(army_units) >= 3:
+            should_strike = True
+            self.timer_wave = 0.0
         elif len(army_units) >= 2 and p_workers and not enemy_units:
             should_strike = True
 
         if should_strike and enemy_targets:
             idle_or_moving_army = [u for u in army_units if u.state in ["idle", "move"] or not u.target_entity or not u.target_entity.alive]
             if idle_or_moving_army:
-                if p_workers and random.random() < 0.45:
-                    target = min(p_workers, key=lambda w: min([math.hypot(w.x - u.x, w.y - u.y) for u in idle_or_moving_army] or [9999]))
-                elif p_townhalls and random.random() < 0.5:
+                if p_townhalls and random.random() < 0.5:
                     target = p_townhalls[0]
                 elif p_defenses and random.random() < 0.3:
                     target = random.choice(p_defenses)
+                elif p_workers and random.random() < 0.4:
+                    target = min(p_workers, key=lambda w: min([math.hypot(w.x - u.x, w.y - u.y) for u in idle_or_moving_army] or [9999]))
                 elif p_buildings:
                     target = min(p_buildings, key=lambda b: min([math.hypot(b.x - u.x, b.y - u.y) for u in idle_or_moving_army] or [9999]))
                 else:
@@ -90,12 +106,12 @@ class BaseAIController:
                     flank2 = (target.x + 140, target.y + 140)
 
                     for u in group1:
-                        u.attack_move_to(flank1[0], flank1[1])
+                        u.attack_move_to(flank1[0], flank1[1], game_state)
                     for u in group2:
-                        u.attack_move_to(flank2[0], flank2[1])
+                        u.attack_move_to(flank2[0], flank2[1], game_state)
                 else:
                     for u in idle_or_moving_army:
-                        u.attack_move_to(target.x, target.y)
+                        u.attack_move_to(target.x, target.y, game_state)
 
 
 class AlienAIController(BaseAIController):
@@ -116,6 +132,11 @@ class AlienAIController(BaseAIController):
         if idle_builders:
             builder = min(idle_builders, key=lambda u: u.distance_to(nb))
             builder.construct_building(nb, game_state)
+        elif len([u for u in ai_units if u.alive and u.is_worker]) > 1:
+            active_workers = [u for u in ai_units if u.alive and u.is_worker and u.state in ["harvest", "return_resource"]]
+            if active_workers:
+                builder = min(active_workers, key=lambda u: u.distance_to(nb))
+                builder.construct_building(nb, game_state)
 
     def update(self, dt, game_state):
         self.timer_wave += dt
@@ -171,15 +192,21 @@ class AlienAIController(BaseAIController):
                     game_state.buildings.append(nb)
                     self._assign_builder_to_building(nb, ai_units, game_state)
 
-        # 2. Worker Management & Harvesting
+        # 2. Worker Management & Harvesting (with node load balancing)
         ai_workers = [u for u in ai_units if u.is_worker]
         idle_workers = [w for w in ai_workers if w.state == "idle"]
         resources = [r for r in game_state.resources if r.alive and r.resource_type == "biomass"]
 
         if idle_workers and resources:
+            node_counts = {id(r): 0 for r in resources}
+            for w in ai_workers:
+                if w.target_entity and id(w.target_entity) in node_counts:
+                    node_counts[id(w.target_entity)] += 1
+
             for w in idle_workers:
-                nearest = min(resources, key=lambda r: w.distance_to(r))
-                w.harvest_node(nearest)
+                nearest = min(resources, key=lambda r: w.distance_to(r) + node_counts[id(r)] * 90)
+                node_counts[id(nearest)] += 1
+                w.harvest_node(nearest, game_state)
 
         # 3. Drone Production
         max_workers = self.config.get("max_workers", 8)
@@ -360,6 +387,11 @@ class MedievalAIController(BaseAIController):
         if idle_workers:
             worker = min(idle_workers, key=lambda u: u.distance_to(nb))
             worker.construct_building(nb, game_state)
+        elif len([u for u in ai_units if u.alive and u.is_worker]) > 1:
+            active_workers = [u for u in ai_units if u.alive and u.is_worker and u.state in ["harvest", "return_resource"]]
+            if active_workers:
+                worker = min(active_workers, key=lambda u: u.distance_to(nb))
+                worker.construct_building(nb, game_state)
 
     def update(self, dt, game_state):
         self.timer_wave += dt
@@ -410,15 +442,21 @@ class MedievalAIController(BaseAIController):
                     game_state.buildings.append(nb)
                     self._assign_worker_to_building(nb, ai_units, game_state)
 
-        # 2. Worker Management & Resource Harvesting
+        # 2. Worker Management & Resource Harvesting (with node load balancing)
         ai_workers = [u for u in ai_units if u.is_worker]
         idle_workers = [w for w in ai_workers if w.state == "idle"]
         resources = [r for r in game_state.resources if r.alive and r.resource_type in ["gold", "wood", "food"]]
 
         if idle_workers and resources:
+            node_counts = {id(r): 0 for r in resources}
+            for w in ai_workers:
+                if w.target_entity and id(w.target_entity) in node_counts:
+                    node_counts[id(w.target_entity)] += 1
+
             for w in idle_workers:
-                nearest = min(resources, key=lambda r: w.distance_to(r))
-                w.harvest_node(nearest)
+                nearest = min(resources, key=lambda r: w.distance_to(r) + node_counts[id(r)] * 90)
+                node_counts[id(nearest)] += 1
+                w.harvest_node(nearest, game_state)
 
         # 3. Peasant Worker Production
         max_workers = self.config.get("max_workers", 8)

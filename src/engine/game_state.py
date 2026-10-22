@@ -405,10 +405,14 @@ class GameState:
                     push_x = nx * (overlap / 2.0)
                     push_y = ny * (overlap / 2.0)
 
-                    u1.x -= push_x
-                    u1.y -= push_y
-                    u2.x += push_x
-                    u2.y += push_y
+                    # Tangential slip to resolve head-on crowd jams
+                    tangent_x = -ny * 0.15 * overlap
+                    tangent_y = nx * 0.15 * overlap
+
+                    u1.x -= push_x - tangent_x
+                    u1.y -= push_y - tangent_y
+                    u2.x += push_x + tangent_x
+                    u2.y += push_y + tangent_y
 
         # Résoudre également la collision unités / bâtiments (AABB / OBB pour Murs, Cercles pour autres bâtiments)
         for u in units_list:

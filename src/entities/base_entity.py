@@ -17,13 +17,18 @@ class BaseEntity:
         self.selected = False
         self.alive = True
 
-    def take_damage(self, amount):
+    def take_damage(self, amount, attacker=None, game_state=None):
         if not self.alive:
             return
         self.hp -= amount
         if self.hp <= 0:
             self.hp = 0
             self.alive = False
+
+        if attacker and game_state and hasattr(game_state, 'ai_controllers'):
+            for ai in game_state.ai_controllers:
+                if ai.owner_id == self.owner_id:
+                    ai.notify_under_attack(attacker, self, game_state)
 
     def heal(self, amount):
         if self.alive:

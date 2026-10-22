@@ -95,20 +95,29 @@ class Building(BaseEntity):
 
     def build_progress(self, dt, speed_mult=1.0):
         if not self.is_constructed:
+            prev_timer = self.build_timer
             self.build_timer -= dt * speed_mult
             if self.total_build_time > 0:
-                progress = max(0.0, min(1.0, 1.0 - (self.build_timer / float(self.total_build_time))))
-                target_hp = int(self.max_hp * (0.10 + 0.90 * progress))
-                self.hp = max(self.hp, target_hp)
+                prev_progress = max(0.0, min(1.0, 1.0 - (prev_timer / float(self.total_build_time))))
+                curr_progress = max(0.0, min(1.0, 1.0 - (self.build_timer / float(self.total_build_time))))
+
+                prev_target_hp = int(self.max_hp * (0.10 + 0.90 * prev_progress))
+                curr_target_hp = int(self.max_hp * (0.10 + 0.90 * curr_progress))
+                hp_delta = max(0, curr_target_hp - prev_target_hp)
+
+                self.hp = min(self.max_hp, self.hp + hp_delta)
 
             if self.build_timer <= 0:
                 self.is_constructed = True
                 self.build_timer = 0.0
                 self.hp = self.max_hp
 
-    def take_damage(self, amount):
-        effective_damage = max(1, amount - self.armor)
-        super().take_damage(effective_damage)
+    def take_damage(self, amount, attacker=None, game_state=None):
+        dmg = amount
+        if not self.is_constructed:
+            dmg = amount * 2.5
+        effective_damage = max(1, dmg - self.armor)
+        super().take_damage(effective_damage, attacker=attacker, game_state=game_state)
 
     def queue_unit(self, unit_type, train_time=None, game_state=None):
         if not self.is_constructed:
@@ -200,11 +209,11 @@ class Building(BaseEntity):
                             spawn_y = self.y + corner_offset[1]
                             phase_delay = i * 0.08  # Slight phase offset delay between arrows
 
-                            proj = Projectile(spawn_x, spawn_y, target, base_damage, speed=500, owner_id=self.owner_id, projectile_type="arrow", delay=phase_delay)
+                            proj = Projectile(spawn_x, spawn_y, target, base_damage, speed=500, owner_id=self.owner_id, projectile_type="arrow", delay=phase_delay, attacker_entity=self)
                             if hasattr(game_state, 'projectiles'):
                                 game_state.projectiles.append(proj)
                             else:
-                                target.take_damage(base_damage)
+                                target.take_damage(base_damage, attacker=self, game_state=game_state)
                         self.attack_cooldown = 1.0
 
         elif self.attack_power > 0 and game_state and self.building_type != "TownHall":
@@ -217,11 +226,11 @@ class Building(BaseEntity):
                     if self.building_type in ["SpineCrawler", "Hive"]:
                         p_type = "spine"
 
-                    proj = Projectile(self.x, self.y, target, self.attack_power, speed=500, owner_id=self.owner_id, projectile_type=p_type)
+                    proj = Projectile(self.x, self.y, target, self.attack_power, speed=500, owner_id=self.owner_id, projectile_type=p_type, attacker_entity=self)
                     if hasattr(game_state, 'projectiles'):
                         game_state.projectiles.append(proj)
                     else:
-                        target.take_damage(self.attack_power)
+                        target.take_damage(self.attack_power, attacker=self, game_state=game_state)
                     self.attack_cooldown = 1.0
 
         return produced_unit
