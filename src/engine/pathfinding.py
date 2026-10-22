@@ -23,38 +23,51 @@ class PathfindingGrid:
         return x, y
 
     def build_obstacle_grid(self, game_state, ignore_entity=None):
-        obstacle_grid = [[False for _ in range(self.rows)] for _ in range(self.cols)]
+        if not hasattr(game_state, '_cached_obstacle_grid') or game_state._cached_obstacle_grid is None or getattr(game_state, '_obstacle_grid_dirty', True):
+            obstacle_grid = [[False for _ in range(self.rows)] for _ in range(self.cols)]
 
-        # Mark buildings as obstacles
-        for b in game_state.buildings:
-            if not b.alive or b == ignore_entity:
-                continue
+            for b in game_state.buildings:
+                if not b.alive:
+                    continue
+                rad = b.radius + 8
+                min_c, min_r = self.pos_to_grid(b.x - rad, b.y - rad)
+                max_c, max_r = self.pos_to_grid(b.x + rad, b.y + rad)
 
-            # Inflate radius slightly for clearance
-            rad = b.radius + 8
-            min_c, min_r = self.pos_to_grid(b.x - rad, b.y - rad)
-            max_c, max_r = self.pos_to_grid(b.x + rad, b.y + rad)
+                for c in range(min_c, max_c + 1):
+                    for r in range(min_r, max_r + 1):
+                        gx, gy = self.grid_to_pos(c, r)
+                        if (gx - b.x)**2 + (gy - b.y)**2 <= rad * rad:
+                            obstacle_grid[c][r] = True
+
+            for res in game_state.resources:
+                if not res.alive:
+                    continue
+                rad = res.radius + 8
+                min_c, min_r = self.pos_to_grid(res.x - rad, res.y - rad)
+                max_c, max_r = self.pos_to_grid(res.x + rad, res.y + rad)
+
+                for c in range(min_c, max_c + 1):
+                    for r in range(min_r, max_r + 1):
+                        gx, gy = self.grid_to_pos(c, r)
+                        if (gx - res.x)**2 + (gy - res.y)**2 <= rad * rad:
+                            obstacle_grid[c][r] = True
+
+            game_state._cached_obstacle_grid = obstacle_grid
+            game_state._obstacle_grid_dirty = False
+
+        obstacle_grid = game_state._cached_obstacle_grid
+
+        if ignore_entity:
+            obstacle_grid = [row[:] for row in obstacle_grid]
+            rad = ignore_entity.radius + 8
+            min_c, min_r = self.pos_to_grid(ignore_entity.x - rad, ignore_entity.y - rad)
+            max_c, max_r = self.pos_to_grid(ignore_entity.x + rad, ignore_entity.y + rad)
 
             for c in range(min_c, max_c + 1):
                 for r in range(min_r, max_r + 1):
                     gx, gy = self.grid_to_pos(c, r)
-                    if (gx - b.x)**2 + (gy - b.y)**2 <= rad * rad:
-                        obstacle_grid[c][r] = True
-
-        # Mark resources as obstacles
-        for res in game_state.resources:
-            if not res.alive or res == ignore_entity:
-                continue
-
-            rad = res.radius + 8
-            min_c, min_r = self.pos_to_grid(res.x - rad, res.y - rad)
-            max_c, max_r = self.pos_to_grid(res.x + rad, res.y + rad)
-
-            for c in range(min_c, max_c + 1):
-                for r in range(min_r, max_r + 1):
-                    gx, gy = self.grid_to_pos(c, r)
-                    if (gx - res.x)**2 + (gy - res.y)**2 <= rad * rad:
-                        obstacle_grid[c][r] = True
+                    if (gx - ignore_entity.x)**2 + (gy - ignore_entity.y)**2 <= rad * rad:
+                        obstacle_grid[c][r] = False
 
         return obstacle_grid
 

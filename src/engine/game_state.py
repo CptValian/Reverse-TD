@@ -37,6 +37,8 @@ class GameState:
         self.selection_box = None  # Tuple (start_x, start_y, current_x, current_y)
         self.game_time = 0.0
         self.player_age = 1
+        self._cached_obstacle_grid = None
+        self._obstacle_grid_dirty = True
 
         # Configuration IAcIA par défaut
         self.iacia_config = {
@@ -383,36 +385,84 @@ class GameState:
 
     def resolve_unit_collisions(self):
         units_list = [u for u in self.units if u.alive]
-        num_units = len(units_list)
-        for i in range(num_units):
-            u1 = units_list[i]
-            for j in range(i + 1, num_units):
-                u2 = units_list[j]
-                dx = u2.x - u1.x
-                dy = u2.y - u1.y
-                dist_sq = dx * dx + dy * dy
-                min_dist = u1.radius + u2.radius
+        if not units_list:
+            return
 
-                if dist_sq < min_dist * min_dist:
-                    dist = math.sqrt(dist_sq)
-                    overlap = min_dist - dist
-                    if dist == 0:
-                        dx, dy, dist = 1.0, 0.0, 1.0
-                    nx = dx / dist
-                    ny = dy / dist
+        # Spatial hash grid for O(N) unit-unit collision checks
+        cell_size = 50
+        grid = {}
+        for u in units_list:
+            cell = (int(u.x // cell_size), int(u.y // cell_size))
+            grid.setdefault(cell, []).append(u)
 
-                    # Repousser les deux unités à parts égales
-                    push_x = nx * (overlap / 2.0)
-                    push_y = ny * (overlap / 2.0)
+        for cell, cell_units in grid.items():
+            cx, cy = cell
+            neighbor_units = []
+            for dx in (0, 1):
+                for dy in (-1, 0, 1):
+                    if dx == 0 and dy <= 0:
+                        continue
+                    nc = (cx + dx, cy + dy)
+                    if nc in grid:
+                        neighbor_units.extend(grid[nc])
 
-                    # Tangential slip to resolve head-on crowd jams
-                    tangent_x = -ny * 0.15 * overlap
-                    tangent_y = nx * 0.15 * overlap
+            num_in_cell = len(cell_units)
+            for i in range(num_in_cell):
+                u1 = cell_units[i]
 
-                    u1.x -= push_x - tangent_x
-                    u1.y -= push_y - tangent_y
-                    u2.x += push_x + tangent_x
-                    u2.y += push_y + tangent_y
+                # Check remaining units in same cell
+                for j in range(i + 1, num_in_cell):
+                    u2 = cell_units[j]
+                    dx_val = u2.x - u1.x
+                    dy_val = u2.y - u1.y
+                    dist_sq = dx_val * dx_val + dy_val * dy_val
+                    min_dist = u1.radius + u2.radius
+
+                    if dist_sq < min_dist * min_dist:
+                        dist = math.sqrt(dist_sq)
+                        overlap = min_dist - dist
+                        if dist == 0:
+                            dx_val, dy_val, dist = 1.0, 0.0, 1.0
+                        nx = dx_val / dist
+                        ny = dy_val / dist
+
+                        push_x = nx * (overlap / 2.0)
+                        push_y = ny * (overlap / 2.0)
+                        tangent_x = -ny * 0.15 * overlap
+                        tangent_y = nx * 0.15 * overlap
+
+                        u1.x -= push_x - tangent_x
+                        u1.y -= push_y - tangent_y
+                        u2.x += push_x + tangent_x
+                        u2.y += push_y + tangent_y
+
+                # Check neighbor cells
+                if neighbor_units:
+                    for u2 in neighbor_units:
+                        if u1 is u2:
+                            continue
+                        dx_val = u2.x - u1.x
+                        dy_val = u2.y - u1.y
+                        dist_sq = dx_val * dx_val + dy_val * dy_val
+                        min_dist = u1.radius + u2.radius
+
+                        if dist_sq < min_dist * min_dist:
+                            dist = math.sqrt(dist_sq)
+                            overlap = min_dist - dist
+                            if dist == 0:
+                                dx_val, dy_val, dist = 1.0, 0.0, 1.0
+                            nx = dx_val / dist
+                            ny = dy_val / dist
+
+                            push_x = nx * (overlap / 2.0)
+                            push_y = ny * (overlap / 2.0)
+                            tangent_x = -ny * 0.15 * overlap
+                            tangent_y = nx * 0.15 * overlap
+
+                            u1.x -= push_x - tangent_x
+                            u1.y -= push_y - tangent_y
+                            u2.x += push_x + tangent_x
+                            u2.y += push_y + tangent_y
 
         # Résoudre également la collision unités / bâtiments (AABB / OBB pour Murs, Cercles pour autres bâtiments)
         for u in units_list:
@@ -551,7 +601,18 @@ class GameState:
                 self.buildings.remove(building)
 
         # Nettoyage des gisements épuisés
+        prev_res_len = len(self.resources)
         self.resources = [r for r in self.resources if r.alive]
+        if len(self.resources) != prev_res_len:
+            self._obstacle_grid_dirty = True
+
+        # Invalidate obstacle grid cache if buildings count or state changed
+        prev_bld_len = len(self.buildings)
+        alive_blds = [b for b in self.buildings if b.alive]
+        if len(alive_blds) != prev_bld_len or any(getattr(b, '_prev_constructed', None) != getattr(b, 'is_constructed', True) for b in alive_blds):
+            self._obstacle_grid_dirty = True
+            for b in alive_blds:
+                b._prev_constructed = getattr(b, 'is_constructed', True)
 
         # Mise à jour des projectiles
         for proj in list(self.projectiles):
