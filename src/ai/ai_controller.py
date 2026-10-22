@@ -62,7 +62,7 @@ class BaseAIController:
                 if u.hp < u.max_hp * 0.35 and u.state == "attack":
                     u.move_to(self.spawn_point[0] + random.randint(-50, 50), self.spawn_point[1] + random.randint(-50, 50), game_state)
 
-        # 3. Dynamic Attack Execution & Wave Timers
+        # 3. Strategic Attack Execution
         total_ai_power = sum([u.attack_power + u.hp * 0.1 for u in army_units])
         total_player_power = sum([u.attack_power + u.hp * 0.1 for u in enemy_units]) + 1.0
         force_ratio = total_ai_power / total_player_power
@@ -72,16 +72,14 @@ class BaseAIController:
         p_defenses = [e for e in enemy_targets if getattr(e, 'building_type', None) in ["WatchTower", "ArrowTower", "Tower", "SpineCrawler"]]
         p_buildings = [e for e in enemy_targets if hasattr(e, 'building_type')]
 
-        wave_interval = max(6.0, 16.0 - (self.difficulty * 0.5))
-        army_threshold = min(8, max(2, int(self.config.get("max_army_size", 12) * 0.7)))
+        army_threshold = min(12, max(4, int(self.config.get("max_army_size", 12) * 0.8)))
 
         should_strike = False
-        if len(army_units) >= army_threshold and (force_ratio >= 0.85 or len(army_units) >= army_threshold + 2):
+        if len(army_units) >= army_threshold and force_ratio >= 1.0:
             should_strike = True
-        elif self.timer_wave >= wave_interval and len(army_units) >= 3:
+        elif len(army_units) >= army_threshold + 3:
             should_strike = True
-            self.timer_wave = 0.0
-        elif len(army_units) >= 2 and p_workers and not enemy_units:
+        elif len(army_units) >= 3 and p_workers and not enemy_units:
             should_strike = True
 
         if should_strike and enemy_targets:

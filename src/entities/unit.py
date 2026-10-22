@@ -209,7 +209,7 @@ class Unit(BaseEntity):
         nearest_enemy = None
         min_d = scan_range
         for e in game_state.units + game_state.buildings:
-            if e.alive and e.owner_id != self.owner_id:
+            if e.alive and game_state and game_state.are_enemies(self.owner_id, e.owner_id):
                 d = self.distance_to(e)
                 if d < min_d:
                     min_d = d
@@ -320,13 +320,15 @@ class Unit(BaseEntity):
         dist = self.distance_to(bld)
         dx = bld.x - self.x
         dy = bld.y - self.y
-        if dist > 0:
-            self.facing_angle = math.atan2(dy, dx)
 
-        if dist > self.radius + bld.radius + 15:
+        if dist > self.radius + bld.radius + 18:
             # Move towards unconstructed building
             self._move_towards(bld.x, bld.y, dt, game_state)
         else:
+            if dist > 0:
+                self.facing_angle = math.atan2(dy, dx)
+            self.path_waypoints.clear()
+            self.target_pos = None
             # Construct building
             if self.unit_type == "Drone":
                 # Alien Drone morphs/sacrifices itself to become the building
@@ -353,15 +355,14 @@ class Unit(BaseEntity):
         dist = self.distance_to(bld)
         dx = bld.x - self.x
         dy = bld.y - self.y
-        if dist > 0:
-            self.facing_angle = math.atan2(dy, dx)
 
-        if dist > self.radius + bld.radius + 15:
-            dir_x = dx / dist
-            dir_y = dy / dist
-            self.x += dir_x * self.speed * dt
-            self.y += dir_y * self.speed * dt
+        if dist > self.radius + bld.radius + 18:
+            self._move_towards(bld.x, bld.y, dt, game_state)
         else:
+            if dist > 0:
+                self.facing_angle = math.atan2(dy, dx)
+            self.path_waypoints.clear()
+            self.target_pos = None
             # Repair cost is cheap fraction of building cost
             repair_rate = 25.0 * dt  # 25 HP per second
             cost_factor = repair_rate / max(1.0, bld.max_hp)
@@ -376,14 +377,17 @@ class Unit(BaseEntity):
                 self.state = "idle"
 
     def take_damage(self, amount, attacker=None, game_state=None):
+        if attacker and game_state and not game_state.are_enemies(self.owner_id, attacker.owner_id):
+            return  # Immune to friendly/allied damage
         super().take_damage(amount, attacker=attacker, game_state=game_state)
         # If unit is attacked and currently idle, defend itself against the attacker
         if self.alive and self.state == "idle" and attacker and getattr(attacker, 'alive', True):
-            if not self.is_worker or getattr(attacker, 'is_worker', False):
-                self.attack_target(attacker, game_state)
+            if game_state and game_state.are_enemies(self.owner_id, attacker.owner_id):
+                if not self.is_worker or getattr(attacker, 'is_worker', False):
+                    self.attack_target(attacker, game_state)
 
     def _process_attack(self, dt, game_state):
-        if not self.target_entity or not self.target_entity.alive:
+        if not self.target_entity or not self.target_entity.alive or (game_state and not game_state.are_enemies(self.owner_id, self.target_entity.owner_id)):
             self.target_entity = None
             if self.target_pos and self.attack_move_mode:
                 self.state = "move"
@@ -469,16 +473,16 @@ class Unit(BaseEntity):
         dist = self.distance_to(self.target_entity)
         dx = self.target_entity.x - self.x
         dy = self.target_entity.y - self.y
-        if dist > 0:
-            self.facing_angle = math.atan2(dy, dx)
 
-        if dist > self.radius + self.target_entity.radius + 10:
+        if dist > self.radius + self.target_entity.radius + 12:
             # Se rapprocher du gisement
-            dir_x = dx / dist
-            dir_y = dy / dist
-            self.x += dir_x * self.speed * dt
-            self.y += dir_y * self.speed * dt
+            self._move_towards(self.target_entity.x, self.target_entity.y, dt, game_state)
         else:
+            if dist > 0:
+                self.facing_angle = math.atan2(dy, dx)
+            self.path_waypoints.clear()
+            self.target_pos = None
+
             # Récolter
             if hasattr(self.target_entity, 'harvest'):
                 harvested = self.target_entity.harvest(config.DEFAULT_HARVEST_RATE * dt)
@@ -503,12 +507,17 @@ class Unit(BaseEntity):
             return
 
         dist = self.distance_to(deposit)
-        if dist > self.radius + deposit.radius + 10:
-            dir_x = (deposit.x - self.x) / dist
-            dir_y = (deposit.y - self.y) / dist
-            self.x += dir_x * self.speed * dt
-            self.y += dir_y * self.speed * dt
+        dx = deposit.x - self.x
+        dy = deposit.y - self.y
+
+        if dist > self.radius + deposit.radius + 12:
+            self._move_towards(deposit.x, deposit.y, dt, game_state)
         else:
+            if dist > 0:
+                self.facing_angle = math.atan2(dy, dx)
+            self.path_waypoints.clear()
+            self.target_pos = None
+
             # Déposer les ressources
             game_state.add_resources(self.owner_id, self.resource_type, self.carried_resource)
             self.carried_resource = 0

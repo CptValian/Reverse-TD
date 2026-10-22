@@ -62,23 +62,19 @@ class TestAIImprovements(unittest.TestCase):
 
     def test_iacia_level_18_attack_triggers(self):
         ai = AIController(1, config.FACTION_ALIEN, difficulty=18)
-        ai.timer_wave = 15.0  # Force wave timer threshold
 
-        u1 = Unit(1, config.FACTION_ALIEN, "Swarmer", 100, 100)
-        u2 = Unit(1, config.FACTION_ALIEN, "Swarmer", 110, 100)
-        u3 = Unit(1, config.FACTION_ALIEN, "Swarmer", 120, 100)
+        units = [Unit(1, config.FACTION_ALIEN, "Swarmer", 100 + i * 10, 100) for i in range(12)]
 
         enemy_hive = Building(2, config.FACTION_HUMAN, "TownHall", 800, 800)
 
-        self.game_state.units.extend([u1, u2, u3])
+        self.game_state.units.extend(units)
         self.game_state.buildings.append(enemy_hive)
         self.game_state.teams = {1: 1, 2: 2}
 
         ai.update(0.1, self.game_state)
 
-        # Wave timer forces attack
-        self.assertEqual(ai.timer_wave, 0.0)
-        self.assertIn(u1.state, ["move", "attack"])
+        # Strategic army threshold triggers attack
+        self.assertIn(units[0].state, ["move", "attack"])
 
 if __name__ == '__main__':
     unittest.main()
