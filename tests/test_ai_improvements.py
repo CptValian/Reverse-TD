@@ -76,5 +76,80 @@ class TestAIImprovements(unittest.TestCase):
         # Strategic army threshold triggers attack
         self.assertIn(units[0].state, ["move", "attack"])
 
+    def test_ai_building_placement_clearance(self):
+        ai = AIController(1, config.FACTION_HUMAN, difficulty=5)
+        # Place existing building and resource node
+        existing_bld = Building(1, config.FACTION_HUMAN, "TownHall", 500, 500)
+        res_node = ResourceNode("gold", 600, 500)
+        self.game_state.buildings.append(existing_bld)
+        self.game_state.resources.append(res_node)
+
+        pos = ai._find_valid_building_position(self.game_state, "Barracks", 500, 500, min_building_gap=50, min_resource_gap=75)
+        self.assertIsNotNone(pos)
+        bx, by = pos
+
+        # Verify clearance from existing building
+        dist_bld = math.hypot(bx - existing_bld.x, by - existing_bld.y)
+        self.assertGreaterEqual(dist_bld, existing_bld.radius + 35 + 50)
+
+        # Verify clearance from resource node
+        dist_res = math.hypot(bx - res_node.x, by - res_node.y)
+        self.assertGreaterEqual(dist_res, res_node.radius + 35 + 75)
+
+    def test_unblocked_spawn_pos_when_training_units(self):
+        bld = Building(1, config.FACTION_HUMAN, "Barracks", 400, 400)
+        self.game_state.buildings.append(bld)
+
+        # Block default spawn area below building with another building
+        blocking_bld = Building(1, config.FACTION_HUMAN, "House", 400, 400 + bld.radius + 20)
+        self.game_state.buildings.append(blocking_bld)
+
+        sx, sy = self.game_state._find_unblocked_spawn_pos(bld, unit_radius=15)
+        # Ensure spawn pos does not collide with blocking_bld
+        dist_to_blocking = math.hypot(sx - blocking_bld.x, sy - blocking_bld.y)
+        self.assertGreaterEqual(dist_to_blocking, blocking_bld.radius + 15 + 5)
+
+    def test_static_worker_during_harvesting_and_building(self):
+        worker = Unit(1, config.FACTION_HUMAN, "Worker", 200, 200)
+        res_node = ResourceNode("gold", 220, 200)
+        self.game_state.units.append(worker)
+        self.game_state.resources.append(res_node)
+
+        worker.harvest_node(res_node, self.game_state)
+        # Move worker close enough to lock interaction
+        worker.x, worker.y = 220 - (worker.radius + res_node.radius + 5), 200
+        worker.update(0.1, self.game_state)
+
+        # Worker should now be action locked
+        self.assertTrue(worker.is_action_locked)
+
+        initial_pos = (worker.x, worker.y)
+        initial_angle = worker.facing_angle
+
+        # Additional ticks should keep position and facing angle static
+        worker.update(0.5, self.game_state)
+        self.assertEqual((worker.x, worker.y), initial_pos)
+        self.assertEqual(worker.facing_angle, initial_angle)
+        self.assertEqual(worker.stuck_timer, 0.0)
+
+    def test_ai_reflection_cycle_interval(self):
+        ai = AIController(1, config.FACTION_ALIEN, difficulty=5)
+        self.assertEqual(ai.reflection_interval, 0.5)
+
+        # Set reflection timer below threshold
+        ai.reflection_timer = 0.1
+        drone = Unit(1, config.FACTION_ALIEN, "Drone", 300, 300)
+        self.game_state.units.append(drone)
+        res = ResourceNode("biomass", 400, 300)
+        self.game_state.resources.append(res)
+
+        # Update with dt=0.1 -> reflection_timer becomes 0.2 < 0.5 so heavy decision logic doesn't run
+        ai.update(0.1, self.game_state)
+        self.assertEqual(drone.state, "idle")
+
+        # Update with dt=0.4 -> reflection_timer becomes 0.6 >= 0.5, decision logic executes
+        ai.update(0.4, self.game_state)
+        self.assertEqual(drone.state, "harvest")
+
 if __name__ == '__main__':
     unittest.main()

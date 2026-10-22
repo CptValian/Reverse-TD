@@ -18,6 +18,65 @@ class BaseAIController:
         self.timer_wave = 0.0
         self.timer_macro = 0.0
         self.spawn_point = None
+        self.reflection_interval = 0.5
+        self.reflection_timer = self.reflection_interval
+
+    def _find_valid_building_position(self, game_state, building_type, center_x, center_y, min_building_gap=50, min_resource_gap=75, search_radius=300):
+        """Searches for a building placement position around center that maintains spacious clearance
+        from other buildings and resource nodes so paths stay wide open and uncluttered."""
+        radius = BUILDING_TYPES.get(building_type, {}).get("radius", 35)
+
+        step_r = 30
+        for r in range(0, search_radius + 1, step_r):
+            num_angles = max(8, int(2 * math.pi * max(1, r) / 25)) if r > 0 else 1
+            angles = [i * (2 * math.pi / num_angles) for i in range(num_angles)] if r > 0 else [0.0]
+            random.shuffle(angles)
+
+            for angle in angles:
+                bx = center_x + math.cos(angle) * r
+                by = center_y + math.sin(angle) * r
+
+                if not game_state.can_place_building(building_type, bx, by, owner_id=self.owner_id):
+                    continue
+
+                too_close_bld = False
+                for b in game_state.buildings:
+                    if b.alive:
+                        dist_sq = (b.x - bx)**2 + (b.y - by)**2
+                        req_dist = b.radius + radius + min_building_gap
+                        if dist_sq < req_dist * req_dist:
+                            too_close_bld = True
+                            break
+                if too_close_bld:
+                    continue
+
+                too_close_res = False
+                for res in game_state.resources:
+                    if res.alive:
+                        dist_sq = (res.x - bx)**2 + (res.y - by)**2
+                        req_dist = res.radius + radius + min_resource_gap
+                        if dist_sq < req_dist * req_dist:
+                            too_close_res = True
+                            break
+                if too_close_res:
+                    continue
+
+                if building_type in ["Barracks", "SpawningPool", "Hive", "TownHall"]:
+                    exit_clear = False
+                    for exit_angle in [0, math.pi/2, math.pi, 3*math.pi/2, math.pi/4, 3*math.pi/4, 5*math.pi/4, 7*math.pi/4]:
+                        ex = bx + math.cos(exit_angle) * (radius + 40)
+                        ey = by + math.sin(exit_angle) * (radius + 40)
+                        if 0 <= ex <= config.MAP_WIDTH and 0 <= ey <= config.MAP_HEIGHT:
+                            blocked = any(b.alive and math.hypot(b.x - ex, b.y - ey) < b.radius + 15 for b in game_state.buildings)
+                            if not blocked:
+                                exit_clear = True
+                                break
+                    if not exit_clear:
+                        continue
+
+                return (bx, by)
+
+        return None
 
     def _check_enemy(self, owner1, owner2, game_state):
         if hasattr(game_state, 'are_enemies'):
@@ -83,7 +142,10 @@ class BaseAIController:
             should_strike = True
 
         if should_strike and enemy_targets:
-            idle_or_moving_army = [u for u in army_units if u.state in ["idle", "move"] or not u.target_entity or not u.target_entity.alive]
+            idle_or_moving_army = [
+                u for u in army_units
+                if u.state == "idle" or (u.state == "move" and not getattr(u, 'attack_move_mode', False)) or not u.target_entity or not u.target_entity.alive
+            ]
             if idle_or_moving_army:
                 if p_townhalls and random.random() < 0.5:
                     target = p_townhalls[0]
@@ -139,6 +201,7 @@ class AlienAIController(BaseAIController):
     def update(self, dt, game_state):
         self.timer_wave += dt
         self.timer_macro += dt
+        self.reflection_timer += dt
 
         if self.hive_enrage_cooldown > 0:
             self.hive_enrage_cooldown -= dt
@@ -150,8 +213,17 @@ class AlienAIController(BaseAIController):
         if hasattr(game_state, 'add_resources'):
             game_state.add_resources(self.owner_id, "biomass", res_boost)
 
-        ai_units = [u for u in game_state.units if u.alive and u.owner_id == self.owner_id]
         ai_buildings = [b for b in game_state.buildings if b.alive and b.owner_id == self.owner_id]
+        bio_gens = [b for b in ai_buildings if b.building_type == "BiomassGenerator" and b.is_constructed]
+        if bio_gens and hasattr(game_state, 'add_resources'):
+            gen_rate = 5 * (1.0 + 0.05 * self.evo_upgrades["bio_gen_boost"])
+            game_state.add_resources(self.owner_id, "biomass", gen_rate * len(bio_gens) * dt)
+
+        if self.reflection_timer < self.reflection_interval:
+            return
+        self.reflection_timer = 0.0
+
+        ai_units = [u for u in game_state.units if u.alive and u.owner_id == self.owner_id]
 
         # Hive Enrage Ability Activation
         enrage_lvl = self.config.get("hive_enrage_level", 0)
@@ -183,12 +255,11 @@ class AlienAIController(BaseAIController):
         # 1. Base Reconstruction if Hive was destroyed
         if not bases and self.spawn_point:
             cost_dict = BUILDING_TYPES.get("Hive", {}).get("cost", {"biomass": 300})
-            bx, by = self.spawn_point
-            if game_state.can_place_building("Hive", bx, by):
-                if game_state.deduct_resources(self.owner_id, cost_dict):
-                    nb = Building(self.owner_id, self.faction, "Hive", bx, by, is_constructed=False)
-                    game_state.buildings.append(nb)
-                    self._assign_builder_to_building(nb, ai_units, game_state)
+            pos = self._find_valid_building_position(game_state, "Hive", self.spawn_point[0], self.spawn_point[1], min_building_gap=60, min_resource_gap=80)
+            if pos and game_state.deduct_resources(self.owner_id, cost_dict):
+                nb = Building(self.owner_id, self.faction, "Hive", pos[0], pos[1], is_constructed=False)
+                game_state.buildings.append(nb)
+                self._assign_builder_to_building(nb, ai_units, game_state)
 
         # 2. Worker Management & Harvesting (with node load balancing)
         ai_workers = [u for u in ai_units if u.is_worker]
@@ -221,16 +292,11 @@ class AlienAIController(BaseAIController):
 
         if len(production_blds) < target_prod_blds and self.spawn_point:
             cost_dict = BUILDING_TYPES.get("SpawningPool", {}).get("cost", {"biomass": 150})
-            offset_x = random.randint(-120, 120)
-            offset_y = random.randint(-120, 120)
-            bx = self.spawn_point[0] + offset_x
-            by = self.spawn_point[1] + offset_y
-
-            if game_state.can_place_building("SpawningPool", bx, by):
-                if game_state.deduct_resources(self.owner_id, cost_dict):
-                    nb = Building(self.owner_id, self.faction, "SpawningPool", bx, by, is_constructed=False)
-                    game_state.buildings.append(nb)
-                    self._assign_builder_to_building(nb, ai_units, game_state)
+            pos = self._find_valid_building_position(game_state, "SpawningPool", self.spawn_point[0], self.spawn_point[1], min_building_gap=55, min_resource_gap=80)
+            if pos and game_state.deduct_resources(self.owner_id, cost_dict):
+                nb = Building(self.owner_id, self.faction, "SpawningPool", pos[0], pos[1], is_constructed=False)
+                game_state.buildings.append(nb)
+                self._assign_builder_to_building(nb, ai_units, game_state)
 
         # 5. Spine Crawlers
         if self.difficulty >= 4 and self.config.get("can_build_defenses", True):
@@ -239,44 +305,32 @@ class AlienAIController(BaseAIController):
 
             if len(defenses) < target_def and self.spawn_point:
                 cost_dict = BUILDING_TYPES.get("SpineCrawler", {}).get("cost", {"biomass": 100})
-                dx = self.spawn_point[0] + random.choice([-100, 100])
-                dy = self.spawn_point[1] + random.choice([-100, 100])
-
-                if game_state.can_place_building("SpineCrawler", dx, dy):
-                    if game_state.deduct_resources(self.owner_id, cost_dict):
-                        nb = Building(self.owner_id, self.faction, "SpineCrawler", dx, dy, is_constructed=False)
-                        game_state.buildings.append(nb)
-                        self._assign_builder_to_building(nb, ai_units, game_state)
+                pos = self._find_valid_building_position(game_state, "SpineCrawler", self.spawn_point[0], self.spawn_point[1], min_building_gap=45, min_resource_gap=75)
+                if pos and game_state.deduct_resources(self.owner_id, cost_dict):
+                    nb = Building(self.owner_id, self.faction, "SpineCrawler", pos[0], pos[1], is_constructed=False)
+                    game_state.buildings.append(nb)
+                    self._assign_builder_to_building(nb, ai_units, game_state)
 
         # Biomass Generators
         bio_gens = [b for b in ai_buildings if b.building_type == "BiomassGenerator"]
         if self.config.get("can_build_biomass_gen") and self.spawn_point:
             if len(bio_gens) < 3:
-                gx = self.spawn_point[0] + random.randint(-140, 140)
-                gy = self.spawn_point[1] + random.randint(-140, 140)
                 cost_dict = BUILDING_TYPES.get("BiomassGenerator", {}).get("cost", {"biomass": 300})
-                if game_state.can_place_building("BiomassGenerator", gx, gy):
-                    if game_state.deduct_resources(self.owner_id, cost_dict):
-                        nb = Building(self.owner_id, self.faction, "BiomassGenerator", gx, gy, is_constructed=False)
-                        game_state.buildings.append(nb)
-                        self._assign_builder_to_building(nb, ai_units, game_state)
-
-        active_gens = [b for b in bio_gens if b.is_constructed]
-        if active_gens and hasattr(game_state, 'add_resources'):
-            gen_rate = 5 * (1.0 + 0.05 * self.evo_upgrades["bio_gen_boost"])
-            game_state.add_resources(self.owner_id, "biomass", gen_rate * len(active_gens) * dt)
+                pos = self._find_valid_building_position(game_state, "BiomassGenerator", self.spawn_point[0], self.spawn_point[1], min_building_gap=50, min_resource_gap=75)
+                if pos and game_state.deduct_resources(self.owner_id, cost_dict):
+                    nb = Building(self.owner_id, self.faction, "BiomassGenerator", pos[0], pos[1], is_constructed=False)
+                    game_state.buildings.append(nb)
+                    self._assign_builder_to_building(nb, ai_units, game_state)
 
         # Evolution Chamber
         evo_chambers = [b for b in ai_buildings if b.building_type == "EvolutionChamber"]
         if self.config.get("can_build_evolution_chamber") and self.spawn_point and len(evo_chambers) < 1:
-            ex = self.spawn_point[0] + random.randint(-120, 120)
-            ey = self.spawn_point[1] + random.randint(-120, 120)
             cost_dict = BUILDING_TYPES.get("EvolutionChamber", {}).get("cost", {"biomass": 200})
-            if game_state.can_place_building("EvolutionChamber", ex, ey):
-                if game_state.deduct_resources(self.owner_id, cost_dict):
-                    nb = Building(self.owner_id, self.faction, "EvolutionChamber", ex, ey, is_constructed=False)
-                    game_state.buildings.append(nb)
-                    self._assign_builder_to_building(nb, ai_units, game_state)
+            pos = self._find_valid_building_position(game_state, "EvolutionChamber", self.spawn_point[0], self.spawn_point[1], min_building_gap=50, min_resource_gap=75)
+            if pos and game_state.deduct_resources(self.owner_id, cost_dict):
+                nb = Building(self.owner_id, self.faction, "EvolutionChamber", pos[0], pos[1], is_constructed=False)
+                game_state.buildings.append(nb)
+                self._assign_builder_to_building(nb, ai_units, game_state)
 
         active_evos = [b for b in evo_chambers if b.is_constructed]
         if active_evos:
@@ -299,28 +353,24 @@ class AlienAIController(BaseAIController):
             distant_res = [r for r in resources if min([math.hypot(r.x - b.x, r.y - b.y) for b in bases + stockpiles] or [9999]) > 400]
             if distant_res:
                 target_r = distant_res[0]
-                sx = target_r.x + random.choice([-50, 50])
-                sy = target_r.y + random.choice([-50, 50])
                 cost_dict = BUILDING_TYPES.get("BiomassStockpile", {}).get("cost", {"biomass": 80})
-                if game_state.can_place_building("BiomassStockpile", sx, sy):
-                    if game_state.deduct_resources(self.owner_id, cost_dict):
-                        nb = Building(self.owner_id, self.faction, "BiomassStockpile", sx, sy, is_constructed=False)
-                        game_state.buildings.append(nb)
-                        self._assign_builder_to_building(nb, ai_units, game_state)
+                pos = self._find_valid_building_position(game_state, "BiomassStockpile", target_r.x, target_r.y, min_building_gap=45, min_resource_gap=70, search_radius=180)
+                if pos and game_state.deduct_resources(self.owner_id, cost_dict):
+                    nb = Building(self.owner_id, self.faction, "BiomassStockpile", pos[0], pos[1], is_constructed=False)
+                    game_state.buildings.append(nb)
+                    self._assign_builder_to_building(nb, ai_units, game_state)
 
         # Second Hive Expansion
         if self.config.get("can_build_second_hive") and len(bases) < 2 and resources:
             far_res = [r for r in resources if min([math.hypot(r.x - b.x, r.y - b.y) for b in bases] or [0]) > 600]
             if far_res:
                 target_r = far_res[0]
-                hx = target_r.x + random.choice([-70, 70])
-                hy = target_r.y + random.choice([-70, 70])
                 cost_dict = BUILDING_TYPES.get("Hive", {}).get("cost", {"biomass": 400})
-                if game_state.can_place_building("Hive", hx, hy):
-                    if game_state.deduct_resources(self.owner_id, cost_dict):
-                        nb = Building(self.owner_id, self.faction, "Hive", hx, hy, is_constructed=False)
-                        game_state.buildings.append(nb)
-                        self._assign_builder_to_building(nb, ai_units, game_state)
+                pos = self._find_valid_building_position(game_state, "Hive", target_r.x, target_r.y, min_building_gap=60, min_resource_gap=80, search_radius=220)
+                if pos and game_state.deduct_resources(self.owner_id, cost_dict):
+                    nb = Building(self.owner_id, self.faction, "Hive", pos[0], pos[1], is_constructed=False)
+                    game_state.buildings.append(nb)
+                    self._assign_builder_to_building(nb, ai_units, game_state)
 
         # Ensure all unconstructed Alien buildings have an assigned Alien Drone builder
         unconstructed_ai_blds = [b for b in ai_buildings if not b.is_constructed and not getattr(b, 'is_being_built', False)]
@@ -394,6 +444,7 @@ class MedievalAIController(BaseAIController):
     def update(self, dt, game_state):
         self.timer_wave += dt
         self.timer_macro += dt
+        self.reflection_timer += dt
 
         # Scaling passive resource influx for Medieval AI
         income_mult = self.config.get("resource_multiplier", 1.0)
@@ -406,8 +457,21 @@ class MedievalAIController(BaseAIController):
             game_state.add_resources(self.owner_id, "wood", wood_boost)
             game_state.add_resources(self.owner_id, "food", food_boost)
 
-        ai_units = [u for u in game_state.units if u.alive and u.owner_id == self.owner_id]
         ai_buildings = [b for b in game_state.buildings if b.alive and b.owner_id == self.owner_id]
+        active_banks = [b for b in ai_buildings if b.building_type == "Bank" and b.is_constructed]
+        if active_banks and hasattr(game_state, 'add_resources'):
+            game_state.add_resources(self.owner_id, "gold", 8 * len(active_banks) * dt)
+
+        ai_units = [u for u in game_state.units if u.alive and u.owner_id == self.owner_id]
+        sanctuaries = [b for b in ai_buildings if b.building_type == "Sanctuary" and b.is_constructed]
+        for sanc in sanctuaries:
+            for u in ai_units:
+                if u.hp < u.max_hp and math.hypot(u.x - sanc.x, u.y - sanc.y) <= 220:
+                    u.hp = min(u.max_hp, u.hp + 8 * dt)
+
+        if self.reflection_timer < self.reflection_interval:
+            return
+        self.reflection_timer = 0.0
 
         # Apply Medieval AI Difficulty Skill Tree Perks & Stat Buffs
         hp_mult = 0.05 * self.difficulty
@@ -433,12 +497,11 @@ class MedievalAIController(BaseAIController):
         # 1. Base Reconstruction if main TownHall destroyed
         if not bases and self.spawn_point:
             cost_dict = {"gold": 300, "wood": 300}
-            bx, by = self.spawn_point
-            if game_state.can_place_building("TownHall", bx, by):
-                if game_state.deduct_resources(self.owner_id, cost_dict):
-                    nb = Building(self.owner_id, self.faction, "TownHall", bx, by, is_constructed=False)
-                    game_state.buildings.append(nb)
-                    self._assign_worker_to_building(nb, ai_units, game_state)
+            pos = self._find_valid_building_position(game_state, "TownHall", self.spawn_point[0], self.spawn_point[1], min_building_gap=60, min_resource_gap=80)
+            if pos and game_state.deduct_resources(self.owner_id, cost_dict):
+                nb = Building(self.owner_id, self.faction, "TownHall", pos[0], pos[1], is_constructed=False)
+                game_state.buildings.append(nb)
+                self._assign_worker_to_building(nb, ai_units, game_state)
 
         # 2. Worker Management & Resource Harvesting (with node load balancing)
         ai_workers = [u for u in ai_units if u.is_worker]
@@ -472,40 +535,34 @@ class MedievalAIController(BaseAIController):
             houses = [b for b in ai_buildings if b.building_type == "House"]
 
             if pop_curr >= pop_max - 2 and len(houses) < 6:
-                hx = self.spawn_point[0] + random.randint(-160, 160)
-                hy = self.spawn_point[1] + random.randint(-160, 160)
                 cost_dict = {"wood": 60}
-                if game_state.can_place_building("House", hx, hy):
-                    if game_state.deduct_resources(self.owner_id, cost_dict):
-                        nb = Building(self.owner_id, self.faction, "House", hx, hy, is_constructed=False)
-                        game_state.buildings.append(nb)
-                        self._assign_worker_to_building(nb, ai_units, game_state)
+                pos = self._find_valid_building_position(game_state, "House", self.spawn_point[0], self.spawn_point[1], min_building_gap=45, min_resource_gap=75)
+                if pos and game_state.deduct_resources(self.owner_id, cost_dict):
+                    nb = Building(self.owner_id, self.faction, "House", pos[0], pos[1], is_constructed=False)
+                    game_state.buildings.append(nb)
+                    self._assign_worker_to_building(nb, ai_units, game_state)
 
         # 5. Barracks Production Facilities
         barracks = [b for b in ai_buildings if b.building_type == "Barracks"]
         target_barracks = 3 if self.difficulty >= 6 else (2 if self.difficulty >= 3 else 1)
 
         if len(barracks) < target_barracks and self.spawn_point:
-            bx = self.spawn_point[0] + random.randint(-140, 140)
-            by = self.spawn_point[1] + random.randint(-140, 140)
             cost_dict = {"wood": 150, "gold": 100}
-            if game_state.can_place_building("Barracks", bx, by):
-                if game_state.deduct_resources(self.owner_id, cost_dict):
-                    nb = Building(self.owner_id, self.faction, "Barracks", bx, by, is_constructed=False)
-                    game_state.buildings.append(nb)
-                    self._assign_worker_to_building(nb, ai_units, game_state)
+            pos = self._find_valid_building_position(game_state, "Barracks", self.spawn_point[0], self.spawn_point[1], min_building_gap=55, min_resource_gap=80)
+            if pos and game_state.deduct_resources(self.owner_id, cost_dict):
+                nb = Building(self.owner_id, self.faction, "Barracks", pos[0], pos[1], is_constructed=False)
+                game_state.buildings.append(nb)
+                self._assign_worker_to_building(nb, ai_units, game_state)
 
         # 6. Farms & Grain Fields (Difficulty 3+)
         farms = [b for b in ai_buildings if b.building_type == "Farm"]
         if self.difficulty >= 3 and self.spawn_point and len(farms) < 3:
-            fx = self.spawn_point[0] + random.randint(-180, 180)
-            fy = self.spawn_point[1] + random.randint(-180, 180)
             cost_dict = {"wood": 80}
-            if game_state.can_place_building("Farm", fx, fy):
-                if game_state.deduct_resources(self.owner_id, cost_dict):
-                    nb = Building(self.owner_id, self.faction, "Farm", fx, fy, is_constructed=False)
-                    game_state.buildings.append(nb)
-                    self._assign_worker_to_building(nb, ai_units, game_state)
+            pos = self._find_valid_building_position(game_state, "Farm", self.spawn_point[0], self.spawn_point[1], min_building_gap=50, min_resource_gap=75)
+            if pos and game_state.deduct_resources(self.owner_id, cost_dict):
+                nb = Building(self.owner_id, self.faction, "Farm", pos[0], pos[1], is_constructed=False)
+                game_state.buildings.append(nb)
+                self._assign_worker_to_building(nb, ai_units, game_state)
 
         # 7. Defensive Arrow Towers & Wooden Walls (Difficulty 4+)
         if self.difficulty >= 4 and self.spawn_point:
@@ -514,63 +571,44 @@ class MedievalAIController(BaseAIController):
 
             if len(towers) < target_towers:
                 t_type = "ArrowTower" if self.difficulty >= 8 else "WatchTower"
-                tx = self.spawn_point[0] + random.choice([-110, 110])
-                ty = self.spawn_point[1] + random.choice([-110, 110])
                 cost_dict = {"wood": 120, "gold": 50}
-                if game_state.can_place_building(t_type, tx, ty):
-                    if game_state.deduct_resources(self.owner_id, cost_dict):
-                        nb = Building(self.owner_id, self.faction, t_type, tx, ty, is_constructed=False)
-                        game_state.buildings.append(nb)
-                        self._assign_worker_to_building(nb, ai_units, game_state)
+                pos = self._find_valid_building_position(game_state, t_type, self.spawn_point[0], self.spawn_point[1], min_building_gap=45, min_resource_gap=75)
+                if pos and game_state.deduct_resources(self.owner_id, cost_dict):
+                    nb = Building(self.owner_id, self.faction, t_type, pos[0], pos[1], is_constructed=False)
+                    game_state.buildings.append(nb)
+                    self._assign_worker_to_building(nb, ai_units, game_state)
 
         # 8. Royal Bank (Difficulty 10+)
         banks = [b for b in ai_buildings if b.building_type == "Bank"]
         if self.difficulty >= 10 and self.spawn_point and len(banks) < 2:
-            bx = self.spawn_point[0] + random.randint(-150, 150)
-            by = self.spawn_point[1] + random.randint(-150, 150)
             cost_dict = {"wood": 200, "gold": 250}
-            if game_state.can_place_building("Bank", bx, by):
-                if game_state.deduct_resources(self.owner_id, cost_dict):
-                    nb = Building(self.owner_id, self.faction, "Bank", bx, by, is_constructed=False)
-                    game_state.buildings.append(nb)
-                    self._assign_worker_to_building(nb, ai_units, game_state)
-
-        active_banks = [b for b in banks if b.is_constructed]
-        if active_banks and hasattr(game_state, 'add_resources'):
-            game_state.add_resources(self.owner_id, "gold", 8 * len(active_banks) * dt)
+            pos = self._find_valid_building_position(game_state, "Bank", self.spawn_point[0], self.spawn_point[1], min_building_gap=50, min_resource_gap=75)
+            if pos and game_state.deduct_resources(self.owner_id, cost_dict):
+                nb = Building(self.owner_id, self.faction, "Bank", pos[0], pos[1], is_constructed=False)
+                game_state.buildings.append(nb)
+                self._assign_worker_to_building(nb, ai_units, game_state)
 
         # 9. Healing Sanctuary (Difficulty 10+)
         sanctuaries = [b for b in ai_buildings if b.building_type == "Sanctuary"]
         if self.difficulty >= 10 and self.spawn_point and len(sanctuaries) < 1:
-            sx = self.spawn_point[0] + random.randint(-130, 130)
-            sy = self.spawn_point[1] + random.randint(-130, 130)
             cost_dict = {"wood": 180, "gold": 150}
-            if game_state.can_place_building("Sanctuary", sx, sy):
-                if game_state.deduct_resources(self.owner_id, cost_dict):
-                    nb = Building(self.owner_id, self.faction, "Sanctuary", sx, sy, is_constructed=False)
-                    game_state.buildings.append(nb)
-                    self._assign_worker_to_building(nb, ai_units, game_state)
-
-        # Healing effect from constructed Sanctuaries
-        for sanc in sanctuaries:
-            if sanc.is_constructed:
-                for u in ai_units:
-                    if u.hp < u.max_hp and math.hypot(u.x - sanc.x, u.y - sanc.y) <= 220:
-                        u.hp = min(u.max_hp, u.hp + 8 * dt)
+            pos = self._find_valid_building_position(game_state, "Sanctuary", self.spawn_point[0], self.spawn_point[1], min_building_gap=50, min_resource_gap=75)
+            if pos and game_state.deduct_resources(self.owner_id, cost_dict):
+                nb = Building(self.owner_id, self.faction, "Sanctuary", pos[0], pos[1], is_constructed=False)
+                game_state.buildings.append(nb)
+                self._assign_worker_to_building(nb, ai_units, game_state)
 
         # 10. Secondary TownHall Keep Expansion (Difficulty 15+)
         if self.difficulty >= 15 and len(bases) < 2 and resources:
             far_res = [r for r in resources if min([math.hypot(r.x - b.x, r.y - b.y) for b in bases] or [0]) > 600]
             if far_res:
                 target_r = far_res[0]
-                hx = target_r.x + random.choice([-70, 70])
-                hy = target_r.y + random.choice([-70, 70])
                 cost_dict = {"wood": 400, "gold": 400}
-                if game_state.can_place_building("TownHall", hx, hy):
-                    if game_state.deduct_resources(self.owner_id, cost_dict):
-                        nb = Building(self.owner_id, self.faction, "TownHall", hx, hy, is_constructed=False)
-                        game_state.buildings.append(nb)
-                        self._assign_worker_to_building(nb, ai_units, game_state)
+                pos = self._find_valid_building_position(game_state, "TownHall", target_r.x, target_r.y, min_building_gap=60, min_resource_gap=80, search_radius=220)
+                if pos and game_state.deduct_resources(self.owner_id, cost_dict):
+                    nb = Building(self.owner_id, self.faction, "TownHall", pos[0], pos[1], is_constructed=False)
+                    game_state.buildings.append(nb)
+                    self._assign_worker_to_building(nb, ai_units, game_state)
 
         # Ensure all unconstructed Medieval buildings have an assigned Medieval worker
         unconstructed_blds = [b for b in ai_buildings if not b.is_constructed]

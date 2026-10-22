@@ -419,6 +419,11 @@ class GameState:
                     min_dist = u1.radius + u2.radius
 
                     if dist_sq < min_dist * min_dist:
+                        u1_locked = getattr(u1, 'is_action_locked', False)
+                        u2_locked = getattr(u2, 'is_action_locked', False)
+                        if u1_locked and u2_locked:
+                            continue
+
                         dist = math.sqrt(dist_sq)
                         overlap = min_dist - dist
                         if dist == 0:
@@ -426,15 +431,22 @@ class GameState:
                         nx = dx_val / dist
                         ny = dy_val / dist
 
-                        push_x = nx * (overlap / 2.0)
-                        push_y = ny * (overlap / 2.0)
-                        tangent_x = -ny * 0.15 * overlap
-                        tangent_y = nx * 0.15 * overlap
+                        if u1_locked:
+                            u2.x += nx * overlap
+                            u2.y += ny * overlap
+                        elif u2_locked:
+                            u1.x -= nx * overlap
+                            u1.y -= ny * overlap
+                        else:
+                            push_x = nx * (overlap / 2.0)
+                            push_y = ny * (overlap / 2.0)
+                            tangent_x = -ny * 0.15 * overlap
+                            tangent_y = nx * 0.15 * overlap
 
-                        u1.x -= push_x - tangent_x
-                        u1.y -= push_y - tangent_y
-                        u2.x += push_x + tangent_x
-                        u2.y += push_y + tangent_y
+                            u1.x -= push_x - tangent_x
+                            u1.y -= push_y - tangent_y
+                            u2.x += push_x + tangent_x
+                            u2.y += push_y + tangent_y
 
                 # Check neighbor cells
                 if neighbor_units:
@@ -447,6 +459,11 @@ class GameState:
                         min_dist = u1.radius + u2.radius
 
                         if dist_sq < min_dist * min_dist:
+                            u1_locked = getattr(u1, 'is_action_locked', False)
+                            u2_locked = getattr(u2, 'is_action_locked', False)
+                            if u1_locked and u2_locked:
+                                continue
+
                             dist = math.sqrt(dist_sq)
                             overlap = min_dist - dist
                             if dist == 0:
@@ -454,15 +471,22 @@ class GameState:
                             nx = dx_val / dist
                             ny = dy_val / dist
 
-                            push_x = nx * (overlap / 2.0)
-                            push_y = ny * (overlap / 2.0)
-                            tangent_x = -ny * 0.15 * overlap
-                            tangent_y = nx * 0.15 * overlap
+                            if u1_locked:
+                                u2.x += nx * overlap
+                                u2.y += ny * overlap
+                            elif u2_locked:
+                                u1.x -= nx * overlap
+                                u1.y -= ny * overlap
+                            else:
+                                push_x = nx * (overlap / 2.0)
+                                push_y = ny * (overlap / 2.0)
+                                tangent_x = -ny * 0.15 * overlap
+                                tangent_y = nx * 0.15 * overlap
 
-                            u1.x -= push_x - tangent_x
-                            u1.y -= push_y - tangent_y
-                            u2.x += push_x + tangent_x
-                            u2.y += push_y + tangent_y
+                                u1.x -= push_x - tangent_x
+                                u1.y -= push_y - tangent_y
+                                u2.x += push_x + tangent_x
+                                u2.y += push_y + tangent_y
 
         # Résoudre également la collision unités / bâtiments (AABB / OBB pour Murs, Cercles pour autres bâtiments)
         for u in units_list:
@@ -539,6 +563,44 @@ class GameState:
                         u.x += nx * overlap
                         u.y += ny * overlap
 
+    def _find_unblocked_spawn_pos(self, building, unit_radius=15):
+        """Finds an open, unblocked spawn position around building perimeter so newly trained units
+        do not spawn inside or blocked by other buildings or terrain edges."""
+        base_dist = building.radius + unit_radius + 15
+        angles = [i * (2.0 * math.pi / 12) for i in range(12)]
+        angles.sort(key=lambda a: math.sin(a), reverse=True)
+
+        for dist_mult in [1.0, 1.4, 1.8, 2.2]:
+            dist = base_dist * dist_mult
+            for angle in angles:
+                sx = building.x + math.cos(angle) * dist
+                sy = building.y + math.sin(angle) * dist
+
+                if sx < unit_radius or sx > config.MAP_WIDTH - unit_radius or sy < unit_radius or sy > config.MAP_HEIGHT - unit_radius:
+                    continue
+
+                collides_bld = False
+                for b in self.buildings:
+                    if b.alive:
+                        if (b.x - sx)**2 + (b.y - sy)**2 < (b.radius + unit_radius + 5)**2:
+                            collides_bld = True
+                            break
+                if collides_bld:
+                    continue
+
+                collides_res = False
+                for r in self.resources:
+                    if r.alive:
+                        if (r.x - sx)**2 + (r.y - sy)**2 < (r.radius + unit_radius + 5)**2:
+                            collides_res = True
+                            break
+                if collides_res:
+                    continue
+
+                return (sx, sy)
+
+        return (building.x, building.y + building.radius + unit_radius + 15)
+
     def update(self, dt):
         if self.state != "PLAYING":
             return
@@ -581,19 +643,31 @@ class GameState:
                                 break
 
                     for p_unit in units_to_spawn:
-                        # Spawner l'unité produite au pied du bâtiment
-                        new_u = Unit(building.owner_id, building.faction, p_unit, building.x, building.y + building.radius + 15)
+                        # Find clear exit spawn position
+                        from src.entities.unit import UNIT_TYPES
+                        u_rad = UNIT_TYPES.get(p_unit, {}).get("radius", 15)
+                        spawn_x, spawn_y = self._find_unblocked_spawn_pos(building, u_rad)
+                        new_u = Unit(building.owner_id, building.faction, p_unit, spawn_x, spawn_y)
 
                         # Appliquer le point de ralliement (Rally Point) si défini
                         if building.rally_point:
                             rx, ry = building.rally_point
                             rt = building.rally_target
                             if new_u.is_worker and rt and getattr(rt, 'alive', True) and (hasattr(rt, 'harvest') or getattr(rt, 'building_type', None) == "Farm"):
-                                new_u.harvest_node(rt)
+                                new_u.harvest_node(rt, self)
                             elif rt and getattr(rt, 'alive', True) and rt.owner_id != building.owner_id:
-                                new_u.attack_target(rt)
+                                new_u.attack_target(rt, self)
                             else:
-                                new_u.move_to(rx, ry)
+                                new_u.move_to(rx, ry, self)
+                        else:
+                            # Nudge unit outward from building exit so it doesn't clutter building perimeter
+                            dx_val = spawn_x - building.x
+                            dy_val = spawn_y - building.y
+                            d_len = math.hypot(dx_val, dy_val)
+                            if d_len > 0:
+                                target_x = max(15, min(config.MAP_WIDTH - 15, spawn_x + (dx_val / d_len) * 35.0))
+                                target_y = max(15, min(config.MAP_HEIGHT - 15, spawn_y + (dy_val / d_len) * 35.0))
+                                new_u.move_to(target_x, target_y, self)
 
                         self.units.append(new_u)
             else:
